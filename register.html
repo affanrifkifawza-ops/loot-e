@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daftar Akun - Loot - E</title>
+  <!-- Google Fonts & Phosphor Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+          },
+          colors: {
+            brand: {
+              yellow: "#F5B700",
+              dark: "#303135",
+              footer: "#383838",
+              bg: "#F8F9FA",
+              accent: "#16A34A",
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="bg-[#F8F9FA] font-sans antialiased text-gray-900 min-h-screen">
+  <div class="min-h-screen flex flex-col lg:flex-row">
+    <!-- Bagian Kiri: Formulir Pendaftaran -->
+    <div
+      class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10 overflow-y-auto">
+      <!-- Header Brand -->
+      <div>
+        <a href="index.html" class="inline-flex items-center gap-3 group">
+          <img src="assets/logo loote.jpeg" alt="Logo Loot - E"
+            class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm transition group-hover:scale-105" />
+          <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span
+              class="text-brand-yellow">E</span></span>
+        </a>
+      </div>
+
+      <!-- Konten Utama Pendaftaran -->
+      <div class="w-full max-w-md mx-auto my-6">
+        <div class="mb-6">
+          <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+            Daftar Akun
+          </h1>
+          <p class="text-gray-500 text-sm sm:text-base mt-2">
+            Buat akun baru untuk mulai menggunakan layanan Loot-E.
+          </p>
+        </div>
+
+        <!-- Alert Error (Dinamis dari Backend API) -->
+        <div id="errorAlert"
+          class="hidden mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 transition">
+          <i class="ph ph-warning-circle text-xl flex-shrink-0 text-red-600 mt-0.5"></i>
+          <div id="errorMessageContainer" class="flex-1 font-medium">
+            <ul id="errorList" class="list-disc ml-4 space-y-1"></ul>
+          </div>
+        </div>
+
+        <form id="registerForm" class="space-y-4">
+          <!-- Input Nama Lengkap -->
+          <div>
+            <label for="nama_lengkap" class="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap</label>
+            <div class="relative">
+              <i class="ph ph-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+              <input type="text" id="nama_lengkap" name="nama_lengkap" placeholder="Masukkan nama lengkap Anda" required
+                class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
+            </div>
+          </div>
+
+          <!-- Input Email -->
+          <div>
+            <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">Alamat Email</label>
+            <div class="relative">
+              <i class="ph ph-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+              <input type="email" id="email" name="email" placeholder="nama@contoh.com" required
+                class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
+            </div>
+          </div>
+
+          <!-- Input Kata Sandi -->
+          <div>
+            <label for="password" class="block text-sm font-semibold text-gray-700 mb-1.5">Kata Sandi</label>
+            <div class="relative">
+              <i class="ph ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+              <input type="password" id="password" name="password" placeholder="Minimal 8 karakter" required
+                minlength="8"
+                class="w-full pl-11 pr-11 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
+              <button type="button" id="togglePassword"
+                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                <i class="ph ph-eye text-lg"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Input Konfirmasi Kata Sandi -->
+          <div>
+            <label for="confirm_password" class="block text-sm font-semibold text-gray-700 mb-1.5">Konfirmasi Kata
+              Sandi</label>
+            <div class="relative">
+              <i class="ph ph-shield-check absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+              <input type="password" id="confirm_password" name="confirm_password" placeholder="Ulangi kata sandi Anda"
+                required
+                class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
+            </div>
+          </div>
+
+          <!-- Syarat & Ketentuan Checkbox -->
+          <div class="pt-1">
+            <label class="flex items-start gap-2.5 cursor-pointer text-sm text-gray-600 select-none">
+              <input type="checkbox" id="terms" name="terms" required
+                class="w-4 h-4 mt-0.5 rounded border-gray-300 text-brand-yellow focus:ring-brand-yellow/40" />
+              <span>Saya menyetujui
+                <a href="#" class="font-semibold text-brand-yellow hover:underline">Syarat & Ketentuan</a>
+                Loot-E</span>
+            </label>
+          </div>
+
+          <!-- Tombol Daftar -->
+          <button type="submit" id="submitBtn"
+            class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-brand-yellow hover:bg-yellow-500 active:scale-[0.99] transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4">
+            <span id="btnText">Daftar Akun</span>
+            <i id="btnIcon" class="ph ph-arrow-right font-bold text-lg"></i>
+            <svg id="btnSpinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg"
+              fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+          </button>
+        </form>
+
+        <!-- Tautan Login -->
+        <p class="text-center text-sm text-gray-500 mt-6">
+          Sudah punya akun?
+          <a href="login.html"
+            class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Masuk</a>
+        </p>
+      </div>
+
+      <!-- Footer Halaman -->
+      <div
+        class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-gray-100 text-xs text-gray-400">
+        <span>&copy; 2026 Loot-E. All rights reserved.</span>
+        <div class="flex gap-4">
+          <a href="#" class="hover:text-gray-600 transition">Privacy</a>
+          <a href="#" class="hover:text-gray-600 transition">Terms</a>
+          <a href="index.html" class="hover:text-gray-600 transition">Beranda</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bagian Kanan: Panel Visual -->
+    <div
+      class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#202124] via-[#2c2d31] to-[#1a1a1c] relative items-center justify-center p-12 overflow-hidden text-white">
+      <!-- Decorative Background Patterns -->
+      <div class="absolute -top-24 -right-24 w-96 h-96 bg-brand-yellow/10 rounded-full blur-3xl pointer-events-none">
+      </div>
+      <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-green-500/10 rounded-full blur-3xl pointer-events-none">
+      </div>
+
+      <div class="max-w-md text-center relative z-10 flex flex-col items-center">
+        <div
+          class="w-24 h-24 mb-6 rounded-3xl bg-white/10 backdrop-blur-md p-3 border border-white/20 shadow-2xl flex items-center justify-center">
+          <img src="assets/logo loote.jpeg" alt="Loot-E Logo" class="w-full h-full object-cover rounded-2xl" />
+        </div>
+
+        <span
+          class="inline-block px-3 py-1 bg-brand-yellow/20 text-brand-yellow border border-brand-yellow/30 text-xs font-semibold rounded-full uppercase tracking-wider mb-4">
+          Bergabung Sekarang
+        </span>
+
+        <h2 class="text-3xl font-extrabold leading-snug mb-3">
+          Mulai Langkah Daur Ulang
+          <span class="text-brand-yellow">Hari Ini</span>
+        </h2>
+        <p class="text-gray-300 text-sm leading-relaxed mb-8">
+          Registrasikan akun gratis Anda untuk mendapatkan akses ke
+          marketplace elektronik, poin penukaran, dan transparansi laporan
+          lingkungan.
+        </p>
+
+        <!-- Indicator Dots (Step 2 active) -->
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+          <span class="w-8 h-2.5 rounded-full bg-brand-yellow"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Frontend Script: Registrasi ke PHP Backend API -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const registerForm = document.getElementById("registerForm");
+      const submitBtn = document.getElementById("submitBtn");
+      const btnText = document.getElementById("btnText");
+      const btnIcon = document.getElementById("btnIcon");
+      const btnSpinner = document.getElementById("btnSpinner");
+      const errorAlert = document.getElementById("errorAlert");
+      const errorList = document.getElementById("errorList");
+      const togglePassword = document.getElementById("togglePassword");
+      const passwordInput = document.getElementById("password");
+
+      // Toggle Password
+      togglePassword.addEventListener("click", () => {
+        const isPassword = passwordInput.type === "password";
+        passwordInput.type = isPassword ? "text" : "password";
+        togglePassword.innerHTML = isPassword
+          ? '<i class="ph ph-eye-slash text-lg"></i>'
+          : '<i class="ph ph-eye text-lg"></i>';
+      });
+
+      // Handle Register Form Submit
+      registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorAlert.classList.add("hidden");
+        errorList.innerHTML = "";
+
+        const nama_lengkap = document
+          .getElementById("nama_lengkap")
+          .value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = passwordInput.value;
+        const confirm_password =
+          document.getElementById("confirm_password").value;
+        const terms = document.getElementById("terms").checked;
+
+        // Client-side quick check
+        if (password !== confirm_password) {
+          showErrors(["Konfirmasi kata sandi tidak cocok."]);
+          return;
+        }
+
+        if (!terms) {
+          showErrors(["Anda harus menyetujui Syarat dan Ketentuan."]);
+          return;
+        }
+
+        // Loading state
+        submitBtn.disabled = true;
+        btnText.textContent = "Mendaftarkan...";
+        btnIcon.classList.add("hidden");
+        btnSpinner.classList.remove("hidden");
+        try {
+          const response = await fetch('http://localhost/loot-e/api/register.php', {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              nama_lengkap,
+              email,
+              password,
+              confirm_password,
+              terms,
+            }),
+          },
+          );
+
+          const result = await response.json();
+
+          if (response.ok && result.success) {
+            btnText.textContent = "Pendaftaran Berhasil!";
+            setTimeout(() => {
+              window.location.href = result.redirect || "success.html";
+            }, 500);
+          } else {
+            const errs =
+              result.errors && result.errors.length > 0
+                ? result.errors
+                : [result.message || "Pendaftaran gagal."];
+            showErrors(errs);
+            resetButton();
+          }
+        } catch (err) {
+          showErrors(["Tidak dapat terhubung ke server backend API."]);
+          resetButton();
+        }
+      });
+
+      function showErrors(messages) {
+        errorList.innerHTML = "";
+        messages.forEach((msg) => {
+          const li = document.createElement("li");
+          li.textContent = msg;
+          errorList.appendChild(li);
+        });
+        errorAlert.classList.remove("hidden");
+      }
+
+      function resetButton() {
+        submitBtn.disabled = false;
+        btnText.textContent = "Daftar Akun";
+        btnIcon.classList.remove("hidden");
+        btnSpinner.classList.add("hidden");
+      }
+    });
+  </script>
+</body>
+
+</html>

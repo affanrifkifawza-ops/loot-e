@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akun Berhasil Dibuat - Loot - E</title>
+    <!-- Google Fonts & Phosphor Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"],
+                    },
+                    colors: {
+                        brand: {
+                            yellow: "#F5B700",
+                            dark: "#303135",
+                            footer: "#383838",
+                            bg: "#F8F9FA",
+                            accent: "#16A34A"
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#F8F9FA] font-sans antialiased text-gray-900 min-h-screen">
+    <div class="min-h-screen flex flex-col lg:flex-row">
+        <!-- Bagian Kiri: Konfirmasi Sukses -->
+        <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10">
+            <!-- Header Brand -->
+            <div>
+                <a href="index.html" class="inline-flex items-center gap-3 group">
+                    <img src="assets/logo loote.jpeg" alt="Logo Loot - E" class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm transition group-hover:scale-105">
+                    <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span class="text-brand-yellow">E</span></span>
+                </a>
+            </div>
+
+            <!-- Konten Utama Konfirmasi Sukses -->
+            <div class="w-full max-w-md mx-auto my-12 text-center flex flex-col items-center">
+                <!-- Ikon Centang Hijau Elegan -->
+                <div class="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-6 shadow-inner ring-8 ring-emerald-50">
+                    <svg class="w-10 h-10 text-emerald-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" fill="#DCFCE7"/>
+                        <path d="M8 12.5L10.5 15L16 9" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+                <!-- Judul -->
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">
+                    Akun Berhasil Dibuat!
+                </h1>
+
+                <!-- Deskripsi -->
+                <p class="text-gray-500 text-sm sm:text-base leading-relaxed mb-8 max-w-sm">
+                    Selamat, akun Anda telah siap digunakan. Silakan masuk dengan akun baru Anda untuk mulai bertransaksi di platform Loot-E.
+                </p>
+
+                <!-- Tombol Kembali ke Login -->
+                <a 
+                    href="login.html" 
+                    class="w-full py-3.5 px-6 rounded-xl font-bold text-white bg-brand-yellow hover:bg-yellow-500 active:scale-[0.99] transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                >
+                    <span>Masuk ke Halaman Login</span>
+                    <i class="ph ph-arrow-right font-bold text-lg"></i>
+                </a>
+
+                <!-- Tautan Kembali ke Beranda -->
+                <a href="index.html" class="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 transition mt-4">
+                    <i class="ph ph-arrow-left"></i>
+                    <span>Kembali ke Beranda</span>
+                </a>
+            </div>
+
+            <!-- Footer Halaman -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-gray-100 text-xs text-gray-400">
+                <span>&copy; 2026 Loot-E. All rights reserved.</span>
+                <div class="flex gap-4">
+                    <a href="#" class="hover:text-gray-600 transition">Privacy</a>
+                    <a href="#" class="hover:text-gray-600 transition">Terms</a>
+                    <a href="index.html" class="hover:text-gray-600 transition">Beranda</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bagian Kanan: Panel Visual -->
+        <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#202124] via-[#2c2d31] to-[#1a1a1c] relative items-center justify-center p-12 overflow-hidden text-white">
+            <!-- Decorative Background Patterns -->
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-brand-yellow/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-green-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="max-w-md text-center relative z-10 flex flex-col items-center">
+                <div class="w-24 h-24 mb-6 rounded-3xl bg-white/10 backdrop-blur-md p-3 border border-white/20 shadow-2xl flex items-center justify-center">
+                    <img src="assets/logo loote.jpeg" alt="Loot-E Logo" class="w-full h-full object-cover rounded-2xl">
+                </div>
+
+                <span class="inline-block px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold rounded-full uppercase tracking-wider mb-4">
+                    Pendaftaran Selesai
+                </span>
+
+                <h2 class="text-3xl font-extrabold leading-snug mb-3">
+                    Selamat Bergabung di <span class="text-brand-yellow">Loot - E</span>!
+                </h2>
+                <p class="text-gray-300 text-sm leading-relaxed mb-8">
+                    Terima kasih telah berkontribusi menjaga kelestarian lingkungan dan memulai transaksi elektronik yang lebih bijak.
+                </p>
+
+                <!-- Indicator Dots (Step 3 active) -->
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+                    <span class="w-8 h-2.5 rounded-full bg-brand-yellow"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

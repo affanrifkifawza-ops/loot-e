@@ -1,130 +1,115 @@
 <?php
-// login.php
-session_start();
-require_once 'db.php';
+// login.php - Backend API Login (Database: db_loote, Tabel: pengguna)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// CORS Headers untuk fleksibilitas request frontend
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
+    header("Access-Control-Allow-Credentials: true");
+    header("Access-Control-Max-Age: 86400");
+}
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'])) {
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+    }
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])) {
+        header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+    }
+    exit(0);
+}
+
+header('Content-Type: application/json; charset=utf-8');
+
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 $error = '';
 $email_input = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email_input = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $remember = isset($_POST['remember']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    // Mendukung request JSON payload (fetch) dan FormData / x-www-form-urlencoded
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (stripos($contentType, 'application/json') !== false) {
+        $raw = file_get_contents('php://input');
+        $jsonData = !empty($raw) ? (json_decode($raw, true) ?? []) : $_POST;
+        $email_input = trim($jsonData['email'] ?? '');
+        $password = $jsonData['password'] ?? '';
+        $remember = !empty($jsonData['remember']);
+    } else {
+        $email_input = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $remember = isset($_POST['remember']) && ($_POST['remember'] === '1' || $_POST['remember'] === 'true' || $_POST['remember'] === 'on');
+    }
 
     if (empty($email_input) || empty($password)) {
         $error = 'Alamat email dan kata sandi wajib diisi.';
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            // Ambil data akun dari tabel pengguna (db_loote)
+            $stmt = $pdo->prepare("SELECT id, nama, email, password, peran FROM pengguna WHERE email = ?");
             $stmt->execute([$email_input]);
             $user = $stmt->fetch();
 
-            if ($user && password_verify($password, $user['password'])) {
+            $passwordValid = false;
+            if ($user && !empty($user['password'])) {
+                if (password_verify($password, $user['password'])) {
+                    $passwordValid = true;
+                } elseif ($password === $user['password']) {
+                    // Fallback jika data terisi password teks biasa saat import, otomatis amankan dengan hash BCRYPT
+                    $passwordValid = true;
+                    $rehash = password_hash($password, PASSWORD_BCRYPT);
+                    $updateStmt = $pdo->prepare("UPDATE pengguna SET password = ? WHERE id = ?");
+                    $updateStmt->execute([$rehash, $user['id']]);
+                }
+            }
+
+            if ($user && $passwordValid) {
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = $user['id'];
-                $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
+                $_SESSION['nama'] = $user['nama'];
+                $_SESSION['nama_lengkap'] = $user['nama'];
                 $_SESSION['email'] = $user['email'];
+                $_SESSION['peran'] = $user['peran'] ?? 'buyer';
 
+                // Jika pengguna memilih Ingat Saya, pasang cookie terenkripsi HMAC
                 if ($remember) {
-                    $token = bin2hex(random_bytes(32));
-                    setcookie('remember_token', $token, time() + (86400 * 30), "/", "", false, true);
-                    
-                    $update_stmt = $pdo->prepare("UPDATE users SET remember_token = ? WHERE id = ?");
-                    $update_stmt->execute([$token, $user['id']]);
+                    $cookieVal = $user['id'] . ':' . hash_hmac('sha256', $user['id'], LOOTE_SECRET_KEY);
+                    setcookie('loote_remember', $cookieVal, time() + (86400 * 30), "/", "", false, true);
                 }
 
-                header("Location: dashboard.php");
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Login berhasil!',
+                    'redirect' => 'dashboard.html',
+                    'user' => [
+                        'id' => $user['id'],
+                        'nama' => $user['nama'],
+                        'nama_lengkap' => $user['nama'],
+                        'email' => $user['email'],
+                        'peran' => $user['peran'] ?? 'buyer'
+                    ]
+                ]);
                 exit();
             } else {
                 $error = 'Alamat email atau kata sandi salah.';
             }
         } catch (PDOException $e) {
-            $error = 'Terjadi kesalahan sistem: ' . $e->getMessage();
+            $error = 'Terjadi kesalahan sistem database: ' . $e->getMessage();
         }
     }
+
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => $error
+    ]);
+    exit();
 }
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Loot - E</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="login-body">
-    <div class="login-layout">
-        <!-- Bagian Kiri: Formulir Login -->
-        <div class="form-container">
-            <!-- Logo & Brand (Membaca logo dari folder assets) -->
-            <div class="brand-logo">
-                <img src="assets/logo loote.jpeg" alt="Logo Loot - E" class="logo-image">
-                <span class="brand-name">Loot - E</span>
-            </div>
 
-            <!-- Konten Utama Login -->
-            <div class="login-content">
-                <h1 class="main-title">Selamat Datang Kembali</h1>
-                <p class="subtitle">Masuk dengan email dan kata sandi Anda untuk melanjutkan.</p>
-
-                <?php if (!empty($error)): ?>
-                    <div class="alert-error">
-                        <?= htmlspecialchars($error) ?>
-                    </div>
-                <?php endif; ?>
-
-                <form action="login.php" method="POST" class="login-form">
-                    <!-- Input Email -->
-                    <div class="form-group">
-                        <label for="email" class="form-label">Alamat Email</label>
-                        <input type="email" id="email" name="email" value="<?= htmlspecialchars($email_input) ?>" placeholder="nama@contoh.com" required class="form-input">
-                    </div>
-
-                    <!-- Input Kata Sandi -->
-                    <div class="form-group">
-                        <div class="label-row">
-                            <label for="password" class="form-label">Kata Sandi</label>
-                            <a href="#" class="forgot-link">Lupa Kata Sandi?</a>
-                        </div>
-                        <input type="password" id="password" name="password" placeholder="Masukkan kata sandi" required class="form-input">
-                    </div>
-
-                    <!-- Opsi Ingat Saya -->
-                    <div class="remember-row">
-                        <label for="remember" class="remember-label">
-                            <span>Ingat saya</span>
-                            <input type="checkbox" id="remember" name="remember" class="checkbox-input">
-                        </label>
-                    </div>
-
-                    <!-- Tombol Masuk -->
-                    <button type="submit" class="btn-submit">Masuk</button>
-                </form>
-
-                <!-- Tautan Pendaftaran -->
-                <p class="signup-prompt">
-                    Belum punya akun? <a href="register.php" class="signup-link">Daftar</a>
-                </p>
-            </div>
-
-            <!-- Footer Halaman -->
-            <div class="page-footer">
-                <span class="copyright">&copy; 2026 Loot-E</span>
-                <div class="footer-links">
-                    <a href="#">Privacy</a>
-                    <a href="#">Terms</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bagian Kanan: Panel Visual -->
-        <div class="visual-container">
-            <div class="carousel-dots">
-                <span class="dot active"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+http_response_code(405);
+echo json_encode([
+    'success' => false,
+    'message' => 'Metode request tidak diizinkan. Gunakan POST.'
+]);

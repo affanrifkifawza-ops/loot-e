@@ -50,10 +50,10 @@
         >
       </div>
       <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-        <a href="#" class="text-brand-yellow">Home</a>
-        <a href="#" class="hover:text-brand-yellow transition">Categories</a>
-        <a href="#" class="hover:text-brand-yellow transition">About</a>
-        <a href="#" class="hover:text-brand-yellow transition">Help</a>
+        <a href="index.html" class="text-brand-yellow">Home</a>
+        <a href="#categories" class="hover:text-brand-yellow transition">Categories</a>
+        <a href="landingpage.html" class="hover:text-brand-yellow transition">About</a>
+        <a href="dashboard.html" class="hover:text-brand-yellow transition">Dashboard</a>
       </div>
       <div class="flex items-center gap-5">
         <i
@@ -62,18 +62,19 @@
         <i
           class="ph ph-shopping-cart text-xl cursor-pointer hover:text-brand-yellow transition"
         ></i>
-        <div
-          class="flex items-center gap-2 cursor-pointer border-l border-gray-600 pl-5"
-        >
-          <div
-            class="h-8 w-8 rounded-full bg-gray-500 overflow-hidden border border-gray-400"
+        <div id="userNavContainer" class="flex items-center gap-2 border-l border-gray-600 pl-5">
+          <a
+            href="login.html"
+            class="text-xs bg-brand-yellow text-brand-dark px-3.5 py-1.5 rounded-lg font-bold hover:bg-yellow-500 transition"
           >
-            <img
-              src="https://ui-avatars.com/api/?name=Udin+Petot&background=random"
-              alt="User"
-            />
-          </div>
-          <span class="text-sm text-gray-300 hidden md:block">Udin Petot</span>
+            Masuk
+          </a>
+          <a
+            href="register.html"
+            class="text-xs text-gray-300 hover:text-white px-2 py-1.5 rounded-lg font-medium transition hidden sm:inline"
+          >
+            Daftar
+          </a>
         </div>
       </div>
     </nav>

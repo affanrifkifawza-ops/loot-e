@@ -1,20 +1,51 @@
 <?php
-// register.php
-session_start();
-require_once 'db.php';
+// register.php - Backend API Register (Database: db_loote, Tabel: pengguna)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// CORS Headers untuk fleksibilitas request frontend
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
+    header("Access-Control-Allow-Credentials: true");
+    header("Access-Control-Max-Age: 86400");
+}
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'])) {
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+    }
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])) {
+        header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+    }
+    exit(0);
+}
+
+header('Content-Type: application/json; charset=utf-8');
+
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 $errors = [];
-$nama_lengkap = '';
-$email = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nama_lengkap = trim($_POST['nama_lengkap'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $confirm_password = $_POST['confirm_password'] ?? '';
-    $terms = isset($_POST['terms']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    // Mendukung request JSON payload (fetch) dan FormData / x-www-form-urlencoded
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (stripos($contentType, 'application/json') !== false) {
+        $raw = file_get_contents('php://input');
+        $input = !empty($raw) ? (json_decode($raw, true) ?? []) : $_POST;
+    } else {
+        $input = $_POST;
+    }
 
-    if (empty($nama_lengkap)) {
+    $nama = trim($input['nama'] ?? $input['nama_lengkap'] ?? '');
+    $email = trim($input['email'] ?? '');
+    $password = $input['password'] ?? '';
+    $confirm_password = $input['confirm_password'] ?? '';
+    $terms = isset($input['terms']) && ($input['terms'] === '1' || $input['terms'] === 'true' || $input['terms'] === 'on' || $input['terms'] === true);
+    $peran = trim($input['peran'] ?? 'buyer');
+
+    // Validasi data
+    if (empty($nama)) {
         $errors[] = 'Nama lengkap wajib diisi.';
     }
 
@@ -24,13 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Format alamat email tidak valid.';
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            // Cek duplikasi email di tabel pengguna (db_loote)
+            $stmt = $pdo->prepare("SELECT id FROM pengguna WHERE email = ?");
             $stmt->execute([$email]);
             if ($stmt->fetch()) {
                 $errors[] = 'Alamat email sudah terdaftar. Silakan gunakan email lain atau masuk.';
             }
         } catch (PDOException $e) {
-            $errors[] = 'Terjadi kesalahan sistem: ' . $e->getMessage();
+            $errors[] = 'Terjadi kesalahan sistem database: ' . $e->getMessage();
         }
     }
 
@@ -50,114 +82,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+        $newId = generateUuid(); // char(36) UUID
+
+        // Pastikan peran valid sesuai komentar skema db_loote: 'buyer', 'seller', 'admin'
+        if (!in_array($peran, ['buyer', 'seller', 'admin'])) {
+            $peran = 'buyer';
+        }
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO users (nama_lengkap, email, password) VALUES (?, ?, ?)");
-            $stmt->execute([$nama_lengkap, $email, $hashed_password]);
+            // Insert ke tabel pengguna sesuai skema db_loote.sql
+            $stmt = $pdo->prepare("INSERT INTO pengguna (id, nama, email, password, peran) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$newId, $nama, $email, $hashed_password, $peran]);
 
+            $_SESSION['user_id'] = $newId;
+            $_SESSION['nama'] = $nama;
+            $_SESSION['nama_lengkap'] = $nama;
+            $_SESSION['email'] = $email;
+            $_SESSION['peran'] = $peran;
             $_SESSION['registration_success'] = true;
-            header("Location: success.php");
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Pendaftaran akun berhasil!',
+                'redirect' => 'success.html',
+                'user' => [
+                    'id' => $newId,
+                    'nama' => $nama,
+                    'email' => $email,
+                    'peran' => $peran
+                ]
+            ]);
             exit();
         } catch (PDOException $e) {
-            $errors[] = 'Gagal mendaftar: ' . $e->getMessage();
+            $errors[] = 'Gagal menyimpan data pengguna: ' . $e->getMessage();
         }
     }
+
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => !empty($errors) ? $errors[0] : 'Validasi gagal.',
+        'errors' => $errors
+    ]);
+    exit();
 }
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Akun - Loot - E</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="login-body">
-    <div class="login-layout">
-        <!-- Bagian Kiri: Formulir Pendaftaran -->
-        <div class="form-container">
-            <!-- Logo & Brand (Logo Bulat) -->
-            <div class="brand-logo">
-                <img src="assets/logo loote.jpeg" alt="Logo Loot - E" class="logo-image">
-                <span class="brand-name">Loot - E</span>
-            </div>
 
-            <!-- Konten Utama Pendaftaran -->
-            <div class="login-content">
-                <h1 class="main-title">Daftar Akun</h1>
-                <p class="subtitle">Buat akun baru untuk mulai menggunakan layanan Loot-E.</p>
-
-                <?php if (!empty($errors)): ?>
-                    <div class="alert-error">
-                        <ul style="margin-left: 1.25rem; list-style-type: disc;">
-                            <?php foreach ($errors as $error): ?>
-                                <li><?= htmlspecialchars($error) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endif; ?>
-
-                <form action="register.php" method="POST" class="login-form">
-                    <!-- Input Nama Lengkap -->
-                    <div class="form-group">
-                        <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
-                        <input type="text" id="nama_lengkap" name="nama_lengkap" value="<?= htmlspecialchars($nama_lengkap) ?>" placeholder="Masukkan nama lengkap Anda" required class="form-input">
-                    </div>
-
-                    <!-- Input Email -->
-                    <div class="form-group">
-                        <label for="email" class="form-label">Alamat Email</label>
-                        <input type="email" id="email" name="email" value="<?= htmlspecialchars($email) ?>" placeholder="nama@contoh.com" required class="form-input">
-                    </div>
-
-                    <!-- Input Kata Sandi -->
-                    <div class="form-group">
-                        <label for="password" class="form-label">Kata Sandi</label>
-                        <input type="password" id="password" name="password" placeholder="Minimal 8 karakter" required class="form-input">
-                    </div>
-
-                    <!-- Input Konfirmasi Kata Sandi -->
-                    <div class="form-group">
-                        <label for="confirm_password" class="form-label">Konfirmasi Kata Sandi</label>
-                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Ulangi kata sandi Anda" required class="form-input">
-                    </div>
-
-                    <!-- Syarat & Ketentuan Checkbox -->
-                    <div class="terms-row" style="margin-bottom: 1.5rem;">
-                        <label for="terms" class="remember-label" style="justify-content: flex-start;">
-                            <input type="checkbox" id="terms" name="terms" class="checkbox-input" required>
-                            <span>Saya menyetujui <a href="#" class="signup-link" style="margin-left:0;">Syarat & Ketentuan</a></span>
-                        </label>
-                    </div>
-
-                    <!-- Tombol Daftar -->
-                    <button type="submit" class="btn-submit">Daftar Akun</button>
-                </form>
-
-                <!-- Tautan Login -->
-                <p class="signup-prompt">
-                    Sudah punya akun? <a href="login.php" class="signup-link">Masuk</a>
-                </p>
-            </div>
-
-            <!-- Footer Halaman -->
-            <div class="page-footer">
-                <span class="copyright">&copy; 2026 Loot-E</span>
-                <div class="footer-links">
-                    <a href="#">Privacy</a>
-                    <a href="#">Terms</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bagian Kanan: Panel Visual -->
-        <div class="visual-container">
-            <div class="carousel-dots">
-                <span class="dot active"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+http_response_code(405);
+echo json_encode([
+    'success' => false,
+    'message' => 'Metode request tidak diizinkan. Gunakan POST.'
+]);

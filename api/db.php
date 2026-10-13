@@ -1,7 +1,7 @@
 <?php
 // db.php - Koneksi Database PDO
 $host = 'localhost';
-$dbname = 'user_auth_db';
+$dbname = 'db_loote';
 $username = 'root';
 $password = '';
 
@@ -12,6 +12,12 @@ try {
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
 } catch (PDOException $e) {
-    die("Koneksi database gagal: " . $e->getMessage());
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+    }
+    die(json_encode([
+        'success' => false,
+        'message' => 'Koneksi database gagal: ' . $e->getMessage()
+    ]));
 }
-?>
