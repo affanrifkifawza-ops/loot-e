@@ -171,14 +171,6 @@
   <!-- Frontend Script: Komunikasi ke PHP Backend API -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const loginForm = document.getElementById("loginForm");
-      const submitBtn = document.getElementById("submitBtn");
-      const btnText = document.getElementById("btnText");
-      const btnIcon = document.getElementById("btnIcon");
-      const btnSpinner = document.getElementById("btnSpinner");
-      const errorAlert = document.getElementById("errorAlert");
-      const errorMessage = document.getElementById("errorMessage");
-      const successAlert = document.getElementById("successAlert");
       const togglePassword = document.getElementById("togglePassword");
       const passwordInput = document.getElementById("password");
 
@@ -191,62 +183,6 @@
           : '<i class="ph ph-eye text-lg"></i>';
       });
 
-      // Form Submit Handler
-      // loginForm.addEventListener("submit", async (e) => {
-      //     e.preventDefault();
-      //     errorAlert.classList.add("hidden");
-      //     successAlert.classList.add("hidden");
-
-      //     const email = document.getElementById("email").value.trim();
-      //     const password = passwordInput.value;
-      //     const remember = document.getElementById("remember").checked;
-
-      //     Loading State
-      //     submitBtn.disabled = true;
-      //     btnText.textContent = "Memverifikasi...";
-      //     btnIcon.classList.add("hidden");
-      //     btnSpinner.classList.remove("hidden");
-
-      //     try {
-      //         const response = await fetch(
-      //             "http://localhost/loot-e/api/login.php",
-      //             {
-      //                 method: "POST",
-      //                 headers: {
-      //                     "Content-Type": "application/json",
-      //                     Accept: "application/json",
-      //                 },
-      //                 body: JSON.stringify({ email, password, remember }),
-      //             },
-      //         );
-
-      //         const result = await response.json();
-
-      //         if (response.ok && result.success) {
-      //             successAlert.classList.remove("hidden");
-      //             btnText.textContent = "Berhasil!";
-      //             setTimeout(() => {
-      //                 window.location.href = result.redirect || "dashboard.html";
-      //             }, 700);
-      //         } else {
-      //             errorMessage.textContent =
-      //                 result.message || "Alamat email atau kata sandi tidak cocok.";
-      //             errorAlert.classList.remove("hidden");
-      //             submitBtn.disabled = false;
-      //             btnText.textContent = "Masuk";
-      //             btnIcon.classList.remove("hidden");
-      //             btnSpinner.classList.add("hidden");
-      //         }
-      //     } catch (err) {
-      //         errorMessage.textContent =
-      //             "Tidak dapat terhubung ke server backend API.";
-      //         errorAlert.classList.remove("hidden");
-      //         submitBtn.disabled = false;
-      //         btnText.textContent = "Masuk";
-      //         btnIcon.classList.remove("hidden");
-      //         btnSpinner.classList.add("hidden");
-      //     }
-      // });
     });
   </script>
 </body>
