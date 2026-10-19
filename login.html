@@ -107,7 +107,7 @@
                                 class="w-full pl-11 pr-11 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
                             <button type="button" id="togglePassword"
                                 class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
-                                <i class="ph ph-eye text-lg"></i>
+                                <!-- <i class="ph ph-eye text-lg"></i> -->
                             </button>
                         </div>
                     </div>
@@ -144,7 +144,7 @@
             </div>
 
             <!-- Footer Halaman -->
-            <!-- <div
+            <div
                 class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-gray-100 text-xs text-gray-400">
                 <span>&copy; 2026 Loot-E. All rights reserved.</span>
                 <div class="flex gap-4">
@@ -152,7 +152,7 @@
                     <a href="#" class="hover:text-gray-600 transition">Terms</a>
                     <a href="landingpage.html" class="hover:text-gray-600 transition">Beranda</a>
                 </div>
-            </div> -->
+            </div>
         </div>
 
         <!-- Bagian Kanan: Panel Visual -->
@@ -175,87 +175,6 @@
         </div>
     </div>
 
-    <!-- Frontend Script: Komunikasi ke PHP Backend API -->
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const loginForm = document.getElementById("loginForm");
-            const submitBtn = document.getElementById("submitBtn");
-            const btnText = document.getElementById("btnText");
-            const btnIcon = document.getElementById("btnIcon");
-            const btnSpinner = document.getElementById("btnSpinner");
-            const errorAlert = document.getElementById("errorAlert");
-            const errorMessage = document.getElementById("errorMessage");
-            const successAlert = document.getElementById("successAlert");
-            const togglePassword = document.getElementById("togglePassword");
-            const passwordInput = document.getElementById("password");
-
-            // Toggle Password Visibility
-            togglePassword.addEventListener("click", () => {
-                const isPassword = passwordInput.type === "password";
-                passwordInput.type = isPassword ? "text" : "password";
-                togglePassword.innerHTML = isPassword
-                    ? '<i class="ph ph-eye-slash text-lg"></i>'
-                    : '<i class="ph ph-eye-lg"></i>';
-            });
-
-            // Form Submit Handler
-            // loginForm.addEventListener("submit", async (e) => {
-            //     e.preventDefault();
-            //     errorAlert.classList.add("hidden");
-            //     successAlert.classList.add("hidden");
-
-            //     const email = document.getElementById("email").value.trim();
-            //     const password = passwordInput.value;
-            //     const remember = document.getElementById("remember").checked;
-
-            //     Loading State
-            //     submitBtn.disabled = true;
-            //     btnText.textContent = "Memverifikasi...";
-            //     btnIcon.classList.add("hidden");
-            //     btnSpinner.classList.remove("hidden");
-
-            //     try {
-            //         const response = await fetch(
-            //             "http://localhost/loot-e/api/login.php",
-            //             {
-            //                 method: "POST",
-            //                 headers: {
-            //                     "Content-Type": "application/json",
-            //                     Accept: "application/json",
-            //                 },
-            //                 body: JSON.stringify({ email, password, remember }),
-            //             },
-            //         );
-
-            //         const result = await response.json();
-
-            //         if (response.ok && result.success) {
-            //             successAlert.classList.remove("hidden");
-            //             btnText.textContent = "Berhasil!";
-            //             setTimeout(() => {
-            //                 window.location.href = result.redirect || "dashboard.html";
-            //             }, 700);
-            //         } else {
-            //             errorMessage.textContent =
-            //                 result.message || "Alamat email atau kata sandi tidak cocok.";
-            //             errorAlert.classList.remove("hidden");
-            //             submitBtn.disabled = false;
-            //             btnText.textContent = "Masuk";
-            //             btnIcon.classList.remove("hidden");
-            //             btnSpinner.classList.add("hidden");
-            //         }
-            //     } catch (err) {
-            //         errorMessage.textContent =
-            //             "Tidak dapat terhubung ke server backend API.";
-            //         errorAlert.classList.remove("hidden");
-            //         submitBtn.disabled = false;
-            //         btnText.textContent = "Masuk";
-            //         btnIcon.classList.remove("hidden");
-            //         btnSpinner.classList.add("hidden");
-            //     }
-            // });
-        });
-    </script>
 </body>
 
 </html>
