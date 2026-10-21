@@ -388,7 +388,6 @@
             </div>
         </div>
     </section>
-
     <!-- Footer -->
     <footer class="bg-[#262628] text-gray-400 py-12 px-6 md:px-12">
         <div
