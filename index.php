@@ -1,3 +1,49 @@
+<?php
+// index.php - Beranda Loot-E
+require_once "auth.php";
+
+$db = getDbConnection();
+$currentUser = getCurrentUser();
+
+// Ambil Kategori dari Database
+$categories = [];
+try {
+    $stmtKat = $db->query("SELECT * FROM kategori ORDER BY id ASC");
+    $categories = $stmtKat->fetchAll();
+} catch (PDOException $e) {
+    $categories = [];
+}
+
+// Icon mapping untuk kategori
+$categoryIcons = [
+    'GPU'        => 'ph-graphics-card',
+    'CPU'        => 'ph-cpu',
+    'RAM'        => 'ph-memory',
+    'Laptop'     => 'ph-laptop',
+    'Phone'      => 'ph-device-mobile',
+    'Smartphone' => 'ph-device-mobile',
+    'Monitor'    => 'ph-monitor',
+    'Headphones' => 'ph-headphones',
+    'Audio'      => 'ph-speaker-high',
+    'Aksesoris'  => 'ph-mouse',
+    'More'       => 'ph-dots-three'
+];
+
+// Ambil Produk dari Database
+$products = [];
+try {
+    $stmtProd = $db->query("
+        SELECT p.*, k.nama_kategori, u.nama AS nama_penjual
+        FROM produk p
+        LEFT JOIN kategori k ON p.id_kategori = k.id
+        LEFT JOIN pengguna u ON p.id_penjual = u.id
+        ORDER BY p.id_kategori ASC
+    ");
+    $products = $stmtProd->fetchAll();
+} catch (PDOException $e) {
+    $products = [];
+}
+?>
 <!doctype html>
 <html lang="id">
 
@@ -35,29 +81,52 @@
 
 <body class="bg-[#F4F5F7] font-sans text-gray-800">
     <!-- Navbar -->
-    <nav class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50">
+    <nav class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
         <div class="flex items-center gap-2">
-            <img src="assets/logo loote.jpeg" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
-            <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
+            <a href="index.php" class="flex items-center gap-2">
+                <img src="assets/logo loote.jpeg" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
+                <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
+            </a>
         </div>
         <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-            <a href="landingpage.html" class="text-brand-yellow">Home</a>
+            <a href="index.php" class="text-brand-yellow">Home</a>
             <a href="#categories" class="hover:text-brand-yellow transition">Categories</a>
-            <a href="landingpage.html" class="hover:text-brand-yellow transition">About</a>
-            <a href="#" class="hover:text-brand-yellow transition">Help</a>
+            <a href="#products" class="hover:text-brand-yellow transition">Products</a>
+            <a href="#why-loote" class="hover:text-brand-yellow transition">About</a>
         </div>
         <div class="flex items-center gap-5">
             <i class="ph ph-bell text-xl cursor-pointer hover:text-brand-yellow transition"></i>
             <i class="ph ph-shopping-cart text-xl cursor-pointer hover:text-brand-yellow transition"></i>
-            <div id="userNavContainer" class="flex items-center gap-2 border-l border-gray-600 pl-5">
-                <a href="login.html"
-                    class="text-xs bg-brand-yellow text-brand-dark px-3.5 py-1.5 rounded-lg font-bold hover:bg-yellow-500 transition">
-                    Masuk
-                </a>
-                <a href="register.html"
-                    class="text-xs text-gray-300 hover:text-white px-2 py-1.5 rounded-lg font-medium transition hidden sm:inline">
-                    Daftar
-                </a>
+            <div id="userNavContainer" class="flex items-center gap-3 border-l border-gray-600 pl-5">
+                <?php if ($currentUser): ?>
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                            <?= htmlspecialchars(strtoupper(substr($currentUser['nama'], 0, 2))) ?>
+                        </div>
+                        <div class="hidden sm:flex flex-col text-left">
+                            <span class="text-xs font-bold text-white leading-tight">
+                                <?= htmlspecialchars($currentUser['nama']) ?>
+                            </span>
+                            <span class="text-[10px] text-brand-yellow capitalize">
+                                <?= htmlspecialchars($currentUser['peran']) ?>
+                            </span>
+                        </div>
+                        <a href="auth.php?action=logout"
+                           class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-lg font-medium transition ml-1"
+                           title="Keluar dari akun">
+                            Keluar
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <a href="login.php"
+                        class="text-xs bg-brand-yellow text-brand-dark px-3.5 py-1.5 rounded-lg font-bold hover:bg-yellow-500 transition">
+                        Masuk
+                    </a>
+                    <a href="register.php"
+                        class="text-xs text-gray-300 hover:text-white px-2 py-1.5 rounded-lg font-medium transition hidden sm:inline">
+                        Daftar
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </nav>
@@ -82,7 +151,7 @@
             </h1>
             <p class="text-gray-600 mb-6 md:mb-8 max-w-md leading-relaxed text-sm md:text-base">
                 Marketplace elektronik untuk mencari, membeli, menegosiasikan, dan
-                menukar perangkat elektronik dengan lebih mudah dan aman.
+                menukar perangkat elektronik dengan lebih mudah, terpercaya, dan aman.
             </p>
             <div class="relative max-w-md shadow-lg rounded-full">
                 <i class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
@@ -102,221 +171,100 @@
     </section>
 
     <!-- Explore Categories -->
-    <section class="max-w-7xl mx-auto px-6 md:px-12 py-10">
+    <section id="categories" class="max-w-7xl mx-auto px-6 md:px-12 py-10">
         <div class="flex justify-between items-end mb-6">
             <h2 class="text-xl md:text-2xl font-bold text-gray-900">
                 Explore Categories
             </h2>
-            <a href="#"
+            <a href="#categories"
                 class="text-sm text-gray-500 hover:text-brand-yellow flex items-center gap-1 transition font-medium">
-                View all categories <i class="ph ph-arrow-right"></i>
+                <?= count($categories) ?> Kategori Tersedia <i class="ph ph-arrow-right"></i>
             </a>
         </div>
         <div class="grid grid-cols-4 md:grid-cols-8 gap-3 md:gap-4">
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-graphics-card text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">GPU</span>
-            </a>
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-cpu text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">CPU</span>
-            </a>
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-memory text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">RAM</span>
-            </a>
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-laptop text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">Laptop</span>
-            </a>
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-device-mobile text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">Phone</span>
-            </a>
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-monitor text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">Monitor</span>
-            </a>
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-headphones text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">Headphones</span>
-            </a>
-            <a href="#"
-                class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
-                <div
-                    class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/10 transition">
-                    <i class="ph ph-dots-three text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
-                </div>
-                <span class="text-xs font-semibold text-gray-700">More</span>
-            </a>
+            <?php foreach ($categories as $cat): ?>
+                <?php 
+                    $catTitle = $cat['nama_kategori'];
+                    $icon = $categoryIcons[$catTitle] ?? 'ph-tag';
+                ?>
+                <a href="#products"
+                    class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md hover:border-brand-yellow/50 transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
+                    <div
+                        class="h-14 w-14 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-brand-yellow/15 transition">
+                        <i class="ph <?= $icon ?> text-2xl text-gray-700 group-hover:text-brand-yellow transition"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-gray-700"><?= htmlspecialchars($catTitle) ?></span>
+                </a>
+            <?php endforeach; ?>
         </div>
     </section>
 
-    <!-- Popular Products -->
-    <section class="max-w-7xl mx-auto px-6 md:px-12 py-10">
+    <!-- Popular Products (Dinamis dari Database MySQL) -->
+    <section id="products" class="max-w-7xl mx-auto px-6 md:px-12 py-10">
         <div class="flex justify-between items-end mb-6">
-            <h2 class="text-xl md:text-2xl font-bold text-gray-900">
-                Popular Products
-            </h2>
-            <a href="#"
+            <div>
+                <h2 class="text-xl md:text-2xl font-bold text-gray-900">
+                    Popular Products
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">Daftar produk elektronik terbaru terhubung langsung ke database</p>
+            </div>
+            <a href="#products"
                 class="text-sm text-gray-500 hover:text-brand-yellow flex items-center gap-1 transition font-medium">
-                View all products <i class="ph ph-arrow-right"></i>
+                Total: <?= count($products) ?> Produk <i class="ph ph-arrow-right"></i>
             </a>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-5">
-            <!-- Product 1 -->
-            <div
-                class="bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
-                <div class="h-32 mb-4 overflow-hidden flex items-center justify-center">
-                    <img src="./assets/" alt="GPU"
-                        class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+            <?php if (!empty($products)): ?>
+                <?php foreach ($products as $prod): ?>
+                    <?php 
+                        $kat = $prod['nama_kategori'] ?? 'Elektronik';
+                        $icon = $categoryIcons[$kat] ?? 'ph-device-mobile';
+                    ?>
+                    <div
+                        class="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
+                        <div class="h-36 mb-4 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden relative border border-gray-100">
+                            <div class="w-16 h-16 rounded-2xl bg-brand-yellow/10 flex items-center justify-center group-hover:scale-110 transition duration-300">
+                                <i class="ph <?= $icon ?> text-4xl text-brand-dark group-hover:text-brand-yellow transition"></i>
+                            </div>
+                            <span class="absolute top-2.5 right-2.5 text-[10px] font-semibold bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm text-gray-600 border border-gray-200">
+                                <?= htmlspecialchars($prod['kondisi'] ?? 'Tersedia') ?>
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-sm text-gray-900 mb-1 line-clamp-1 group-hover:text-brand-yellow transition">
+                            <?= htmlspecialchars($prod['nama_produk']) ?>
+                        </h3>
+                        <p class="text-xs text-gray-400 mb-2">
+                            <?= htmlspecialchars($kat) ?> &bull; Stok: <?= htmlspecialchars($prod['stok']) ?> unit
+                        </p>
+                        <p class="font-extrabold text-base text-gray-900 mb-2">
+                            Rp <?= number_format($prod['harga'], 0, ',', '.') ?>
+                        </p>
+                        <div class="flex items-center gap-1 mb-3">
+                            <i class="ph-fill ph-star text-brand-yellow text-xs"></i>
+                            <span class="text-xs font-semibold text-gray-700">4.9</span>
+                            <span class="text-xs text-gray-400">(Ulasan)</span>
+                        </div>
+                        <div
+                            class="flex items-center justify-between text-[11px] font-medium text-gray-600 bg-gray-50 w-full px-2.5 py-1.5 rounded-lg mt-auto border border-gray-100">
+                            <div class="flex items-center gap-1">
+                                <i class="ph-fill ph-shield-check text-green-500 text-sm"></i>
+                                <span class="truncate max-w-[130px]"><?= htmlspecialchars($prod['nama_penjual'] ?? 'Trusted Seller') ?></span>
+                            </div>
+                            <span class="text-brand-yellow font-bold text-xs group-hover:translate-x-0.5 transition">Beli &rarr;</span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-span-full py-12 text-center text-gray-500">
+                    <p>Belum ada produk yang tersedia di database saat ini.</p>
                 </div>
-                <h3 class="font-bold text-sm text-gray-900 mb-1 line-clamp-1">
-                    GTX 1660 Super
-                </h3>
-                <p class="text-xs text-gray-400 mb-2">GPU - Nvidia</p>
-                <p class="font-bold text-md text-gray-900 mb-2">Rp 2.400.000</p>
-                <div class="flex items-center gap-1 mb-3">
-                    <i class="ph-fill ph-star text-brand-yellow text-xs"></i>
-                    <span class="text-xs font-semibold text-gray-700">4.8</span>
-                    <span class="text-xs text-gray-400">(120)</span>
-                </div>
-                <div
-                    class="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-gray-100 w-max px-2 py-1 rounded-md mt-auto">
-                    <i class="ph-fill ph-shield-check text-green-500 text-sm"></i>
-                    Trusted Seller
-                </div>
-            </div>
-
-            <!-- Product 2 -->
-            <div
-                class="bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
-                <div class="h-32 mb-4 overflow-hidden flex items-center justify-center">
-                    <img src="./assets/" alt="Laptop"
-                        class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                </div>
-                <h3 class="font-bold text-sm text-gray-900 mb-1 line-clamp-1">
-                    Lenovo S145-15AST
-                </h3>
-                <p class="text-xs text-gray-400 mb-2">Laptop - Lenovo</p>
-                <p class="font-bold text-md text-gray-900 mb-2">Rp 1.725.000</p>
-                <div class="flex items-center gap-1 mb-3">
-                    <i class="ph-fill ph-star text-brand-yellow text-xs"></i>
-                    <span class="text-xs font-semibold text-gray-700">4.7</span>
-                    <span class="text-xs text-gray-400">(67)</span>
-                </div>
-                <div
-                    class="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-gray-100 w-max px-2 py-1 rounded-md mt-auto">
-                    <i class="ph-fill ph-shield-check text-green-500 text-sm"></i>
-                    Trusted Seller
-                </div>
-            </div>
-
-            <!-- Product 3 -->
-            <div
-                class="bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
-                <div class="h-32 mb-4 overflow-hidden flex items-center justify-center">
-                    <img src="./assets/" alt="Phone"
-                        class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                </div>
-                <h3 class="font-bold text-sm text-gray-900 mb-1 line-clamp-1">
-                    iPhone 11
-                </h3>
-                <p class="text-xs text-gray-400 mb-2">Phone - Apple</p>
-                <p class="font-bold text-md text-gray-900 mb-2">Rp 3.150.000</p>
-                <div class="flex items-center gap-1 mb-3">
-                    <i class="ph-fill ph-star text-brand-yellow text-xs"></i>
-                    <span class="text-xs font-semibold text-gray-700">4.9</span>
-                    <span class="text-xs text-gray-400">(54)</span>
-                </div>
-                <div
-                    class="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-gray-100 w-max px-2 py-1 rounded-md mt-auto">
-                    <i class="ph-fill ph-shield-check text-green-500 text-sm"></i>
-                    Trusted Seller
-                </div>
-            </div>
-
-            <!-- Product 4 -->
-            <div
-                class="bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
-                <div class="h-32 mb-4 overflow-hidden flex items-center justify-center">
-                    <img src="./assets/" alt="Monitor"
-                        class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                </div>
-                <h3 class="font-bold text-sm text-gray-900 mb-1 line-clamp-1">
-                    ASUS ROG Strix XG27...
-                </h3>
-                <p class="text-xs text-gray-400 mb-2">Monitor - Asus</p>
-                <p class="font-bold text-md text-gray-900 mb-2">Rp 6.441.000</p>
-                <div class="flex items-center gap-1 mb-3">
-                    <i class="ph-fill ph-star text-brand-yellow text-xs"></i>
-                    <span class="text-xs font-semibold text-gray-700">4.8</span>
-                    <span class="text-xs text-gray-400">(16)</span>
-                </div>
-                <div
-                    class="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-gray-100 w-max px-2 py-1 rounded-md mt-auto">
-                    <i class="ph-fill ph-shield-check text-green-500 text-sm"></i>
-                    Trusted Seller
-                </div>
-            </div>
-
-            <!-- Product 5 -->
-            <div
-                class="bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
-                <div class="h-32 mb-4 overflow-hidden flex items-center justify-center">
-                    <img src="./assets/" alt="RAM"
-                        class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                </div>
-                <h3 class="font-bold text-sm text-gray-900 mb-1 line-clamp-1">
-                    Team T-Force Delta R...
-                </h3>
-                <p class="text-xs text-gray-400 mb-2">RAM - T-Force</p>
-                <p class="font-bold text-md text-gray-900 mb-2">Rp 968.200</p>
-                <div class="flex items-center gap-1 mb-3">
-                    <i class="ph-fill ph-star text-brand-yellow text-xs"></i>
-                    <span class="text-xs font-semibold text-gray-700">4.7</span>
-                    <span class="text-xs text-gray-400">(188)</span>
-                </div>
-                <div
-                    class="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-gray-100 w-max px-2 py-1 rounded-md mt-auto">
-                    <i class="ph-fill ph-shield-check text-green-500 text-sm"></i>
-                    Trusted Seller
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
     </section>
 
     <!-- Why Loot-E -->
-    <section class="max-w-7xl mx-auto px-6 md:px-12 py-10">
-        <div class="bg-white p-8 md:p-12 shadow-sm border border-gray-100">
+    <section id="why-loote" class="max-w-7xl mx-auto px-6 md:px-12 py-10">
+        <div class="bg-white p-8 md:p-12 shadow-sm border border-gray-100 rounded-3xl">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">
                 Why Loot-<span class="text-brand-yellow">E</span>?
             </h2>
@@ -367,7 +315,7 @@
     <!-- CTA Section -->
     <section class="max-w-7xl mx-auto px-6 md:px-12 py-10 mb-10">
         <div
-            class="bg-[#303135] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
+            class="bg-[#303135] p-8 md:p-12 rounded-3xl flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
             <div class="relative z-10 w-full md:w-2/3">
                 <p class="text-brand-yellow font-bold text-sm mb-2">
                     Ready to Upgrade?
@@ -381,13 +329,14 @@
                 </p>
             </div>
             <div class="mt-8 md:mt-0 relative z-10 w-full md:w-auto text-right">
-                <button
-                    class="bg-brand-yellow hover:bg-yellow-500 text-[#303135] font-bold py-3 px-6 transition flex items-center justify-center gap-2 w-full md:w-auto shadow-lg">
+                <a href="#products"
+                    class="bg-brand-yellow hover:bg-yellow-500 text-[#303135] font-bold py-3.5 px-6 rounded-xl transition inline-flex items-center justify-center gap-2 w-full md:w-auto shadow-lg">
                     Explore Products <i class="ph ph-arrow-right font-bold"></i>
-                </button>
+                </a>
             </div>
         </div>
     </section>
+
     <!-- Footer -->
     <footer class="bg-[#262628] text-gray-400 py-12 px-6 md:px-12">
         <div
@@ -400,10 +349,10 @@
                 <p class="text-xs">Find Better, Trade Smarter.</p>
             </div>
             <div class="flex flex-wrap justify-center gap-6 text-sm">
-                <a href="#" class="hover:text-brand-yellow transition">Home</a>
-                <a href="#" class="hover:text-brand-yellow transition">Categories</a>
-                <a href="#" class="hover:text-brand-yellow transition">About</a>
-                <a href="#" class="hover:text-brand-yellow transition">Help</a>
+                <a href="index.php" class="hover:text-brand-yellow transition">Home</a>
+                <a href="#categories" class="hover:text-brand-yellow transition">Categories</a>
+                <a href="#products" class="hover:text-brand-yellow transition">Products</a>
+                <a href="#why-loote" class="hover:text-brand-yellow transition">About</a>
             </div>
             <div class="flex gap-4">
                 <a href="#" class="hover:text-white transition"><i class="ph-fill ph-youtube-logo text-2xl"></i></a>
@@ -413,7 +362,7 @@
             </div>
         </div>
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between text-xs">
-            <p>&copy; 2026 Loot-E. All rights reserved.</p>
+            <p>&copy; <?= date('Y') ?> Loot-E. All rights reserved.</p>
             <div class="flex gap-4 mt-4 md:mt-0">
                 <a href="#" class="hover:text-white transition">Privacy</a>
                 <a href="#" class="hover:text-white transition">Terms</a>

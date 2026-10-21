@@ -1,89 +1,109 @@
 <?php
-// register.php - Endpoint Registrasi Pengguna Baru
-
-header("Content-Type: application/json");
+// register.php - Pendaftaran Pengguna Baru Loot-E
 require_once "auth.php";
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(["status" => "error", "message" => "Metode request tidak diizinkan. Gunakan POST."]);
+// Jika sudah login dan metode GET, langsung arahkan ke beranda
+if (isLoggedIn() && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    header("Location: index.php");
     exit;
 }
 
-// Ambil input dari JSON payload atau Form Data
-$rawInput = file_get_contents("php://input");
-$input = json_decode($rawInput, true);
+$errors = [];
+$success = '';
 
-if (!$input) {
-    $input = $_POST;
-}
+// Proses saat form disubmit via POST
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $rawInput = file_get_contents("php://input");
+    $input = json_decode($rawInput, true);
+    $isJson = ($input !== null);
 
-$nama = trim($input['nama'] ?? '');
-$email = filter_var(trim($input['email'] ?? ''), FILTER_VALIDATE_EMAIL);
-$password = $input['password'] ?? '';
-$peran = trim($input['peran'] ?? 'buyer'); // Default peran: buyer
-
-// Validasi kelengkapan input
-if (empty($nama) || !$email || empty($password)) {
-    http_response_code(400);
-    echo json_encode(["status" => "error", "message" => "Nama, email valid, dan password wajib diisi."]);
-    exit;
-}
-
-// Validasi peran sesuai schema database ('buyer', 'seller', 'admin')
-$validPeran = ['buyer', 'seller', 'admin'];
-if (!in_array($peran, $validPeran)) {
-    http_response_code(400);
-    echo json_encode(["status" => "error", "message" => "Peran tidak valid. Pilihan: buyer, seller, admin."]);
-    exit;
-}
-
-$db = getDbConnection();
-
-try {
-    // Cek apakah email sudah terdaftar
-    $stmtCheck = $db->prepare("SELECT id FROM pengguna WHERE email = ?");
-    $stmtCheck->execute([$email]);
-    if ($stmtCheck->fetch()) {
-        http_response_code(409);
-        echo json_encode(["status" => "error", "message" => "Email sudah terdaftar."]);
-        exit;
+    if (!$isJson) {
+        $input = $_POST;
     }
 
-    // Encrypt password dengan BCRYPT
-    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-    
-    // Generate UUID CHAR(36)
-    $id = generateUuidV4();
+    $nama = trim($input['nama_lengkap'] ?? $input['nama'] ?? '');
+    $email = filter_var(trim($input['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+    $password = $input['password'] ?? '';
+    $confirmPassword = $input['confirm_password'] ?? '';
+    $peran = trim($input['peran'] ?? 'buyer');
 
-    // Insert data ke tabel pengguna
-    $stmtInsert = $db->prepare("INSERT INTO pengguna (id, nama, email, password, peran) VALUES (?, ?, ?, ?, ?)");
-    $stmtInsert->execute([$id, $nama, $email, $hashedPassword, $peran]);
+    // Validasi
+    if (empty($nama)) {
+        $errors[] = "Nama lengkap wajib diisi.";
+    }
+    if (!$email) {
+        $errors[] = "Format alamat email tidak valid.";
+    }
+    if (strlen($password) < 8) {
+        $errors[] = "Kata sandi minimal harus 8 karakter.";
+    }
+    if ($password !== $confirmPassword) {
+        $errors[] = "Konfirmasi kata sandi tidak cocok.";
+    }
 
-    http_response_code(201);
-    echo json_encode([
-        "status" => "success",
-        "message" => "Registrasi akun berhasil.",
-        "data" => [
-            "id" => $id,
-            "nama" => $nama,
-            "email" => $email,
-            "peran" => $peran
-        ]
-    ]);
-} catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Gagal mendaftarkan pengguna: " . $e->getMessage()]);
+    $validPeran = ['buyer', 'seller', 'admin'];
+    if (!in_array($peran, $validPeran)) {
+        $peran = 'buyer';
+    }
+
+    if (empty($errors)) {
+        try {
+            $db = getDbConnection();
+
+            // Cek apakah email sudah terdaftar
+            $stmtCheck = $db->prepare("SELECT id FROM pengguna WHERE email = ?");
+            $stmtCheck->execute([$email]);
+            if ($stmtCheck->fetch()) {
+                $errors[] = "Email tersebut sudah terdaftar. Silakan gunakan email lain atau langsung masuk.";
+            } else {
+                // Enkripsi kata sandi
+                $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+                $id = generateUuidV4();
+
+                // Simpan ke tabel pengguna
+                $stmtInsert = $db->prepare("INSERT INTO pengguna (id, nama, email, password, peran) VALUES (?, ?, ?, ?, ?)");
+                $stmtInsert->execute([$id, $nama, $email, $hashedPassword, $peran]);
+
+                // Login otomatis setelah register
+                $_SESSION['user_id'] = $id;
+                $_SESSION['nama']    = $nama;
+                $_SESSION['email']   = $email;
+                $_SESSION['peran']   = $peran;
+
+                if ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')) {
+                    http_response_code(201);
+                    header("Content-Type: application/json");
+                    echo json_encode([
+                        "status" => "success",
+                        "message" => "Pendaftaran berhasil! Mengalihkan ke beranda...",
+                        "redirect" => "index.php"
+                    ]);
+                    exit;
+                }
+
+                header("Location: index.php");
+                exit;
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Terjadi gangguan database: " . $e->getMessage();
+        }
+    }
+
+    if (!empty($errors) && ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest'))) {
+        http_response_code(400);
+        header("Content-Type: application/json");
+        echo json_encode(["status" => "error", "message" => $errors[0], "errors" => $errors]);
+        exit;
+    }
 }
 ?>
-
 <!doctype html>
 <html lang="id">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Daftar Akun - Loot - E</title>
+  <title>Daftar Akun - Loot-E</title>
   <!-- Google Fonts & Phosphor Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -122,7 +142,7 @@ try {
       class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10 overflow-y-auto">
       <!-- Header Brand -->
       <div>
-        <a href="landingpage.html" class="inline-flex items-center gap-3 group">
+        <a href="index.php" class="inline-flex items-center gap-3 group">
           <img src="assets/logo loote.jpeg" alt="Logo Loot - E"
             class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm transition group-hover:scale-105" />
           <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span
@@ -141,22 +161,36 @@ try {
           </p>
         </div>
 
-        <!-- Alert Error (Dinamis dari Backend API) -->
+        <!-- Alert Error -->
         <div id="errorAlert"
-          class="hidden mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 transition">
+          class="<?= !empty($errors) ? '' : 'hidden' ?> mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 transition">
           <i class="ph ph-warning-circle text-xl flex-shrink-0 text-red-600 mt-0.5"></i>
           <div id="errorMessageContainer" class="flex-1 font-medium">
-            <ul id="errorList" class="list-disc ml-4 space-y-1"></ul>
+            <ul id="errorList" class="list-disc ml-4 space-y-1">
+              <?php foreach ($errors as $err): ?>
+                <li><?= htmlspecialchars($err) ?></li>
+              <?php endforeach; ?>
+            </ul>
           </div>
         </div>
 
-        <form id="registerForm" class="space-y-4">
+        <!-- Alert Sukses -->
+        <div id="successAlert"
+          class="hidden mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3 transition">
+          <i class="ph ph-check-circle text-xl flex-shrink-0 text-emerald-600 mt-0.5"></i>
+          <div id="successMessage" class="flex-1 font-medium">
+            Pendaftaran berhasil! Mengalihkan ke beranda...
+          </div>
+        </div>
+
+        <form id="registerForm" action="register.php" method="POST" class="space-y-4">
           <!-- Input Nama Lengkap -->
           <div>
             <label for="nama_lengkap" class="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap</label>
             <div class="relative">
               <i class="ph ph-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
               <input type="text" id="nama_lengkap" name="nama_lengkap" placeholder="Masukkan nama lengkap Anda" required
+                value="<?= htmlspecialchars($_POST['nama_lengkap'] ?? '') ?>"
                 class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
             </div>
           </div>
@@ -167,6 +201,7 @@ try {
             <div class="relative">
               <i class="ph ph-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
               <input type="email" id="email" name="email" placeholder="nama@contoh.com" required
+                value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                 class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
             </div>
           </div>
@@ -180,7 +215,7 @@ try {
                 minlength="8"
                 class="w-full pl-11 pr-11 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
               <button type="button" id="togglePassword"
-                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer">
                 <i class="ph ph-eye text-lg"></i>
               </button>
             </div>
@@ -188,8 +223,7 @@ try {
 
           <!-- Input Konfirmasi Kata Sandi -->
           <div>
-            <label for="confirm_password" class="block text-sm font-semibold text-gray-700 mb-1.5">Konfirmasi Kata
-              Sandi</label>
+            <label for="confirm_password" class="block text-sm font-semibold text-gray-700 mb-1.5">Konfirmasi Kata Sandi</label>
             <div class="relative">
               <i class="ph ph-shield-check absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
               <input type="password" id="confirm_password" name="confirm_password" placeholder="Ulangi kata sandi Anda"
@@ -201,7 +235,7 @@ try {
           <!-- Syarat & Ketentuan Checkbox -->
           <div class="pt-1">
             <label class="flex items-start gap-2.5 cursor-pointer text-sm text-gray-600 select-none">
-              <input type="checkbox" id="terms" name="terms" required
+              <input type="checkbox" id="terms" name="terms" required checked
                 class="w-4 h-4 mt-0.5 rounded border-gray-300 text-brand-yellow focus:ring-brand-yellow/40" />
               <span>Saya menyetujui
                 <a href="#" class="font-semibold text-brand-yellow hover:underline">Syarat & Ketentuan</a>
@@ -225,37 +259,27 @@ try {
         <!-- Tautan Login -->
         <p class="text-center text-sm text-gray-500 mt-6">
           Sudah punya akun?
-          <a href="login.html"
+          <a href="login.php"
             class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Masuk</a>
         </p>
       </div>
 
       <!-- Footer Halaman -->
-      <!-- <div
-                class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-gray-100 text-xs text-gray-400">
-                <span>&copy; 2026 Loot-E. All rights reserved.</span>
-                <div class="flex gap-4">
-                    <a href="#" class="hover:text-gray-600 transition">Privacy</a>
-                    <a href="#" class="hover:text-gray-600 transition">Terms</a>
-                    <a href="landingpage.html" class="hover:text-gray-600 transition">Beranda</a>
-                </div>
-            </div> -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-gray-100 text-xs text-gray-400">
+        <span>&copy; <?= date('Y') ?> Loot-E. All rights reserved.</span>
+        <div class="flex gap-4">
+          <a href="index.php" class="hover:text-gray-600 transition">Beranda</a>
+        </div>
+      </div>
     </div>
 
     <!-- Bagian Kanan: Panel Visual -->
-    <div class="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 overflow-hidden text-white">
-      <!-- Decorative Background Patterns -->
-      <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-green-500/10 rounded-full blur-3xl pointer-events-none">
-      </div>
-
+    <div class="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 overflow-hidden bg-brand-dark text-white">
+      <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-brand-yellow/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="max-w-md text-center relative z-10 flex flex-col items-center">
-        <!-- Indicator Dots -->
-        <div class="flex items-center gap-2">
-          <!-- <span class="w-8 h-2.5 rounded-full bg-brand-yellow"></span> -->
-          <span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span>
-          <span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span>
-          <span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span>
-        </div>
+        <img src="assets/image.png" alt="Loot-E Preview" class="w-80 h-auto mb-8 drop-shadow-2xl" />
+        <h2 class="text-2xl font-bold text-white mb-2">Bergabung dengan Komunitas Kami</h2>
+        <p class="text-gray-400 text-sm">Daftarkan akun Anda dalam hitungan detik dan rasakan kemudahan jual-beli serta barter elektronik terpercaya.</p>
       </div>
     </div>
   </div>
@@ -264,16 +288,113 @@ try {
     document.addEventListener("DOMContentLoaded", () => {
       const togglePassword = document.getElementById("togglePassword");
       const passwordInput = document.getElementById("password");
+      const confirmPasswordInput = document.getElementById("confirm_password");
+      const registerForm = document.getElementById("registerForm");
+      const submitBtn = document.getElementById("submitBtn");
+      const btnText = document.getElementById("btnText");
+      const btnIcon = document.getElementById("btnIcon");
+      const btnSpinner = document.getElementById("btnSpinner");
+      const errorAlert = document.getElementById("errorAlert");
+      const errorList = document.getElementById("errorList");
+      const successAlert = document.getElementById("successAlert");
+      const successMessage = document.getElementById("successMessage");
 
       // Toggle Password Visibility
-      togglePassword.addEventListener("click", () => {
-        const isPassword = passwordInput.type === "password";
-        passwordInput.type = isPassword ? "text" : "password";
-        togglePassword.innerHTML = isPassword
-          ? '<i class="ph ph-eye-slash text-lg"></i>'
-          : '<i class="ph ph-eye text-lg"></i>';
-      });
+      if (togglePassword && passwordInput) {
+        togglePassword.addEventListener("click", () => {
+          const isPassword = passwordInput.type === "password";
+          passwordInput.type = isPassword ? "text" : "password";
+          if (confirmPasswordInput) {
+            confirmPasswordInput.type = isPassword ? "text" : "password";
+          }
+          togglePassword.innerHTML = isPassword
+            ? '<i class="ph ph-eye-slash text-lg"></i>'
+            : '<i class="ph ph-eye text-lg"></i>';
+        });
+      }
 
+      // Handle Form Submit via Fetch (AJAX)
+      if (registerForm) {
+        registerForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          // Sembunyikan alert sebelumnya
+          errorAlert.classList.add("hidden");
+          successAlert.classList.add("hidden");
+          errorList.innerHTML = "";
+
+          const nama_lengkap = document.getElementById("nama_lengkap").value.trim();
+          const email = document.getElementById("email").value.trim();
+          const password = passwordInput.value;
+          const confirm_password = confirmPasswordInput.value;
+          const terms = document.getElementById("terms").checked;
+
+          const clientErrors = [];
+          if (!nama_lengkap) clientErrors.push("Nama lengkap wajib diisi.");
+          if (!email) clientErrors.push("Email valid wajib diisi.");
+          if (password.length < 8) clientErrors.push("Kata sandi minimal 8 karakter.");
+          if (password !== confirm_password) clientErrors.push("Konfirmasi kata sandi tidak cocok.");
+          if (!terms) clientErrors.push("Anda harus menyetujui Syarat & Ketentuan.");
+
+          if (clientErrors.length > 0) {
+            clientErrors.forEach((err) => {
+              const li = document.createElement("li");
+              li.textContent = err;
+              errorList.appendChild(li);
+            });
+            errorAlert.classList.remove("hidden");
+            return;
+          }
+
+          // Loading state
+          submitBtn.disabled = true;
+          btnText.textContent = "Mendaftarkan...";
+          btnIcon.classList.add("hidden");
+          btnSpinner.classList.remove("hidden");
+
+          try {
+            const response = await fetch("register.php", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                nama_lengkap,
+                email,
+                password,
+                confirm_password,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.status === "success") {
+              successMessage.textContent = data.message || "Pendaftaran akun berhasil! Mengalihkan...";
+              successAlert.classList.remove("hidden");
+              setTimeout(() => {
+                window.location.href = data.redirect || "index.php";
+              }, 800);
+            } else {
+              const errs = data.errors || [data.message || "Gagal melakukan registrasi."];
+              errs.forEach((err) => {
+                const li = document.createElement("li");
+                li.textContent = err;
+                errorList.appendChild(li);
+              });
+              errorAlert.classList.remove("hidden");
+            }
+          } catch (err) {
+            registerForm.submit();
+            return;
+          } finally {
+            submitBtn.disabled = false;
+            btnText.textContent = "Daftar Akun";
+            btnIcon.classList.remove("hidden");
+            btnSpinner.classList.add("hidden");
+          }
+        });
+      }
     });
   </script>
 </body>
