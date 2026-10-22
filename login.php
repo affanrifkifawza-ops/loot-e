@@ -2,83 +2,41 @@
 // login.php - Login Pengguna Loot-E
 require_once "auth.php";
 
-// Jika sudah login dan metode GET, langsung arahkan ke beranda
-if (isLoggedIn() && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+// Jika sudah login, langsung arahkan ke beranda
+if (isLoggedIn()) {
     header("Location: index.php");
     exit;
 }
 
 $error = '';
-$success = '';
 
 // Proses saat form disubmit via POST
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $rawInput = file_get_contents("php://input");
-    $input = json_decode($rawInput, true);
-    $isJson = ($input !== null);
-
-    if (!$isJson) {
-        $input = $_POST;
-    }
-
-    $email = filter_var(trim($input['email'] ?? ''), FILTER_VALIDATE_EMAIL);
-    $password = $input['password'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email    = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+    $password = $_POST['password'] ?? '';
 
     if (!$email || empty($password)) {
-        $errMsg = "Email valid dan kata sandi wajib diisi.";
-        if ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')) {
-            http_response_code(400);
-            header("Content-Type: application/json");
-            echo json_encode(["status" => "error", "message" => $errMsg]);
-            exit;
-        }
-        $error = $errMsg;
+        $error = "Email valid dan kata sandi wajib diisi.";
     } else {
         try {
-            $db = getDbConnection();
+            $db   = getDbConnection();
             $stmt = $db->prepare("SELECT id, nama, email, password, peran FROM pengguna WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
             if (!$user || !password_verify($password, $user['password'])) {
-                $errMsg = "Email atau kata sandi salah. Silakan coba lagi.";
-                if ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')) {
-                    http_response_code(401);
-                    header("Content-Type: application/json");
-                    echo json_encode(["status" => "error", "message" => $errMsg]);
-                    exit;
-                }
-                $error = $errMsg;
+                $error = "Email atau kata sandi salah. Silakan coba lagi.";
             } else {
-                // Simpan data ke session
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['nama']    = $user['nama'];
                 $_SESSION['email']   = $user['email'];
                 $_SESSION['peran']   = $user['peran'];
 
-                if ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')) {
-                    http_response_code(200);
-                    header("Content-Type: application/json");
-                    echo json_encode([
-                        "status" => "success",
-                        "message" => "Login berhasil! Mengalihkan ke beranda...",
-                        "redirect" => "index.php"
-                    ]);
-                    exit;
-                }
-
                 header("Location: index.php");
                 exit;
             }
         } catch (PDOException $e) {
-            $errMsg = "Terjadi gangguan sistem koneksi: " . $e->getMessage();
-            if ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')) {
-                http_response_code(500);
-                header("Content-Type: application/json");
-                echo json_encode(["status" => "error", "message" => $errMsg]);
-                exit;
-            }
-            $error = $errMsg;
+            $error = "Terjadi gangguan sistem koneksi. Silakan coba lagi.";
         }
     }
 }
@@ -90,21 +48,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - Loot-E</title>
-  <!-- Google Fonts & Phosphor Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            sans: ["Inter", "sans-serif"],
-          },
+          fontFamily: { sans: ["Inter", "sans-serif"] },
           colors: {
             brand: {
               yellow: "#F5B700",
@@ -128,10 +81,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
       <!-- Header Brand -->
       <div>
         <a href="index.php" class="inline-flex items-center gap-3 group">
-          <img src="assets/logo loote.jpeg" alt="Logo Loot - E"
+          <img src="assets/logo.png" alt="Logo Loot - E"
             class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm transition group-hover:scale-105" />
-          <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span
-              class="text-brand-yellow">E</span></span>
+          <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span class="text-brand-yellow">E</span></span>
         </a>
       </div>
 
@@ -147,24 +99,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         </div>
 
         <!-- Alert Error -->
-        <div id="errorAlert"
-          class="<?= !empty($error) ? '' : 'hidden' ?> mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 transition">
-          <i class="ph ph-warning-circle text-xl flex-shrink-0 text-red-600 mt-0.5"></i>
-          <div id="errorMessage" class="flex-1 font-medium">
-            <?= htmlspecialchars($error ?: 'Terjadi kesalahan.') ?>
+        <?php if (!empty($error)): ?>
+          <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3">
+            <i class="ph ph-warning-circle text-xl flex-shrink-0 text-red-600 mt-0.5"></i>
+            <div class="flex-1 font-medium"><?= htmlspecialchars($error) ?></div>
           </div>
-        </div>
+        <?php endif; ?>
 
-        <!-- Alert Sukses -->
-        <div id="successAlert"
-          class="hidden mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3 transition">
-          <i class="ph ph-check-circle text-xl flex-shrink-0 text-emerald-600 mt-0.5"></i>
-          <div id="successMessage" class="flex-1 font-medium">
-            Login berhasil! Mengalihkan ke beranda...
-          </div>
-        </div>
-
-        <form id="loginForm" action="login.php" method="POST" class="space-y-5">
+        <form action="login.php" method="POST" class="space-y-5">
           <!-- Input Email -->
           <div>
             <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">Alamat Email</label>
@@ -186,7 +128,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
               <i class="ph ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
               <input type="password" id="password" name="password" placeholder="Masukkan kata sandi" required
                 class="w-full pl-11 pr-11 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
-              <button type="button" id="togglePassword"
+              <button type="button" onclick="toggleVis('password', this)"
                 class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer">
                 <i class="ph ph-eye text-lg"></i>
               </button>
@@ -194,32 +136,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
           </div>
 
           <!-- Opsi Ingat Saya -->
-          <div class="flex items-center justify-between">
+          <div>
             <label class="flex items-center gap-2.5 cursor-pointer text-sm text-gray-600 select-none">
-              <input type="checkbox" id="remember" name="remember"
+              <input type="checkbox" name="remember"
                 class="w-4 h-4 rounded border-gray-300 text-brand-yellow focus:ring-brand-yellow/40" />
               <span>Ingat saya</span>
             </label>
           </div>
 
           <!-- Tombol Masuk -->
-          <button type="submit" id="submitBtn"
+          <button type="submit"
             class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-brand-yellow hover:bg-yellow-500 active:scale-[0.99] transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer">
-            <span id="btnText">Masuk</span>
-            <i id="btnIcon" class="ph ph-arrow-right font-bold text-lg"></i>
-            <svg id="btnSpinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg"
-              fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-            </svg>
+            Masuk
+            <i class="ph ph-arrow-right font-bold text-lg"></i>
           </button>
         </form>
 
         <!-- Tautan Pendaftaran -->
         <p class="text-center text-sm text-gray-500 mt-8">
           Belum punya akun?
-          <a href="register.php"
-            class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Daftar Akun Baru</a>
+          <a href="register.php" class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Daftar Akun Baru</a>
         </p>
       </div>
 
@@ -244,89 +180,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const togglePassword = document.getElementById("togglePassword");
-      const passwordInput = document.getElementById("password");
-      const loginForm = document.getElementById("loginForm");
-      const submitBtn = document.getElementById("submitBtn");
-      const btnText = document.getElementById("btnText");
-      const btnIcon = document.getElementById("btnIcon");
-      const btnSpinner = document.getElementById("btnSpinner");
-      const errorAlert = document.getElementById("errorAlert");
-      const errorMessage = document.getElementById("errorMessage");
-      const successAlert = document.getElementById("successAlert");
-      const successMessage = document.getElementById("successMessage");
-
-      // Toggle Password Visibility
-      if (togglePassword && passwordInput) {
-        togglePassword.addEventListener("click", () => {
-          const isPassword = passwordInput.type === "password";
-          passwordInput.type = isPassword ? "text" : "password";
-          togglePassword.innerHTML = isPassword
-            ? '<i class="ph ph-eye-slash text-lg"></i>'
-            : '<i class="ph ph-eye text-lg"></i>';
-        });
-      }
-
-      // Handle Form Submit via Fetch (AJAX)
-      if (loginForm) {
-        loginForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          // Sembunyikan alert sebelumnya
-          errorAlert.classList.add("hidden");
-          successAlert.classList.add("hidden");
-
-          const email = document.getElementById("email").value.trim();
-          const password = passwordInput.value;
-
-          if (!email || !password) {
-            errorMessage.textContent = "Email dan kata sandi wajib diisi.";
-            errorAlert.classList.remove("hidden");
-            return;
-          }
-
-          // Loading state
-          submitBtn.disabled = true;
-          btnText.textContent = "Memverifikasi...";
-          btnIcon.classList.add("hidden");
-          btnSpinner.classList.remove("hidden");
-
-          try {
-            const response = await fetch("login.php", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest",
-              },
-              body: JSON.stringify({ email, password }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.status === "success") {
-              successMessage.textContent = data.message || "Login berhasil! Mengalihkan...";
-              successAlert.classList.remove("hidden");
-              setTimeout(() => {
-                window.location.href = data.redirect || "index.php";
-              }, 800);
-            } else {
-              errorMessage.textContent = data.message || "Gagal masuk. Periksa kembali email dan sandi Anda.";
-              errorAlert.classList.remove("hidden");
-            }
-          } catch (err) {
-            // Fallback: submit biasa jika network JSON bermasalah
-            loginForm.submit();
-            return;
-          } finally {
-            submitBtn.disabled = false;
-            btnText.textContent = "Masuk";
-            btnIcon.classList.remove("hidden");
-            btnSpinner.classList.add("hidden");
-          }
-        });
-      }
-    });
+    function toggleVis(fieldId, btn) {
+      var inp = document.getElementById(fieldId);
+      var isPassword = inp.type === 'password';
+      inp.type = isPassword ? 'text' : 'password';
+      btn.innerHTML = isPassword
+        ? '<i class="ph ph-eye-slash text-lg"></i>'
+        : '<i class="ph ph-eye text-lg"></i>';
+    }
   </script>
 </body>
 
