@@ -90,7 +90,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         );
     }
     session_destroy();
-    header("Location: login.php");
+    header("Location: landing.php");
     exit;
 }
 ?>
