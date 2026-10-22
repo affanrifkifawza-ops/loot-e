@@ -79,7 +79,7 @@ function requireAuth($allowed_roles = []) {
     }
 }
 
-// Fitur Logout jika diakses dengan query ?action=logout
+// Logout jika diakses dengan query ?action=logout
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
@@ -90,16 +90,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         );
     }
     session_destroy();
-
-    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') 
-        || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
-
-    if ($isAjax) {
-        header("Content-Type: application/json");
-        echo json_encode(["status" => "success", "message" => "Berhasil logout.", "redirect" => "index.php"]);
-    } else {
-        header("Location: index.php");
-    }
+    header("Location: login.php");
     exit;
 }
 ?>
