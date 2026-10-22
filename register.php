@@ -2,65 +2,44 @@
 // register.php - Pendaftaran Pengguna Baru Loot-E
 require_once "auth.php";
 
-// Jika sudah login dan metode GET, langsung arahkan ke beranda
-if (isLoggedIn() && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+// Jika sudah login, langsung arahkan ke beranda
+if (isLoggedIn()) {
     header("Location: index.php");
     exit;
 }
 
 $errors = [];
-$success = '';
 
 // Proses saat form disubmit via POST
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $rawInput = file_get_contents("php://input");
-    $input = json_decode($rawInput, true);
-    $isJson = ($input !== null);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    if (!$isJson) {
-        $input = $_POST;
-    }
-
-    $nama = trim($input['nama_lengkap'] ?? $input['nama'] ?? '');
-    $email = filter_var(trim($input['email'] ?? ''), FILTER_VALIDATE_EMAIL);
-    $password = $input['password'] ?? '';
-    $confirmPassword = $input['confirm_password'] ?? '';
-    $peran = trim($input['peran'] ?? 'buyer');
+    $nama            = trim($_POST['nama_lengkap'] ?? '');
+    $email           = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+    $password        = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+    $peran           = trim($_POST['peran'] ?? 'buyer');
 
     // Validasi
-    if (empty($nama)) {
-        $errors[] = "Nama lengkap wajib diisi.";
-    }
-    if (!$email) {
-        $errors[] = "Format alamat email tidak valid.";
-    }
-    if (strlen($password) < 8) {
-        $errors[] = "Kata sandi minimal harus 8 karakter.";
-    }
-    if ($password !== $confirmPassword) {
-        $errors[] = "Konfirmasi kata sandi tidak cocok.";
-    }
+    if (empty($nama))           $errors[] = "Nama lengkap wajib diisi.";
+    if (!$email)                $errors[] = "Format alamat email tidak valid.";
+    if (strlen($password) < 8) $errors[] = "Kata sandi minimal harus 8 karakter.";
+    if ($password !== $confirmPassword) $errors[] = "Konfirmasi kata sandi tidak cocok.";
 
     $validPeran = ['buyer', 'seller', 'admin'];
-    if (!in_array($peran, $validPeran)) {
-        $peran = 'buyer';
-    }
+    if (!in_array($peran, $validPeran)) $peran = 'buyer';
 
     if (empty($errors)) {
         try {
             $db = getDbConnection();
 
-            // Cek apakah email sudah terdaftar
             $stmtCheck = $db->prepare("SELECT id FROM pengguna WHERE email = ?");
             $stmtCheck->execute([$email]);
             if ($stmtCheck->fetch()) {
                 $errors[] = "Email tersebut sudah terdaftar. Silakan gunakan email lain atau langsung masuk.";
             } else {
-                // Enkripsi kata sandi
                 $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
                 $id = generateUuidV4();
 
-                // Simpan ke tabel pengguna
                 $stmtInsert = $db->prepare("INSERT INTO pengguna (id, nama, email, password, peran) VALUES (?, ?, ?, ?, ?)");
                 $stmtInsert->execute([$id, $nama, $email, $hashedPassword, $peran]);
 
@@ -70,30 +49,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $_SESSION['email']   = $email;
                 $_SESSION['peran']   = $peran;
 
-                if ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')) {
-                    http_response_code(201);
-                    header("Content-Type: application/json");
-                    echo json_encode([
-                        "status" => "success",
-                        "message" => "Pendaftaran berhasil! Mengalihkan ke beranda...",
-                        "redirect" => "index.php"
-                    ]);
-                    exit;
-                }
-
                 header("Location: index.php");
                 exit;
             }
         } catch (PDOException $e) {
-            $errors[] = "Terjadi gangguan database: " . $e->getMessage();
+            $errors[] = "Terjadi gangguan database. Silakan coba lagi.";
         }
-    }
-
-    if (!empty($errors) && ($isJson || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest'))) {
-        http_response_code(400);
-        header("Content-Type: application/json");
-        echo json_encode(["status" => "error", "message" => $errors[0], "errors" => $errors]);
-        exit;
     }
 }
 ?>
@@ -104,21 +65,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Daftar Akun - Loot-E</title>
-  <!-- Google Fonts & Phosphor Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            sans: ["Inter", "sans-serif"],
-          },
+          fontFamily: { sans: ["Inter", "sans-serif"] },
           colors: {
             brand: {
               yellow: "#F5B700",
@@ -138,15 +94,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 <body class="bg-[#F8F9FA] font-sans antialiased text-gray-900 min-h-screen">
   <div class="min-h-screen flex flex-col lg:flex-row">
     <!-- Bagian Kiri: Formulir Pendaftaran -->
-    <div
-      class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10 overflow-y-auto">
+    <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10 overflow-y-auto">
       <!-- Header Brand -->
       <div>
         <a href="index.php" class="inline-flex items-center gap-3 group">
-          <img src="assets/logo loote.jpeg" alt="Logo Loot - E"
+          <img src="assets/logo.png" alt="Logo Loot - E"
             class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm transition group-hover:scale-105" />
-          <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span
-              class="text-brand-yellow">E</span></span>
+          <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span class="text-brand-yellow">E</span></span>
         </a>
       </div>
 
@@ -162,28 +116,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         </div>
 
         <!-- Alert Error -->
-        <div id="errorAlert"
-          class="<?= !empty($errors) ? '' : 'hidden' ?> mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3 transition">
-          <i class="ph ph-warning-circle text-xl flex-shrink-0 text-red-600 mt-0.5"></i>
-          <div id="errorMessageContainer" class="flex-1 font-medium">
-            <ul id="errorList" class="list-disc ml-4 space-y-1">
-              <?php foreach ($errors as $err): ?>
-                <li><?= htmlspecialchars($err) ?></li>
-              <?php endforeach; ?>
-            </ul>
+        <?php if (!empty($errors)): ?>
+          <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3">
+            <i class="ph ph-warning-circle text-xl flex-shrink-0 text-red-600 mt-0.5"></i>
+            <div class="flex-1 font-medium">
+              <ul class="list-disc ml-4 space-y-1">
+                <?php foreach ($errors as $err): ?>
+                  <li><?= htmlspecialchars($err) ?></li>
+                <?php endforeach; ?>
+              </ul>
+            </div>
           </div>
-        </div>
+        <?php endif; ?>
 
-        <!-- Alert Sukses -->
-        <div id="successAlert"
-          class="hidden mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3 transition">
-          <i class="ph ph-check-circle text-xl flex-shrink-0 text-emerald-600 mt-0.5"></i>
-          <div id="successMessage" class="flex-1 font-medium">
-            Pendaftaran berhasil! Mengalihkan ke beranda...
-          </div>
-        </div>
-
-        <form id="registerForm" action="register.php" method="POST" class="space-y-4">
+        <form action="register.php" method="POST" class="space-y-4">
           <!-- Input Nama Lengkap -->
           <div>
             <label for="nama_lengkap" class="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap</label>
@@ -211,10 +157,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             <label for="password" class="block text-sm font-semibold text-gray-700 mb-1.5">Kata Sandi</label>
             <div class="relative">
               <i class="ph ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
-              <input type="password" id="password" name="password" placeholder="Minimal 8 karakter" required
-                minlength="8"
+              <input type="password" id="password" name="password" placeholder="Minimal 8 karakter" required minlength="8"
                 class="w-full pl-11 pr-11 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
-              <button type="button" id="togglePassword"
+              <button type="button" onclick="toggleVis('password', this)"
                 class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer">
                 <i class="ph ph-eye text-lg"></i>
               </button>
@@ -226,41 +171,38 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             <label for="confirm_password" class="block text-sm font-semibold text-gray-700 mb-1.5">Konfirmasi Kata Sandi</label>
             <div class="relative">
               <i class="ph ph-shield-check absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
-              <input type="password" id="confirm_password" name="confirm_password" placeholder="Ulangi kata sandi Anda"
-                required
-                class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
+              <input type="password" id="confirm_password" name="confirm_password" placeholder="Ulangi kata sandi Anda" required
+                class="w-full pl-11 pr-11 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
+              <button type="button" onclick="toggleVis('confirm_password', this)"
+                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer">
+                <i class="ph ph-eye text-lg"></i>
+              </button>
             </div>
           </div>
 
           <!-- Syarat & Ketentuan Checkbox -->
           <div class="pt-1">
             <label class="flex items-start gap-2.5 cursor-pointer text-sm text-gray-600 select-none">
-              <input type="checkbox" id="terms" name="terms" required checked
+              <input type="checkbox" name="terms" required checked
                 class="w-4 h-4 mt-0.5 rounded border-gray-300 text-brand-yellow focus:ring-brand-yellow/40" />
               <span>Saya menyetujui
-                <a href="#" class="font-semibold text-brand-yellow hover:underline">Syarat & Ketentuan</a>
+                <a href="#" class="font-semibold text-brand-yellow hover:underline">Syarat &amp; Ketentuan</a>
                 Loot-E</span>
             </label>
           </div>
 
           <!-- Tombol Daftar -->
-          <button type="submit" id="submitBtn"
+          <button type="submit"
             class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-brand-yellow hover:bg-yellow-500 active:scale-[0.99] transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4">
-            <span id="btnText">Daftar Akun</span>
-            <i id="btnIcon" class="ph ph-arrow-right font-bold text-lg"></i>
-            <svg id="btnSpinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg"
-              fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-            </svg>
+            Daftar Akun
+            <i class="ph ph-arrow-right font-bold text-lg"></i>
           </button>
         </form>
 
         <!-- Tautan Login -->
         <p class="text-center text-sm text-gray-500 mt-6">
           Sudah punya akun?
-          <a href="login.php"
-            class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Masuk</a>
+          <a href="login.php" class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Masuk</a>
         </p>
       </div>
 
@@ -285,117 +227,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const togglePassword = document.getElementById("togglePassword");
-      const passwordInput = document.getElementById("password");
-      const confirmPasswordInput = document.getElementById("confirm_password");
-      const registerForm = document.getElementById("registerForm");
-      const submitBtn = document.getElementById("submitBtn");
-      const btnText = document.getElementById("btnText");
-      const btnIcon = document.getElementById("btnIcon");
-      const btnSpinner = document.getElementById("btnSpinner");
-      const errorAlert = document.getElementById("errorAlert");
-      const errorList = document.getElementById("errorList");
-      const successAlert = document.getElementById("successAlert");
-      const successMessage = document.getElementById("successMessage");
-
-      // Toggle Password Visibility
-      if (togglePassword && passwordInput) {
-        togglePassword.addEventListener("click", () => {
-          const isPassword = passwordInput.type === "password";
-          passwordInput.type = isPassword ? "text" : "password";
-          if (confirmPasswordInput) {
-            confirmPasswordInput.type = isPassword ? "text" : "password";
-          }
-          togglePassword.innerHTML = isPassword
-            ? '<i class="ph ph-eye-slash text-lg"></i>'
-            : '<i class="ph ph-eye text-lg"></i>';
-        });
-      }
-
-      // Handle Form Submit via Fetch (AJAX)
-      if (registerForm) {
-        registerForm.addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          // Sembunyikan alert sebelumnya
-          errorAlert.classList.add("hidden");
-          successAlert.classList.add("hidden");
-          errorList.innerHTML = "";
-
-          const nama_lengkap = document.getElementById("nama_lengkap").value.trim();
-          const email = document.getElementById("email").value.trim();
-          const password = passwordInput.value;
-          const confirm_password = confirmPasswordInput.value;
-          const terms = document.getElementById("terms").checked;
-
-          const clientErrors = [];
-          if (!nama_lengkap) clientErrors.push("Nama lengkap wajib diisi.");
-          if (!email) clientErrors.push("Email valid wajib diisi.");
-          if (password.length < 8) clientErrors.push("Kata sandi minimal 8 karakter.");
-          if (password !== confirm_password) clientErrors.push("Konfirmasi kata sandi tidak cocok.");
-          if (!terms) clientErrors.push("Anda harus menyetujui Syarat & Ketentuan.");
-
-          if (clientErrors.length > 0) {
-            clientErrors.forEach((err) => {
-              const li = document.createElement("li");
-              li.textContent = err;
-              errorList.appendChild(li);
-            });
-            errorAlert.classList.remove("hidden");
-            return;
-          }
-
-          // Loading state
-          submitBtn.disabled = true;
-          btnText.textContent = "Mendaftarkan...";
-          btnIcon.classList.add("hidden");
-          btnSpinner.classList.remove("hidden");
-
-          try {
-            const response = await fetch("register.php", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest",
-              },
-              body: JSON.stringify({
-                nama_lengkap,
-                email,
-                password,
-                confirm_password,
-              }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.status === "success") {
-              successMessage.textContent = data.message || "Pendaftaran akun berhasil! Mengalihkan...";
-              successAlert.classList.remove("hidden");
-              setTimeout(() => {
-                window.location.href = data.redirect || "index.php";
-              }, 800);
-            } else {
-              const errs = data.errors || [data.message || "Gagal melakukan registrasi."];
-              errs.forEach((err) => {
-                const li = document.createElement("li");
-                li.textContent = err;
-                errorList.appendChild(li);
-              });
-              errorAlert.classList.remove("hidden");
-            }
-          } catch (err) {
-            registerForm.submit();
-            return;
-          } finally {
-            submitBtn.disabled = false;
-            btnText.textContent = "Daftar Akun";
-            btnIcon.classList.remove("hidden");
-            btnSpinner.classList.add("hidden");
-          }
-        });
-      }
-    });
+    function toggleVis(fieldId, btn) {
+      var inp = document.getElementById(fieldId);
+      var isPassword = inp.type === 'password';
+      inp.type = isPassword ? 'text' : 'password';
+      btn.innerHTML = isPassword
+        ? '<i class="ph ph-eye-slash text-lg"></i>'
+        : '<i class="ph ph-eye text-lg"></i>';
+    }
   </script>
 </body>
 
