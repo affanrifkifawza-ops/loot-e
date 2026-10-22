@@ -2,9 +2,11 @@
 // index.php - Beranda Loot-E
 require_once "auth.php";
 
-$db = getDbConnection();
-$currentUser = getCurrentUser();
+// Wajib login untuk mengakses halaman ini
+requireAuth();
 
+$db          = getDbConnection();
+$currentUser = getCurrentUser();
 // Ambil Kategori dari Database
 $categories = [];
 try {
@@ -84,12 +86,12 @@ try {
     <nav class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
         <div class="flex items-center gap-2">
             <a href="index.php" class="flex items-center gap-2">
-                <img src="assets/logo loote.jpeg" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
+                <img src="assets/logo.png" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
                 <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
             </a>
         </div>
         <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-            <a href="index.php" class="text-brand-yellow">Home</a>
+            <a href="index.php" class="hover:text-brand-yellow transition">Home</a>
             <a href="#categories" class="hover:text-brand-yellow transition">Categories</a>
             <a href="#products" class="hover:text-brand-yellow transition">Products</a>
             <a href="#why-loote" class="hover:text-brand-yellow transition">About</a>
@@ -104,16 +106,14 @@ try {
                             <?= htmlspecialchars(strtoupper(substr($currentUser['nama'], 0, 2))) ?>
                         </div>
                         <div class="hidden sm:flex flex-col text-left">
-                            <span class="text-xs font-bold text-white leading-tight">
-                                <?= htmlspecialchars($currentUser['nama']) ?>
+                            <span class="text-xs font-bold text-white leading-tight">Halo,
+                                <?= htmlspecialchars($currentUser['nama']) ?>!
                             </span>
-                            <span class="text-[10px] text-brand-yellow capitalize">
-                                <?= htmlspecialchars($currentUser['peran']) ?>
-                            </span>
+
                         </div>
                         <a href="auth.php?action=logout"
-                           class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-lg font-medium transition ml-1"
-                           title="Keluar dari akun">
+                            class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-lg font-medium transition ml-1"
+                            title="Keluar dari akun">
                             Keluar
                         </a>
                     </div>
@@ -183,9 +183,9 @@ try {
         </div>
         <div class="grid grid-cols-4 md:grid-cols-8 gap-3 md:gap-4">
             <?php foreach ($categories as $cat): ?>
-                <?php 
-                    $catTitle = $cat['nama_kategori'];
-                    $icon = $categoryIcons[$catTitle] ?? 'ph-tag';
+                <?php
+                $catTitle = $cat['nama_kategori'];
+                $icon = $categoryIcons[$catTitle] ?? 'ph-tag';
                 ?>
                 <a href="#products"
                     class="bg-white p-3 rounded-2xl shadow-sm hover:shadow-md hover:border-brand-yellow/50 transition flex flex-col items-center justify-center gap-2 group border border-gray-100">
@@ -216,9 +216,9 @@ try {
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
             <?php if (!empty($products)): ?>
                 <?php foreach ($products as $prod): ?>
-                    <?php 
-                        $kat = $prod['nama_kategori'] ?? 'Elektronik';
-                        $icon = $categoryIcons[$kat] ?? 'ph-device-mobile';
+                    <?php
+                    $kat = $prod['nama_kategori'] ?? 'Elektronik';
+                    $icon = $categoryIcons[$kat] ?? 'ph-device-mobile';
                     ?>
                     <div
                         class="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
