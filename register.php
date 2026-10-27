@@ -220,8 +220,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-brand-yellow/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="max-w-md text-center relative z-10 flex flex-col items-center">
         <img src="assets/image.png" alt="Loot-E Preview" class="w-80 h-auto mb-8 drop-shadow-2xl" />
-        <h2 class="text-2xl font-bold text-white mb-2">Bergabung dengan Komunitas Kami</h2>
-        <p class="text-gray-400 text-sm">Daftarkan akun Anda dalam hitungan detik dan rasakan kemudahan jual-beli serta barter elektronik terpercaya.</p>
+        <h2 class="text-2xl font-bold text-white mb-2">Find Better, Trade Smarter</h2>
+        <p class="text-gray-400 text-sm">Akses jutaan produk elektronik terverifikasi dan lakukan transaksi serta barter dengan aman.</p>
       </div>
     </div>
   </div>
