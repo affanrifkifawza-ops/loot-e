@@ -90,7 +90,7 @@ try {
         </div>
         <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
             <a href="landing.php" class="hover:text-brand-yellow transition">Home</a>
-            <a href="categories.html" class="hover:text-brand-yellow transition">Categories</a>
+            <a href="landing.php" class="hover:text-brand-yellow transition">Categories</a>
             <a href="landing.php" class="hover:text-brand-yellow transition">About</a>
             <a href="landing.php" class="hover:text-brand-yellow transition">Help</a>
         </div>
