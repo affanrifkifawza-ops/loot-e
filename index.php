@@ -2,7 +2,7 @@
 // index.php - Beranda Loot-E
 require_once "auth.php";
 
-// Jika belum login, arahkan ke landing page (bukan halaman login)
+// Jika belum login, arahkan ke landing page
 if (!isLoggedIn()) {
     header("Location: landing.php");
     exit;
