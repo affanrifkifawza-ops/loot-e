@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="id" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loot-E | Explore Categories</title>
+    <meta name="description"
+        content="Jelajahi kategori elektronik di Loot-E — PC Components, Laptop, Smartphone, Monitor, dan lainnya." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"],
+                    },
+                    colors: {
+                        brand: {
+                            yellow: "#F5B700",
+                            dark: "#303135",
+                            footer: "#383838",
+                            bg: "#F8F9FA",
+                        },
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease forwards',
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+
+<body class="bg-[#F4F5F7] font-sans text-gray-800">
+    <!-- Navbar -->
+    <nav
+        class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
+        <div class="flex items-center gap-2">
+            <a href="index.php" class="flex items-center gap-2">
+                <img src="assets/logo.png" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
+                <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
+            </a>
+        </div>
+        <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
+            <a href="index.php" class="hover:text-brand-yellow transition">Home</a>
+            <a href="categories.html" class="text-brand-yellow transition font-semibold">Categories</a>
+            <a href="landing.php#why-loote" class="hover:text-brand-yellow transition">About</a>
+            <a href="#" class="hover:text-brand-yellow transition">Help</a>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="login.php" id="btn-login"
+                class="text-xs bg-brand-yellow text-brand-dark px-4 py-2 rounded-lg font-bold hover:bg-yellow-500 transition shadow-sm">
+                Login
+            </a>
+            <a href="register.php" id="btn-register"
+                class="text-xs border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow px-4 py-2 rounded-lg font-medium transition hidden sm:inline-block">
+                Register
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden">
+        <!-- Background Image khusus tampilan Mobile -->
+        <div class="absolute inset-0 md:hidden pointer-events-none -z-0 overflow-hidden">
+            <img src="./assets/image.png" alt="Electronics Background"
+                class="w-full h-full object-cover object-center opacity-25 filter blur-[0.5px]" />
+            <div class="absolute inset-0 bg-gradient-to-b from-[#F4F5F7]/70 via-[#F4F5F7]/85 to-[#F4F5F7]"></div>
+        </div>
+
+        <div
+            class="max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16 grid md:grid-cols-2 gap-8 items-center relative z-10">
+            <div>
+                <h1 class="text-4xl sm:text-5xl md:text-[3.25rem] font-black text-gray-900 leading-tight mb-6">
+                    Explore <span class="text-brand-yellow">Categories</span>
+                </h1>
+                <div class="relative max-w-lg shadow-lg rounded-full">
+                    <i
+                        class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                    <input type="text" id="categorySearch" placeholder="Cari GPU, CPU, Laptop, monitor, dll..."
+                        class="w-full pl-12 pr-14 py-3.5 rounded-full border border-transparent focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/50 bg-white text-sm text-gray-800" />
+                    <button
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-brand-yellow text-white h-9 w-9 rounded-full flex items-center justify-center hover:bg-yellow-500 transition shadow-md">
+                        <i class="ph ph-arrow-right font-bold"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Hero Illustration -->
+            <div class="relative hidden md:flex justify-center md:justify-end">
+                <img src="./assets/image.png" alt="Electronics" class="w-full max-w-[600px] drop-shadow-xl" />
+            </div>
+        </div>
+    </section>
+
+    <!-- PC Components Section -->
+    <section id="pc-components" class="max-w-7xl mx-auto px-6 md:px-12 pt-12 pb-6">
+        <div class="mb-8">
+            <div class="w-10 h-1 rounded-sm bg-brand-yellow mb-2.5"></div>
+            <h2 class="text-2xl md:text-[1.7rem] font-extrabold text-gray-900 mb-1">PC Components</h2>
+            <p class="text-sm text-gray-500">Build or upgrade your PC with the right components.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="pcComponentsGrid">
+            <!-- Cards will be injected by JavaScript -->
+        </div>
+        <div class="hidden text-center py-10 px-5 text-gray-400" id="pcEmpty">
+            <i class="ph ph-magnifying-glass text-4xl text-gray-300 mb-3"></i>
+            <p class="text-sm">Tidak ada kategori yang cocok dengan pencarian.</p>
+        </div>
+    </section>
+
+    <!-- Elektronik Lainnya Section -->
+    <section id="other-electronics" class="max-w-7xl mx-auto px-6 md:px-12 pt-8 pb-12">
+        <div class="mb-8">
+            <div class="w-10 h-1 rounded-sm bg-brand-yellow mb-2.5"></div>
+            <h2 class="text-2xl md:text-[1.7rem] font-extrabold text-gray-900 mb-1">Elektronik Lainnya</h2>
+            <p class="text-sm text-gray-500">Eksplor elektronik lain untuk penggunaan sehari-hari.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="otherElectronicsGrid">
+            <!-- Cards will be injected by JavaScript -->
+        </div>
+        <div class="hidden text-center py-10 px-5 text-gray-400" id="otherEmpty">
+            <i class="ph ph-magnifying-glass text-4xl text-gray-300 mb-3"></i>
+            <p class="text-sm">Tidak ada kategori yang cocok dengan pencarian.</p>
+        </div>
+    </section>
+
+    <!-- CTA Search Banner -->
+    <section class="max-w-7xl mx-auto px-6 md:px-12 pb-16">
+        <div
+            class="relative overflow-hidden bg-gradient-to-br from-[#303135] via-[#404045] to-[#303135] px-8 md:px-12 py-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <!-- Decorative Glow Elements -->
+            <div
+                class="absolute -top-1/2 -left-1/4 w-96 h-96 rounded-full bg-[radial-gradient(circle,rgba(245,183,0,0.08)_0%,transparent_70%)] pointer-events-none">
+            </div>
+            <div
+                class="absolute -bottom-1/2 -right-1/4 w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(245,183,0,0.06)_0%,transparent_70%)] pointer-events-none">
+            </div>
+
+            <div class="relative z-10">
+                <h2 class="text-xl md:text-2xl font-bold text-white leading-snug">
+                    Looking for <span class="text-brand-yellow font-extrabold">something specific?</span>
+                </h2>
+                <p class="text-gray-400 text-sm mt-1">Search directly to find the electronics you need.</p>
+            </div>
+            <div class="relative z-10 flex items-center gap-3 w-full lg:w-auto">
+                <div class="relative flex-1 sm:w-[360px] lg:w-[400px]">
+                    <i
+                        class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base"></i>
+                    <input type="text" placeholder="Cari produk yang ingin kamu cari..."
+                        class="w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-yellow transition" />
+                </div>
+                <button
+                    class="bg-brand-yellow hover:bg-yellow-500 text-brand-dark font-bold py-2.5 px-6 rounded-full text-sm transition shadow-lg flex items-center gap-2 whitespace-nowrap">
+                    Cari Produk <i class="ph ph-arrow-right font-bold"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-[#262628] text-gray-400 py-12 px-6 md:px-12">
+        <div
+            class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 mb-8 border-b border-gray-700 pb-8">
+            <div class="text-center md:text-left">
+                <div class="flex items-center justify-center md:justify-start gap-2 mb-2">
+                    <span class="font-bold text-2xl text-white tracking-wide">LOOT-<span
+                            class="text-brand-yellow">E</span></span>
+                </div>
+                <p class="text-xs">Find Better, Trade Smarter.</p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-6 text-sm">
+                <a href="landing.php" class="hover:text-brand-yellow transition">Home</a>
+                <a href="categories.html" class="text-brand-yellow transition">Categories</a>
+                <a href="landing.php#why-loote" class="hover:text-brand-yellow transition">About</a>
+                <a href="#" class="hover:text-brand-yellow transition">Help</a>
+            </div>
+            <div class="flex gap-4">
+                <a href="#" class="hover:text-white transition"><i class="ph-fill ph-youtube-logo text-2xl"></i></a>
+                <a href="#" class="hover:text-white transition"><i class="ph-fill ph-facebook-logo text-2xl"></i></a>
+                <a href="#" class="hover:text-white transition"><i class="ph-fill ph-instagram-logo text-2xl"></i></a>
+                <a href="#" class="hover:text-white transition"><i class="ph-fill ph-discord-logo text-2xl"></i></a>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between text-xs">
+            <p>&copy; 2026 Loot-E. All rights reserved.</p>
+            <div class="flex gap-4 mt-4 md:mt-0">
+                <a href="#" class="hover:text-white transition">Privacy</a>
+                <a href="#" class="hover:text-white transition">Terms</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // ===== Category Data =====
+        const pcComponents = [
+            { name: 'GPU', icon: 'ph-graphics-card', products: 'Browse Products' },
+            { name: 'CPU', icon: 'ph-cpu', products: 'Browse Products' },
+            { name: 'RAM', icon: 'ph-memory', products: 'Browse Products' },
+            { name: 'Motherboard', icon: 'ph-circuit-board', products: 'Browse Products' },
+            { name: 'Storage', icon: 'ph-hard-drives', products: 'Browse Products' },
+            { name: 'Power Supply', icon: 'ph-lightning', products: 'Browse Products' },
+            { name: 'PC Case', icon: 'ph-desktop-tower', products: 'Browse Products' },
+            { name: 'CPU Cooler', icon: 'ph-fan', products: 'Browse Products' },
+        ];
+
+        const otherElectronics = [
+            { name: 'Laptop', icon: 'ph-laptop', products: 'Browse Products' },
+            { name: 'Smartphone', icon: 'ph-device-mobile', products: 'Browse Products' },
+            { name: 'Monitor', icon: 'ph-monitor', products: 'Browse Products' },
+            { name: 'Headset', icon: 'ph-headphones', products: 'Browse Products' },
+            { name: 'Keyboard', icon: 'ph-keyboard', products: 'Browse Products' },
+            { name: 'Mouse', icon: 'ph-mouse', products: 'Browse Products' },
+            { name: 'Tablet', icon: 'ph-device-tablet', products: 'Browse Products' },
+            { name: 'Accesories', icon: 'ph-bag-simple', products: 'Browse Products' },
+        ];
+
+        // ===== Render Category Cards =====
+        function createCategoryCard(category) {
+            return `
+                <a href="#" class="group relative overflow-hidden bg-white border border-gray-100 rounded-2xl p-5 flex items-center gap-4 transition-all duration-300 hover:border-brand-yellow hover:shadow-[0_8px_30px_rgba(245,183,0,0.12)] hover:-translate-y-1 text-gray-800 category-item cursor-pointer"
+                   data-category="${category.name.toLowerCase()}">
+                    <div class="w-[72px] h-[72px] min-w-[72px] rounded-xl bg-gray-50 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                        <i class="ph ${category.icon} text-3xl text-gray-700 group-hover:text-brand-yellow transition-colors"></i>
+                    </div>
+                    <div class="flex-1 min-w-0 relative z-10">
+                        <h3 class="font-bold text-sm text-gray-900 mb-0.5 group-hover:text-brand-yellow transition-colors">${category.name}</h3>
+                        <p class="text-xs text-gray-400">${category.products}</p>
+                    </div>
+                    <div class="w-9 h-9 min-w-[36px] rounded-full bg-brand-yellow text-white flex items-center justify-center transition-transform duration-300 ml-auto group-hover:translate-x-1 shadow-sm">
+                        <i class="ph ph-arrow-right text-sm font-bold"></i>
+                    </div>
+                </a>
+            `;
+        }
+
+        function renderCategories() {
+            const pcGrid = document.getElementById('pcComponentsGrid');
+            const otherGrid = document.getElementById('otherElectronicsGrid');
+
+            pcGrid.innerHTML = pcComponents.map(cat => createCategoryCard(cat)).join('');
+            otherGrid.innerHTML = otherElectronics.map(cat => createCategoryCard(cat)).join('');
+        }
+
+        // ===== Search Filter =====
+        function initSearch() {
+            const searchInput = document.getElementById('categorySearch');
+
+            searchInput.addEventListener('input', function () {
+                const query = this.value.toLowerCase().trim();
+                const allCards = document.querySelectorAll('.category-item');
+
+                let pcVisible = 0;
+                let otherVisible = 0;
+
+                allCards.forEach(card => {
+                    const category = card.getAttribute('data-category') || '';
+                    const name = card.querySelector('h3')?.textContent?.toLowerCase() || '';
+                    const match = !query || category.includes(query) || name.includes(query);
+
+                    card.style.display = match ? '' : 'none';
+
+                    if (match) {
+                        if (card.closest('#pcComponentsGrid')) pcVisible++;
+                        if (card.closest('#otherElectronicsGrid')) otherVisible++;
+                    }
+                });
+
+                // Toggle empty states using Tailwind's 'hidden' class
+                document.getElementById('pcEmpty').classList.toggle('hidden', pcVisible > 0);
+                document.getElementById('otherEmpty').classList.toggle('hidden', otherVisible > 0);
+            });
+        }
+
+        // ===== Initialize =====
+        document.addEventListener('DOMContentLoaded', function () {
+            renderCategories();
+            initSearch();
+        });
+    </script>
+</body>
+
+</html>

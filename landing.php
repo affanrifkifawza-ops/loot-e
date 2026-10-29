@@ -90,9 +90,9 @@ try {
         </div>
         <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
             <a href="landing.php" class="hover:text-brand-yellow transition">Home</a>
-            <a href="#categories" class="hover:text-brand-yellow transition">Categories</a>
-            <a href="#products" class="hover:text-brand-yellow transition">Products</a>
-            <a href="#why-loote" class="hover:text-brand-yellow transition">About</a>
+            <a href="landing.php" class="hover:text-brand-yellow transition">Categories</a>
+            <a href="landing.php" class="hover:text-brand-yellow transition">About</a>
+            <a href="landing.php" class="hover:text-brand-yellow transition">Help</a>
         </div>
         <!-- Tombol Login & Register (selalu tampil di landing page) -->
         <div class="flex items-center gap-3">
@@ -199,8 +199,8 @@ try {
                     $icon = $categoryIcons[$kat] ?? 'ph-device-mobile';
                     ?>
                     <div
-                        class="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
-                        <div class="h-36 mb-4 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden relative border border-gray-100">
+                        class="bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col group cursor-pointer border border-gray-100">
+                        <div class="h-36 mb-4 bg-gray-50 flex items-center justify-center overflow-hidden relative border border-gray-100">
                             <div class="w-16 h-16 rounded-2xl bg-brand-yellow/10 flex items-center justify-center group-hover:scale-110 transition duration-300">
                                 <i class="ph <?= $icon ?> text-4xl text-brand-dark group-hover:text-brand-yellow transition"></i>
                             </div>
@@ -241,7 +241,7 @@ try {
         </div>
 
         <!-- Banner CTA login untuk pengunjung yang belum login -->
-        <div class="mt-10 bg-brand-dark rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+        <div class="mt-10 bg-brand-dark px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
             <div class="flex items-center gap-3">
                 <i class="ph-fill ph-lock text-brand-yellow text-2xl"></i>
                 <p class="text-white text-sm font-medium">
@@ -251,12 +251,12 @@ try {
             <div class="flex gap-3 shrink-0">
                 <a href="login.php"
                     id="cta-login"
-                    class="bg-brand-yellow text-brand-dark text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-yellow-500 transition shadow">
+                    class="bg-brand-yellow text-brand-dark text-sm font-bold px-5 py-2.5 hover:bg-yellow-500 transition shadow">
                     Login
                 </a>
                 <a href="register.php"
                     id="cta-register"
-                    class="border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow text-sm font-medium px-5 py-2.5 rounded-xl transition">
+                    class="border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow text-sm font-medium px-5 py-2.5 transition">
                     Register
                 </a>
             </div>
@@ -265,7 +265,7 @@ try {
 
     <!-- Why Loot-E -->
     <section id="why-loote" class="max-w-7xl mx-auto px-6 md:px-12 py-10">
-        <div class="bg-white p-8 md:p-12 shadow-sm border border-gray-100 rounded-3xl">
+        <div class="bg-white p-8 md:p-12 shadow-sm border border-gray-100">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">
                 Why Loot-<span class="text-brand-yellow">E</span>?
             </h2>
@@ -316,7 +316,7 @@ try {
     <!-- CTA Section -->
     <section class="max-w-7xl mx-auto px-6 md:px-12 py-10 mb-10">
         <div
-            class="bg-[#303135] p-8 md:p-12 rounded-3xl flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
+            class="bg-[#303135] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
             <div class="relative z-10 w-full md:w-2/3">
                 <p class="text-brand-yellow font-bold text-sm mb-2">
                     Ready to Upgrade?
@@ -331,11 +331,11 @@ try {
             </div>
             <div class="mt-8 md:mt-0 relative z-10 w-full md:w-auto flex flex-col sm:flex-row gap-3">
                 <a href="register.php"
-                    class="bg-brand-yellow hover:bg-yellow-500 text-[#303135] font-bold py-3.5 px-6 rounded-xl transition inline-flex items-center justify-center gap-2 w-full md:w-auto shadow-lg">
+                    class="bg-brand-yellow hover:bg-yellow-500 text-[#303135] font-bold py-3.5 px-6 transition inline-flex items-center justify-center gap-2 w-full md:w-auto shadow-lg">
                     Daftar Sekarang <i class="ph ph-arrow-right font-bold"></i>
                 </a>
                 <a href="login.php"
-                    class="border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow font-bold py-3.5 px-6 rounded-xl transition inline-flex items-center justify-center gap-2 w-full md:w-auto">
+                    class="border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow font-bold py-3.5 px-6 transition inline-flex items-center justify-center gap-2 w-full md:w-auto">
                     Login
                 </a>
             </div>
@@ -355,7 +355,7 @@ try {
             </div>
             <div class="flex flex-wrap justify-center gap-6 text-sm">
                 <a href="landing.php" class="hover:text-brand-yellow transition">Home</a>
-                <a href="#categories" class="hover:text-brand-yellow transition">Categories</a>
+                <a href="categories.html" class="hover:text-brand-yellow transition">Categories</a>
                 <a href="#products" class="hover:text-brand-yellow transition">Products</a>
                 <a href="#why-loote" class="hover:text-brand-yellow transition">About</a>
             </div>
