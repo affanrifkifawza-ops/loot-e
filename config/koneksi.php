@@ -4,7 +4,7 @@
 $host     = 'localhost';
 $user     = 'root';
 $password = '';
-$database = 'db_loote';
+$database = 'loote_db';
 
 try {
     // Membuat koneksi PDO dengan penanganan eror exception dan prepared statements
@@ -32,9 +32,9 @@ try {
  * Fungsi helper untuk mendapatkan objek koneksi $koneksi
  */
 if (!function_exists('getDbConnection')) {
-    function getDbConnection() {
+    function getDbConnection()
+    {
         global $koneksi;
         return $koneksi;
     }
 }
-?>
