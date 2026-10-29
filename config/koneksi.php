@@ -4,7 +4,7 @@
 $host     = 'localhost';
 $user     = 'root';
 $password = '';
-$database = 'loote_db';
+$database = 'db_loote';
 
 try {
     // Membuat koneksi PDO dengan penanganan eror exception dan prepared statements
