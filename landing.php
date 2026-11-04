@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // landing.php - Halaman Landing Publik Loot-E (tanpa wajib login)
 require_once "auth.php";
 
@@ -81,33 +81,7 @@ try {
 
 <body class="bg-[#F4F5F7] font-sans text-gray-800">
     <!-- Navbar (Publik: selalu tampil tombol Login & Register) -->
-    <nav class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
-        <div class="flex items-center gap-2">
-            <a href="landing.php" class="flex items-center gap-2">
-                <img src="assets/logo.png" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
-                <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
-            </a>
-        </div>
-        <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-            <a href="landing.php" class="hover:text-brand-yellow transition">Home</a>
-            <a href="landing.php" class="hover:text-brand-yellow transition">Categories</a>
-            <a href="landing.php" class="hover:text-brand-yellow transition">About</a>
-            <a href="landing.php" class="hover:text-brand-yellow transition">Help</a>
-        </div>
-        <!-- Tombol Login & Register (selalu tampil di landing page) -->
-        <div class="flex items-center gap-3">
-            <a href="login.php"
-                id="btn-login"
-                class="text-xs bg-brand-yellow text-brand-dark px-4 py-2 rounded-lg font-bold hover:bg-yellow-500 transition shadow-sm">
-                Login
-            </a>
-            <a href="register.php"
-                id="btn-register"
-                class="text-xs border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow px-4 py-2 rounded-lg font-medium transition hidden sm:inline-block">
-                Register
-            </a>
-        </div>
-    </nav>
+    <?php $navActivePage = 'landing'; require_once 'components/navbar.php'; ?>
 
     <!-- Hero Section -->
     <section

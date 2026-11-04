@@ -2,6 +2,12 @@
 // categories.php - Halaman Explore Categories Loot-E
 require_once "auth.php";
 
+// Wajib login untuk mengakses halaman ini
+if (!isLoggedIn()) {
+    header("Location: login.php?redirect=categories.php");
+    exit;
+}
+
 $currentUser = getCurrentUser();
 
 // ===== Search Filter PHP =====
@@ -98,46 +104,7 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
 
 <body class="bg-[#F4F5F7] font-sans text-gray-800">
     <!-- Navbar -->
-    <nav class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
-        <div class="flex items-center gap-2">
-            <a href="index.php" class="flex items-center gap-2">
-                <img src="assets/logo.png" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
-                <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
-            </a>
-        </div>
-        <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-            <a href="index.php" class="hover:text-brand-yellow transition">Home</a>
-            <a href="categories.php" class="text-brand-yellow transition font-semibold">Categories</a>
-            <a href="landing.php#why-loote" class="hover:text-brand-yellow transition">About</a>
-            <a href="#" class="hover:text-brand-yellow transition">Help</a>
-        </div>
-        <div class="flex items-center gap-3">
-            <?php if ($currentUser): ?>
-                <div class="flex items-center gap-3 border-l border-gray-600 pl-4">
-                    <div class="w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-bold text-xs uppercase shadow-sm">
-                        <?= htmlspecialchars(strtoupper(substr($currentUser['nama'], 0, 2))) ?>
-                    </div>
-                    <div class="hidden sm:flex flex-col text-left">
-                        <span class="text-xs font-bold text-white leading-tight">Halo, <?= htmlspecialchars($currentUser['nama']) ?>!</span>
-                    </div>
-                    <a href="auth.php?action=logout"
-                        class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-lg font-medium transition ml-1"
-                        title="Keluar dari akun">
-                        Keluar
-                    </a>
-                </div>
-            <?php else: ?>
-                <a href="login.php" id="btn-login"
-                    class="text-xs bg-brand-yellow text-brand-dark px-4 py-2 rounded-lg font-bold hover:bg-yellow-500 transition shadow-sm">
-                    Login
-                </a>
-                <a href="register.php" id="btn-register"
-                    class="text-xs border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow px-4 py-2 rounded-lg font-medium transition hidden sm:inline-block">
-                    Register
-                </a>
-            <?php endif; ?>
-        </div>
-    </nav>
+    <?php $navActivePage = 'categories'; require_once 'components/navbar.php'; ?>
 
     <!-- Hero Section -->
     <section class="relative overflow-hidden">
@@ -312,20 +279,6 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
         </div>
     </footer>
 
-    <!-- JavaScript: auto-submit form saat user mengetik (debounce 400ms) -->
-    <script>
-        (function() {
-            const input = document.getElementById('categorySearch');
-            if (!input) return;
-            let timer;
-            input.addEventListener('input', function() {
-                clearTimeout(timer);
-                timer = setTimeout(function() {
-                    input.closest('form').submit();
-                }, 400);
-            });
-        })();
-    </script>
 </body>
 
 </html>

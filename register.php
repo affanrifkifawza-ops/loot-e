@@ -1,10 +1,16 @@
-<?php
+﻿<?php
 // register.php - Pendaftaran Pengguna Baru Loot-E
 require_once "auth.php";
 
-// Jika sudah login, langsung arahkan ke beranda
+$redirect = $_GET["redirect"] ?? $_POST["redirect"] ?? "index.php";
+$allowedRedirects = ["index.php", "categories.php"];
+if (!in_array($redirect, $allowedRedirects)) {
+    $redirect = "index.php";
+}
+
+// Jika sudah login, langsung arahkan ke tujuan
 if (isLoggedIn()) {
-    header("Location: index.php");
+    header("Location: " . $redirect);
     exit;
 }
 
@@ -49,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['email']   = $email;
                 $_SESSION['peran']   = $peran;
 
-                header("Location: index.php");
+                header("Location: " . $redirect);
                 exit;
             }
         } catch (PDOException $e) {
@@ -129,7 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
 
-        <form action="register.php" method="POST" class="space-y-4">
+        <form action="register.php<?= $redirect !== 'index.php' ? '?redirect=' . urlencode($redirect) : '' ?>" method="POST" class="space-y-4">
+          <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>" />
           <!-- Input Nama Lengkap -->
           <div>
             <label for="nama_lengkap" class="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap</label>
@@ -202,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Tautan Login -->
         <p class="text-center text-sm text-gray-500 mt-6">
           Sudah punya akun?
-          <a href="login.php" class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Masuk</a>
+          <a href="login.php<?= $redirect !== 'index.php' ? '?redirect=' . urlencode($redirect) : '' ?>" class="font-bold text-brand-yellow hover:text-yellow-600 hover:underline transition ml-1">Masuk</a>
         </p>
       </div>
 

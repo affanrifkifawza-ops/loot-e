@@ -1,44 +1,54 @@
-<?php
+﻿<?php
 // login.php - Login Pengguna Loot-E
 require_once "auth.php";
 
-// Jika sudah login, langsung arahkan ke beranda
-if (isLoggedIn()) {
-    header("Location: index.php");
-    exit;
+$redirect = $_GET["redirect"] ?? $_POST["redirect"] ?? "index.php";
+$allowedRedirects = ["index.php", "categories.php"];
+if (!in_array($redirect, $allowedRedirects)) {
+  $redirect = "index.php";
 }
 
-$error = '';
+// Jika sudah login, langsung arahkan ke tujuan
+if (isLoggedIn()) {
+  header("Location: " . $redirect);
+  exit;
+}
+
+$error = "";
+$info = "";
+if ($redirect === "categories.php" && $_SERVER["REQUEST_METHOD"] !== "POST") {
+  $info = "Silakan login terlebih dahulu untuk mengakses halaman Kategori.";
+}
 
 // Proses saat form disubmit via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email    = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
-    $password = $_POST['password'] ?? '';
+  $email    = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+  $password = $_POST['password'] ?? '';
 
-    if (!$email || empty($password)) {
-        $error = "Email valid dan kata sandi wajib diisi.";
-    } else {
-        try {
-            $db   = getDbConnection();
-            $stmt = $db->prepare("SELECT id, nama, email, password, peran FROM pengguna WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
+  if (!$email || empty($password)) {
+    $error = "Email valid dan kata sandi wajib diisi.";
+  } else {
+    try {
+      $db   = getDbConnection();
+      $stmt = $db->prepare("SELECT id, nama, email, password, peran FROM pengguna WHERE email = ?");
+      $stmt->execute([$email]);
+      $user = $stmt->fetch();
 
-            if (!$user || !password_verify($password, $user['password'])) {
-                $error = "Email atau kata sandi salah. Silakan coba lagi.";
-            } else {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['nama']    = $user['nama'];
-                $_SESSION['email']   = $user['email'];
-                $_SESSION['peran']   = $user['peran'];
+      if (!$user || !password_verify($password, $user['password'])) {
+        $error = "Email atau kata sandi salah. Silakan coba lagi.";
+      } else {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['nama']    = $user['nama'];
+        $_SESSION['email']   = $user['email'];
+        $_SESSION['peran']   = $user['peran'];
 
-                header("Location: index.php");
-                exit;
-            }
-        } catch (PDOException $e) {
-            $error = "Terjadi gangguan sistem koneksi. Silakan coba lagi.";
-        }
+        header("Location: " . $redirect);
+        exit;
+      }
+    } catch (PDOException $e) {
+      $error = "Terjadi gangguan sistem koneksi. Silakan coba lagi.";
     }
+  }
 }
 ?>
 <!doctype html>
@@ -57,7 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ["Inter", "sans-serif"] },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"]
+          },
           colors: {
             brand: {
               yellow: "#F5B700",
@@ -184,9 +196,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       var inp = document.getElementById(fieldId);
       var isPassword = inp.type === 'password';
       inp.type = isPassword ? 'text' : 'password';
-      btn.innerHTML = isPassword
-        ? '<i class="ph ph-eye-slash text-lg"></i>'
-        : '<i class="ph ph-eye text-lg"></i>';
+      btn.innerHTML = isPassword ?
+        '<i class="ph ph-eye-slash text-lg"></i>' :
+        '<i class="ph ph-eye text-lg"></i>';
     }
   </script>
 </body>

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // index.php - Beranda Loot-E
 require_once "auth.php";
 
@@ -86,53 +86,7 @@ try {
 
 <body class="bg-[#F4F5F7] font-sans text-gray-800">
     <!-- Navbar -->
-    <nav class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
-        <div class="flex items-center gap-2">
-            <a href="index.php" class="flex items-center gap-2">
-                <img src="assets/logo.png" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
-                <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
-            </a>
-        </div>
-        <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-            <a href="index.php" class="hover:text-brand-yellow transition">Home</a>
-            <a href="categories.php" class="hover:text-brand-yellow transition">Categories</a>
-            <a href="#products" class="hover:text-brand-yellow transition">Products</a>
-            <a href="#why-loote" class="hover:text-brand-yellow transition">About</a>
-        </div>
-        <div class="flex items-center gap-5">
-            <i class="ph ph-bell text-xl cursor-pointer hover:text-brand-yellow transition"></i>
-            <i class="ph ph-shopping-cart text-xl cursor-pointer hover:text-brand-yellow transition"></i>
-            <div id="userNavContainer" class="flex items-center gap-3 border-l border-gray-600 pl-5">
-                <?php if ($currentUser): ?>
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-bold text-xs uppercase shadow-sm">
-                            <?= htmlspecialchars(strtoupper(substr($currentUser['nama'], 0, 2))) ?>
-                        </div>
-                        <div class="hidden sm:flex flex-col text-left">
-                            <span class="text-xs font-bold text-white leading-tight">Halo,
-                                <?= htmlspecialchars($currentUser['nama']) ?>!
-                            </span>
-
-                        </div>
-                        <a href="auth.php?action=logout"
-                            class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-lg font-medium transition ml-1"
-                            title="Keluar dari akun">
-                            Keluar
-                        </a>
-                    </div>
-                <?php else: ?>
-                    <a href="login.php"
-                        class="text-xs bg-brand-yellow text-brand-dark px-3.5 py-1.5 rounded-lg font-bold hover:bg-yellow-500 transition">
-                        Masuk
-                    </a>
-                    <a href="register.php"
-                        class="text-xs text-gray-300 hover:text-white px-2 py-1.5 rounded-lg font-medium transition hidden sm:inline">
-                        Daftar
-                    </a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </nav>
+    <?php $navActivePage = 'home'; require_once 'components/navbar.php'; ?>
 
     <!-- Hero Section -->
     <section
