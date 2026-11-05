@@ -27,7 +27,7 @@ function _navLinkClass(string $page, string $active): string
         : 'hover:text-brand-yellow transition';
 }
 ?>
-<nav class="bg-brand-dark text-white py-3 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
+<nav class="bg-brand-dark text-white py-4 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
 
     <!-- Logo -->
     <div class="flex items-center gap-2">
