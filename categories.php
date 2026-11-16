@@ -59,10 +59,10 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Loot-E | Explore Categories</title>
     <meta name="description"
-        content="Jelajahi kategori elektronik di Loot-E — PC Components, Laptop, Smartphone, Monitor, dan lainnya." />
+        content="Jelajahi kategori elektronik di Loot-E: PC Components, Laptop, Smartphone, Monitor, dan lainnya." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet" />
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -71,14 +71,17 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ["Inter", "sans-serif"],
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                        hd: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
                     },
                     colors: {
+                        ye: '#FFC914',
+                        ch: '#272727',
                         brand: {
-                            yellow: "#F5B700",
-                            dark: "#303135",
-                            footer: "#383838",
-                            bg: "#F8F9FA",
+                            yellow: '#FFC914',
+                            dark: '#272727',
+                            footer: '#272727',
+                            bg: '#F4F5F7',
                         },
                     },
                     keyframes: {
@@ -104,7 +107,8 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
 
 <body class="bg-[#F4F5F7] font-sans text-gray-800">
     <!-- Navbar -->
-    <?php $navActivePage = 'categories'; require_once 'components/navbar.php'; ?>
+    <?php $navActivePage = 'categories';
+    require_once 'components/navbar.php'; ?>
 
     <!-- Hero Section -->
     <section class="relative overflow-hidden">
@@ -161,7 +165,7 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="pcComponentsGrid">
             <?php foreach ($pcComponents as $cat): ?>
                 <a href="index.php?kategori=<?= urlencode($cat['slug']) ?>"
-                    class="group relative overflow-hidden bg-white border border-gray-100 rounded-2xl p-5 flex items-center gap-4 transition-all duration-300 hover:border-brand-yellow hover:shadow-[0_8px_30px_rgba(245,183,0,0.12)] hover:-translate-y-1 text-gray-800">
+                    class="group relative overflow-hidden bg-white border border-gray-100 p-5 flex items-center gap-4 transition-all duration-300 hover:border-brand-yellow hover:shadow-[0_8px_30px_rgba(245,183,0,0.12)] hover:-translate-y-1 text-gray-800">
                     <div class="w-[72px] h-[72px] min-w-[72px] rounded-xl bg-gray-50 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                         <i class="ph <?= htmlspecialchars($cat['icon']) ?> text-3xl text-gray-700 group-hover:text-brand-yellow transition-colors"></i>
                     </div>
@@ -195,7 +199,7 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="otherElectronicsGrid">
             <?php foreach ($otherElectronics as $cat): ?>
                 <a href="index.php?kategori=<?= urlencode($cat['slug']) ?>"
-                    class="group relative overflow-hidden bg-white border border-gray-100 rounded-2xl p-5 flex items-center gap-4 transition-all duration-300 hover:border-brand-yellow hover:shadow-[0_8px_30px_rgba(245,183,0,0.12)] hover:-translate-y-1 text-gray-800">
+                    class="group relative overflow-hidden bg-white border border-gray-100 p-5 flex items-center gap-4 transition-all duration-300 hover:border-brand-yellow hover:shadow-[0_8px_30px_rgba(245,183,0,0.12)] hover:-translate-y-1 text-gray-800">
                     <div class="w-[72px] h-[72px] min-w-[72px] rounded-xl bg-gray-50 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                         <i class="ph <?= htmlspecialchars($cat['icon']) ?> text-3xl text-gray-700 group-hover:text-brand-yellow transition-colors"></i>
                     </div>
@@ -221,10 +225,10 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
 
     <!-- CTA Search Banner -->
     <section class="max-w-7xl mx-auto px-6 md:px-12 pb-16">
-        <div class="relative overflow-hidden bg-gradient-to-br from-[#303135] via-[#404045] to-[#303135] px-8 md:px-12 py-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+        <div class="relative overflow-hidden bg-[#272727] px-8 md:px-12 py-10 flex flex-col lg:flex-row items-center justify-between gap-8 shadow-sm">
             <!-- Decorative Glow Elements -->
-            <div class="absolute -top-1/2 -left-1/4 w-96 h-96 rounded-full bg-[radial-gradient(circle,rgba(245,183,0,0.08)_0%,transparent_70%)] pointer-events-none"></div>
-            <div class="absolute -bottom-1/2 -right-1/4 w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(245,183,0,0.06)_0%,transparent_70%)] pointer-events-none"></div>
+            <div class="absolute -top-1/2 -left-1/4 w-96 h-96 rounded-full bg-[radial-gradient(circle,rgba(255,201,20,0.08)_0%,transparent_70%)] pointer-events-none"></div>
+            <div class="absolute -bottom-1/2 -right-1/4 w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(255,201,20,0.06)_0%,transparent_70%)] pointer-events-none"></div>
 
             <div class="relative z-10">
                 <h2 class="text-xl md:text-2xl font-bold text-white leading-snug">
