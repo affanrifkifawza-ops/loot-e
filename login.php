@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // login.php - Login Pengguna Loot-E
 require_once "auth.php";
 
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Login - Loot-E</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -68,13 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       theme: {
         extend: {
           fontFamily: {
-            sans: ["Inter", "sans-serif"]
+            sans: ['"Plus Jakarta Sans"', 'sans-serif']
           },
           colors: {
             brand: {
-              yellow: "#F5B700",
-              dark: "#303135",
-              footer: "#383838",
+              yellow: "#FFC914",
+              dark: "#272727",
+              footer: "#272727",
               bg: "#F8F9FA",
               accent: "#16A34A",
             },
@@ -92,9 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10">
       <!-- Header Brand -->
       <div>
-        <a href="index.php" class="inline-flex items-center gap-3 group">
+        <a href="" class="inline-flex items-center gap-3 group">
           <img src="assets/logo.png" alt="Logo Loot - E"
-            class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm transition group-hover:scale-105" />
+            class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm" />
           <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span class="text-brand-yellow">E</span></span>
         </a>
       </div>
@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-gray-100 text-xs text-gray-400">
         <span>&copy; <?= date('Y') ?> Loot-E. All rights reserved.</span>
         <div class="flex gap-4">
-          <a href="index.php" class="hover:text-gray-600 transition">Beranda</a>
+          <a href="landingpage.php" class="hover:text-gray-600 transition">Beranda</a>
         </div>
       </div>
     </div>

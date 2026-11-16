@@ -5,13 +5,13 @@ require_once "auth.php";
 $redirect = $_GET["redirect"] ?? $_POST["redirect"] ?? "index.php";
 $allowedRedirects = ["index.php", "categories.php"];
 if (!in_array($redirect, $allowedRedirects)) {
-    $redirect = "index.php";
+  $redirect = "index.php";
 }
 
 // Jika sudah login, langsung arahkan ke tujuan
 if (isLoggedIn()) {
-    header("Location: " . $redirect);
-    exit;
+  header("Location: " . $redirect);
+  exit;
 }
 
 $errors = [];
@@ -19,49 +19,49 @@ $errors = [];
 // Proses saat form disubmit via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $nama            = trim($_POST['nama_lengkap'] ?? '');
-    $email           = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
-    $password        = $_POST['password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
-    $peran           = trim($_POST['peran'] ?? 'buyer');
+  $nama            = trim($_POST['nama_lengkap'] ?? '');
+  $email           = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+  $password        = $_POST['password'] ?? '';
+  $confirmPassword = $_POST['confirm_password'] ?? '';
+  $peran           = trim($_POST['peran'] ?? 'buyer');
 
-    // Validasi
-    if (empty($nama))           $errors[] = "Nama lengkap wajib diisi.";
-    if (!$email)                $errors[] = "Format alamat email tidak valid.";
-    if (strlen($password) < 8) $errors[] = "Kata sandi minimal harus 8 karakter.";
-    if ($password !== $confirmPassword) $errors[] = "Konfirmasi kata sandi tidak cocok.";
+  // Validasi
+  if (empty($nama))           $errors[] = "Nama lengkap wajib diisi.";
+  if (!$email)                $errors[] = "Format alamat email tidak valid.";
+  if (strlen($password) < 8) $errors[] = "Kata sandi minimal harus 8 karakter.";
+  if ($password !== $confirmPassword) $errors[] = "Konfirmasi kata sandi tidak cocok.";
 
-    $validPeran = ['buyer', 'seller', 'admin'];
-    if (!in_array($peran, $validPeran)) $peran = 'buyer';
+  $validPeran = ['buyer', 'seller', 'admin'];
+  if (!in_array($peran, $validPeran)) $peran = 'buyer';
 
-    if (empty($errors)) {
-        try {
-            $db = getDbConnection();
+  if (empty($errors)) {
+    try {
+      $db = getDbConnection();
 
-            $stmtCheck = $db->prepare("SELECT id FROM pengguna WHERE email = ?");
-            $stmtCheck->execute([$email]);
-            if ($stmtCheck->fetch()) {
-                $errors[] = "Email tersebut sudah terdaftar. Silakan gunakan email lain atau langsung masuk.";
-            } else {
-                $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-                $id = generateUuidV4();
+      $stmtCheck = $db->prepare("SELECT id FROM pengguna WHERE email = ?");
+      $stmtCheck->execute([$email]);
+      if ($stmtCheck->fetch()) {
+        $errors[] = "Email tersebut sudah terdaftar. Silakan gunakan email lain atau langsung masuk.";
+      } else {
+        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        $id = generateUuidV4();
 
-                $stmtInsert = $db->prepare("INSERT INTO pengguna (id, nama, email, password, peran) VALUES (?, ?, ?, ?, ?)");
-                $stmtInsert->execute([$id, $nama, $email, $hashedPassword, $peran]);
+        $stmtInsert = $db->prepare("INSERT INTO pengguna (id, nama, email, password, peran) VALUES (?, ?, ?, ?, ?)");
+        $stmtInsert->execute([$id, $nama, $email, $hashedPassword, $peran]);
 
-                // Login otomatis setelah register
-                $_SESSION['user_id'] = $id;
-                $_SESSION['nama']    = $nama;
-                $_SESSION['email']   = $email;
-                $_SESSION['peran']   = $peran;
+        // Login otomatis setelah register
+        $_SESSION['user_id'] = $id;
+        $_SESSION['nama']    = $nama;
+        $_SESSION['email']   = $email;
+        $_SESSION['peran']   = $peran;
 
-                header("Location: " . $redirect);
-                exit;
-            }
-        } catch (PDOException $e) {
-            $errors[] = "Terjadi gangguan database. Silakan coba lagi.";
-        }
+        header("Location: " . $redirect);
+        exit;
+      }
+    } catch (PDOException $e) {
+      $errors[] = "Terjadi gangguan database. Silakan coba lagi.";
     }
+  }
 }
 ?>
 <!doctype html>
@@ -73,19 +73,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Daftar Akun - Loot-E</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ["Inter", "sans-serif"] },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif']
+          },
           colors: {
             brand: {
-              yellow: "#F5B700",
-              dark: "#303135",
-              footer: "#383838",
+              yellow: "#FFC914",
+              dark: "#272727",
+              footer: "#272727",
               bg: "#F8F9FA",
               accent: "#16A34A",
             },
@@ -94,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       },
     };
   </script>
-  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body class="bg-[#F8F9FA] font-sans antialiased text-gray-900 min-h-screen">
@@ -103,9 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10 overflow-y-auto">
       <!-- Header Brand -->
       <div>
-        <a href="index.php" class="inline-flex items-center gap-3 group">
+        <a href="" class="inline-flex items-center gap-3 group">
           <img src="assets/logo.png" alt="Logo Loot - E"
-            class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm transition group-hover:scale-105" />
+            class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm" />
           <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span class="text-brand-yellow">E</span></span>
         </a>
       </div>
@@ -217,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-gray-100 text-xs text-gray-400">
         <span>&copy; <?= date('Y') ?> Loot-E. All rights reserved.</span>
         <div class="flex gap-4">
-          <a href="index.php" class="hover:text-gray-600 transition">Beranda</a>
+          <a href="landingpage.php" class="hover:text-gray-600 transition">Beranda</a>
         </div>
       </div>
     </div>
@@ -238,9 +239,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       var inp = document.getElementById(fieldId);
       var isPassword = inp.type === 'password';
       inp.type = isPassword ? 'text' : 'password';
-      btn.innerHTML = isPassword
-        ? '<i class="ph ph-eye-slash text-lg"></i>'
-        : '<i class="ph ph-eye text-lg"></i>';
+      btn.innerHTML = isPassword ?
+        '<i class="ph ph-eye-slash text-lg"></i>' :
+        '<i class="ph ph-eye text-lg"></i>';
     }
   </script>
 </body>
