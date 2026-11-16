@@ -29,7 +29,7 @@ $navActivePage = 'help';
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -41,14 +41,17 @@ $navActivePage = 'help';
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ["Plus Jakarta Sans", "Inter", "sans-serif"],
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                        hd: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
                     },
                     colors: {
+                        ye: '#FFC914',
+                        ch: '#272727',
                         brand: {
-                            yellow: "#F5B700",
-                            dark: "#303135",
-                            footer: "#383838",
-                            bg: "#F8F9FA",
+                            yellow: '#FFC914',
+                            dark: '#272727',
+                            footer: '#272727',
+                            bg: '#F8F9FA',
                         },
                     },
                 },
@@ -66,7 +69,7 @@ $navActivePage = 'help';
         }
 
         body {
-            font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+            font-family: "Plus Jakarta Sans", sans-serif;
         }
 
         button,
