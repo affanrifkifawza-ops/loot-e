@@ -1,13 +1,15 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) { @session_start(); }
+if (session_status() === PHP_SESSION_NONE) {
+  @session_start();
+}
 $currentUser = null;
 if (isset($_SESSION['user_id'])) {
-    $currentUser = [
-        'id'    => $_SESSION['user_id'],
-        'nama'  => $_SESSION['nama']  ?? 'Pengguna',
-        'email' => $_SESSION['email'] ?? '',
-        'peran' => $_SESSION['peran'] ?? 'buyer',
-    ];
+  $currentUser = [
+    'id'    => $_SESSION['user_id'],
+    'nama'  => $_SESSION['nama']  ?? 'Pengguna',
+    'email' => $_SESSION['email'] ?? '',
+    'peran' => $_SESSION['peran'] ?? 'buyer',
+  ];
 }
 $navActivePage = 'landing';
 ?>
@@ -17,18 +19,37 @@ $navActivePage = 'landing';
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Loot-E – Temukan Lebih Baik. Transaksi Lebih Cerdas.</title>
+  <title>Loot-E - Temukan Lebih Baik. Transaksi Lebih Cerdas.</title>
   <link
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <script>tailwind.config = { theme: { extend: { colors: { ye: '#FFC914', ch: '#1f1e1e', brand: { yellow: '#FFC914', dark: '#1f1e1e' } }, fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'], hd: ['"Space Grotesk"', '"Plus Jakarta Sans"', 'sans-serif'] } } } }</script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ye: '#FFC914',
+            ch: '#272727',
+            brand: {
+              yellow: '#FFC914',
+              dark: '#272727'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            hd: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
   <style>
     :root {
       --lt: #ffffff;
       --card: #F4F4F4;
-      --ink: #1f1e1e;
+      --ink: #272727;
       --mute: #8a8a8a;
       --line: #e3e3e3;
       box-sizing: border-box;
@@ -38,7 +59,7 @@ $navActivePage = 'landing';
 
     @media(prefers-color-scheme:dark) {
       :root:not([data-theme="light"]) {
-        --lt: #1f1e1e;
+        --lt: #272727;
         --card: #262626;
         --ink: #f1f1f1;
         --mute: #a0a0a0;
@@ -48,7 +69,7 @@ $navActivePage = 'landing';
     }
 
     :root[data-theme="dark"] {
-      --lt: #1f1e1e;
+      --lt: #272727;
       --card: #262626;
       --ink: #f1f1f1;
       --mute: #a0a0a0;
@@ -66,7 +87,7 @@ $navActivePage = 'landing';
       position: fixed;
       inset: 0 0 auto;
       height: env(safe-area-inset-top, 0px);
-      background: #1f1e1e;
+      background: #272727;
       z-index: 60
     }
 
@@ -92,7 +113,7 @@ $navActivePage = 'landing';
 
   <!-- HERO -->
   <section
-    class="relative flex min-h-[580px] md:min-h-[640px] lg:min-h-[700px] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#1f1e1e] to-[#141414] text-white">
+    class="relative flex min-h-[580px] md:min-h-[640px] lg:min-h-[700px] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#272727] to-[#1a1a1a] text-white">
     <!-- Gambar Hero Responsif Langsung di HTML -->
     <div class="absolute inset-0 h-full w-full overflow-hidden">
       <img src="./assets/landingimage.png" alt="Loot-E Electronics Marketplace Hero"
@@ -120,7 +141,7 @@ $navActivePage = 'landing';
       </p>
       <div class="mt-7 flex flex-wrap gap-3">
         <a href="#produk"
-          class="bg-ye px-6 py-3 text-xs font-bold text-[#1f1e1e] shadow-lg hover:brightness-95 transition">
+          class="bg-ye px-6 py-3 text-xs font-bold text-[#272727] shadow-lg hover:brightness-95 transition">
           Jelajahi Marketplace
         </a>
         <a href="<?php echo $currentUser ? 'index.php' : 'login.php'; ?>"
@@ -132,7 +153,7 @@ $navActivePage = 'landing';
 
     <!-- Fitur Bar di Bagian Bawah Hero -->
     <div
-      class="relative z-10 mx-auto grid w-full max-w-[1200px] grid-cols-1 rounded-t-[50px] md:rounded-t-[30px] bg-ch/95 backdrop-blur-sm sm:grid-cols-2 lg:grid-cols-4 border-t border-white/10 shadow-2xl">
+      class="relative z-10 mx-auto grid w-full max-w-[1200px] grid-cols-1 rounded-t-[33px] md:rounded-t-[30px] bg-ch/95 backdrop-blur-sm sm:grid-cols-2 lg:grid-cols-4 border-t border-white/10 shadow-2xl">
       <div class="flex items-center gap-3 p-4 lg:px-6"><i data-i="shield" class="h-5 w-5 shrink-0 text-ye"></i>
         <p class="text-[11px]"><b class="block font-semibold">Rekening Bersama</b><span class="text-ye">Proteksi dana
             100% aman</span></p>
@@ -275,7 +296,7 @@ $navActivePage = 'landing';
         </article>
       </div>
       <a href="<?php echo $currentUser ? 'index.php' : 'login.php'; ?>"
-        class="mt-6 inline-flex items-center gap-2 bg-ye px-5 py-2.5 text-xs font-bold text-[#1f1e1e] hover:brightness-95">Lihat
+        class="mt-6 inline-flex items-center gap-2 bg-ye px-5 py-2.5 text-xs font-bold text-[#272727] hover:brightness-95">Lihat
         Semua Produk <i data-i="arrow" class="h-4 w-4"></i></a>
     </div>
   </section>
@@ -305,7 +326,7 @@ $navActivePage = 'landing';
               </div>
             </div>
             <div class="mt-5 flex items-center justify-between"><b class="text-sm">Rp 9.200.000</b><span
-                class="bg-ye px-2.5 py-1 text-[10px] font-semibold text-[#1f1e1e]">Beli Langsung</span></div>
+                class="bg-ye px-2.5 py-1 text-[10px] font-semibold text-[#272727]">Beli Langsung</span></div>
           </div>
           <p class="mt-5 flex-1 text-[11px] leading-relaxed">Temukan perangkat elektronik yang kamu butuhkan atau jual
             barang yang sudah tidak digunakan dengan sistem pembayaran terlindungi.</p>
@@ -373,7 +394,7 @@ $navActivePage = 'landing';
                 <p class="font-normal text-[var(--mute)]">Estimasi Rp 340.000</p>
               </div>
               <span
-                class="absolute left-1/2 top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-ye text-[#1f1e1e]"><i
+                class="absolute left-1/2 top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-ye text-[#272727]"><i
                   data-i="swap" class="h-4 w-4"></i></span>
             </div>
             <p class="mt-3 bg-[var(--lt)] py-1.5 text-center text-[10px] font-semibold text-[var(--mute)]">
@@ -406,7 +427,7 @@ $navActivePage = 'landing';
             <div class="flex justify-between"><span>Terendah: Rp 5.8M</span><span>Tertinggi: Rp 6.5M</span></div>
             <div class="relative mt-2 h-2 rounded-full bg-[var(--line)]"><span
                 class="absolute inset-y-0 left-[12%] right-[10%] bg-ye"></span><span
-                class="absolute -inset-y-0.5 left-[52%] w-1 bg-[#1f1e1e]"></span></div>
+                class="absolute -inset-y-0.5 left-[52%] w-1 bg-[#272727]"></span></div>
           </div>
           <div class="mt-2 flex items-center justify-between bg-[var(--lt)] px-3 py-2.5 text-[10px]"><span
               class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-ye"></span>Nilai Wajar
@@ -522,7 +543,7 @@ $navActivePage = 'landing';
       </div>
       <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0 relative z-10">
         <a href="register.php"
-          class="inline-flex items-center justify-center gap-2 bg-ye px-6 py-3.5 text-xs font-bold text-[#1f1e1e] shadow-lg hover:brightness-95 transition w-full sm:w-auto">
+          class="inline-flex items-center justify-center gap-2 bg-ye px-6 py-3.5 text-xs font-bold text-[#272727] shadow-lg hover:brightness-95 transition w-full sm:w-auto">
           Daftar Sekarang <i class="ph ph-arrow-right font-bold text-sm"></i>
         </a>
         <a href="login.php"
@@ -537,14 +558,18 @@ $navActivePage = 'landing';
   <?php require_once 'components/footer.php'; ?>
 
   <script>
-    (function () {
+    (function() {
       var ICON = {
-        menu: 'M4 7h16M4 12h16M4 17h16', arrow: 'M5 12h14M13 6l6 6-6 6',
+        menu: 'M4 7h16M4 12h16M4 17h16',
+        arrow: 'M5 12h14M13 6l6 6-6 6',
         shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
         cshield: 'F:M12 2l9 3v7c0 5-4 8.5-9 10-5-1.5-9-5-9-10V5zM8.5 12l2.5 2.5 4.5-5',
-        swap: 'M7 7h12l-3-3M17 17H5l3 3', sliders: 'M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4',
-        chart: 'M3 17l6-6 4 4 8-8M15 7h6v6', bag: 'M6 7h12l1 13H5zM9 7a3 3 0 016 0',
-        check: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 12l3 3 5-6', tag: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 12l3 3 5-6',
+        swap: 'M7 7h12l-3-3M17 17H5l3 3',
+        sliders: 'M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4',
+        chart: 'M3 17l6-6 4 4 8-8M15 7h6v6',
+        bag: 'M6 7h12l1 13H5zM9 7a3 3 0 016 0',
+        check: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 12l3 3 5-6',
+        tag: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 12l3 3 5-6',
         clock: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2',
         truck: 'M3 6h11v10H3zM14 9h4l3 3v4h-7M7 19.5h.01M17 19.5h.01',
         star: 'F:M12 2l3 6.5 7 .8-5.2 4.8 1.5 7-6.3-3.6L5.7 21l1.5-7L2 9.3l7-.8z',
@@ -557,9 +582,12 @@ $navActivePage = 'landing';
         ig: 'M4 8a4 4 0 014-4h8a4 4 0 014 4v8a4 4 0 01-4 4H8a4 4 0 01-4-4zM12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zM17 7h.01',
         dc: 'M7 6c3-1.5 7-1.5 10 0l2 10c-2 1.8-4 2.5-7 2.5S7 17.8 5 16zM9 12h.01M15 12h.01'
       };
+
       function icons(root) {
-        root.querySelectorAll('[data-i]').forEach(function (e) {
-          var d = ICON[e.dataset.i] || '', f = d.indexOf('F:') === 0; if (f) d = d.slice(2);
+        root.querySelectorAll('[data-i]').forEach(function(e) {
+          var d = ICON[e.dataset.i] || '',
+            f = d.indexOf('F:') === 0;
+          if (f) d = d.slice(2);
           e.innerHTML = '<svg viewBox="0 0 24 24" class="h-full w-full" fill="' + (f ? 'currentColor' : 'none') + '" stroke="' + (f ? 'none' : 'currentColor') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>';
         });
       }
