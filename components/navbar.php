@@ -4,7 +4,7 @@
  * components/navbar.php - Komponen Navbar Loot-E
  *
  * Cara pakai:
- *   $navActivePage = 'home' | 'categories' | 'landing'; // opsional, default ''
+ *   $navActivePage = 'home' | 'categories' | 'about' | 'help' | 'landing'; // opsional, default ''
  *   require_once 'components/navbar.php';
  *
  * Variabel yang digunakan (diambil dari scope pemanggil):
@@ -20,35 +20,38 @@ $_activePage    = $navActivePage ?? '';
  * Helper: tentukan class link navbar
  * Link aktif → kuning & semibold | tidak aktif → abu hover kuning
  */
-function _navLinkClass(string $page, string $active): string
-{
-    return $page === $active
-        ? 'text-brand-yellow font-semibold transition'
-        : 'hover:text-brand-yellow transition';
+if (!function_exists('_navLinkClass')) {
+    function _navLinkClass(string $page, string $active): string
+    {
+        return $page === $active
+            ? 'text-brand-yellow font-semibold transition'
+            : 'hover:text-brand-yellow transition';
+    }
 }
 ?>
 <nav class="bg-brand-dark text-white py-4 px-6 md:px-12 flex justify-between items-center sticky top-0 z-50 shadow-md">
 
     <!-- Logo -->
     <div class="flex items-center gap-2">
-        <a href="<?= $_navUser ? 'index.php' : 'landing.php' ?>" class="flex items-center gap-2">
+        <a href="<?= $_navUser ? 'index.php' : 'landingpage.php' ?>" class="flex items-center gap-2">
             <img src="assets/logo.png" alt="Logo Loot-E" class="h-8 w-8 rounded-full object-cover shadow-sm" />
             <span class="font-bold text-xl tracking-wide">Loot-<span class="text-brand-yellow">E</span></span>
         </a>
     </div>
 
-    <!-- Menu Navigasi -->
+    <!-- Menu Navigasi (Desktop) -->
     <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-        <a href="<?= $_navUser ? 'index.php' : 'landing.php' ?>"
+        <a href="<?= $_navUser ? 'index.php' : 'landingpage.php' ?>"
             class="<?= _navLinkClass('home', $_activePage) ?>">Home</a>
         <a href="categories.php"
             class="<?= _navLinkClass('categories', $_activePage) ?>">Categories</a>
-        <a href="landing.php"
+        <a href="<?= $_navUser ? 'index.php#why-loote' : 'landingpage.php#why-loote' ?>"
             class="<?= _navLinkClass('about', $_activePage) ?>">About</a>
-        <a href="#" class="hover:text-brand-yellow transition">Help</a>
+        <a href="help.php"
+            class="<?= _navLinkClass('help', $_activePage) ?>">Help</a>
     </div>
 
-    <!-- Aksi Kanan: Ikon + User / Login -->
+    <!-- Aksi Kanan: Ikon + User / Login + Toggle Mobile -->
     <div class="flex items-center gap-4">
         <?php if ($_navUser): ?>
             <!-- Ikon Notifikasi & Keranjang (hanya saat login) -->
@@ -83,6 +86,47 @@ function _navLinkClass(string $page, string $active): string
                 Register
             </a>
         <?php endif; ?>
+
+        <!-- Tombol Hamburger (Mobile) -->
+        <button type="button" id="navbar-mobile-toggle" class="md:hidden text-2xl text-gray-300 hover:text-white p-1 focus:outline-none" aria-label="Buka menu navigasi">
+            <i class="ph ph-list" id="navbar-mobile-icon"></i>
+        </button>
     </div>
 
 </nav>
+
+<!-- Menu Navigasi Mobile Dropdown -->
+<div id="navbar-mobile-menu" class="hidden md:hidden bg-brand-dark text-white px-6 pb-4 pt-2 border-t border-gray-700/60">
+    <div class="flex flex-col gap-3 text-sm font-medium">
+        <a href="<?= $_navUser ? 'index.php' : 'landingpage.php' ?>" class="<?= _navLinkClass('home', $_activePage) ?> py-1.5">Home</a>
+        <a href="categories.php" class="<?= _navLinkClass('categories', $_activePage) ?> py-1.5">Categories</a>
+        <a href="<?= $_navUser ? 'index.php#why-loote' : 'landingpage.php#why-loote' ?>" class="<?= _navLinkClass('about', $_activePage) ?> py-1.5">About</a>
+        <a href="help.php" class="<?= _navLinkClass('help', $_activePage) ?> py-1.5">Help</a>
+        <?php if (!$_navUser): ?>
+            <div class="pt-2 border-t border-gray-700/50 flex gap-2 sm:hidden">
+                <a href="login.php" class="text-xs text-center flex-1 bg-brand-yellow text-brand-dark py-2 rounded-lg font-bold">Login</a>
+                <a href="register.php" class="text-xs text-center flex-1 border border-gray-500 py-2 rounded-lg text-gray-300">Register</a>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const toggleBtn = document.getElementById('navbar-mobile-toggle');
+        const mobileMenu = document.getElementById('navbar-mobile-menu');
+        const toggleIcon = document.getElementById('navbar-mobile-icon');
+        if (toggleBtn && mobileMenu) {
+            toggleBtn.addEventListener('click', function() {
+                const isHidden = mobileMenu.classList.contains('hidden');
+                if (isHidden) {
+                    mobileMenu.classList.remove('hidden');
+                    if (toggleIcon) toggleIcon.className = 'ph ph-x';
+                } else {
+                    mobileMenu.classList.add('hidden');
+                    if (toggleIcon) toggleIcon.className = 'ph ph-list';
+                }
+            });
+        }
+    })();
+</script>
