@@ -1,17 +1,4 @@
 <?php
-
-/**
- * components/navbar.php - Komponen Navbar Loot-E
- *
- * Cara pakai:
- *   $navActivePage = 'home' | 'categories' | 'about' | 'help' | 'landing'; // opsional, default ''
- *   require_once 'components/navbar.php';
- *
- * Variabel yang digunakan (diambil dari scope pemanggil):
- *   $currentUser  - array user (dari getCurrentUser()) atau null
- *   $navActivePage - string halaman aktif untuk highlight nav link
- */
-
 // Ambil variabel dari scope pemanggil
 $_navUser       = $currentUser ?? null;
 $_activePage    = $navActivePage ?? '';
@@ -52,43 +39,51 @@ if (!function_exists('_navLinkClass')) {
     </div>
 
     <!-- Aksi Kanan: Ikon + User / Login + Toggle Mobile -->
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-2 sm:gap-3 md:gap-4">
         <?php if ($_navUser): ?>
-            <!-- Ikon Notifikasi & Keranjang (hanya saat login) -->
-            <i class="ph ph-bell text-xl cursor-pointer hover:text-brand-yellow transition" title="Notifikasi"></i>
-            <i class="ph ph-shopping-cart text-xl cursor-pointer hover:text-brand-yellow transition" title="Keranjang"></i>
+            <!-- Ikon Notifikasi & Keranjang (Hanya Desktop) -->
+            <button type="button" class="hidden md:flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/10 text-gray-300 hover:text-brand-yellow transition" title="Notifikasi" aria-label="Notifikasi">
+                <i class="ph ph-bell text-xl"></i>
+            </button>
+            <button type="button" class="hidden md:flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/10 text-gray-300 hover:text-brand-yellow transition" title="Keranjang" aria-label="Keranjang belanja">
+                <i class="ph ph-shopping-cart text-xl"></i>
+            </button>
 
-            <div class="flex items-center gap-3 border-l border-gray-600 pl-4">
-                <!-- Avatar inisial -->
-                <div class="w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+            <!-- Profil User (Avatar di Mobile & Desktop, Nama & Logout di Desktop) -->
+            <div class="flex items-center gap-3 md:border-l md:border-gray-600 md:pl-4">
+                <!-- Avatar inisial / Profile Picture -->
+                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-bold text-xs uppercase shadow-sm shrink-0" title="<?= htmlspecialchars($_navUser['nama']) ?>">
                     <?= htmlspecialchars(strtoupper(substr($_navUser['nama'], 0, 2))) ?>
                 </div>
-                <!-- Nama user -->
-                <div class="hidden sm:flex flex-col text-left">
+                <!-- Nama user (Hanya Desktop) -->
+                <div class="hidden md:flex flex-col text-left">
                     <span class="text-xs font-bold text-white leading-tight">
                         Halo, <?= htmlspecialchars($_navUser['nama']) ?>!
                     </span>
                 </div>
-                <!-- Tombol Keluar -->
+                <!-- Tombol Keluar (Hanya Desktop) -->
                 <a href="auth.php?action=logout"
-                    class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-lg font-medium transition ml-1"
+                    class="hidden md:inline-flex text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-lg font-medium transition ml-1"
                     title="Keluar dari akun">
                     Keluar
                 </a>
             </div>
         <?php else: ?>
+            <!-- Tombol Login & Register (Hanya Desktop) -->
             <a href="login.php"
-                class="text-xs bg-brand-yellow text-brand-dark px-4 py-2 rounded-lg font-bold hover:bg-yellow-500 transition shadow-sm">
+                class="hidden md:inline-flex text-xs bg-brand-yellow text-brand-dark px-4 py-2 rounded-lg font-bold hover:bg-yellow-500 transition shadow-sm">
                 Login
             </a>
             <a href="register.php"
-                class="text-xs border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow px-4 py-2 rounded-lg font-medium transition hidden sm:inline-block">
+                class="hidden md:inline-flex text-xs border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow px-4 py-2 rounded-lg font-medium transition">
                 Register
             </a>
         <?php endif; ?>
 
-        <!-- Tombol Hamburger (Mobile) -->
-        <button type="button" id="navbar-mobile-toggle" class="md:hidden text-2xl text-gray-300 hover:text-white p-1 focus:outline-none" aria-label="Buka menu navigasi">
+        <!-- Tombol Hamburger (Hanya Mobile) -->
+        <button type="button" id="navbar-mobile-toggle"
+            class="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-2xl text-gray-300 hover:text-white hover:bg-white/10 active:scale-95 transition focus:outline-none"
+            aria-label="Buka menu navigasi" aria-expanded="false">
             <i class="ph ph-list" id="navbar-mobile-icon"></i>
         </button>
     </div>
@@ -96,16 +91,34 @@ if (!function_exists('_navLinkClass')) {
 </nav>
 
 <!-- Menu Navigasi Mobile Dropdown -->
-<div id="navbar-mobile-menu" class="hidden md:hidden bg-brand-dark text-white px-6 pb-4 pt-2 border-t border-gray-700/60">
-    <div class="flex flex-col gap-3 text-sm font-medium">
-        <a href="<?= $_navUser ? 'index.php' : 'landingpage.php' ?>" class="<?= _navLinkClass('home', $_activePage) ?> py-1.5">Home</a>
-        <a href="categories.php" class="<?= _navLinkClass('categories', $_activePage) ?> py-1.5">Categories</a>
-        <a href="<?= $_navUser ? 'index.php#why-loote' : 'landingpage.php#why-loote' ?>" class="<?= _navLinkClass('about', $_activePage) ?> py-1.5">About</a>
-        <a href="help.php" class="<?= _navLinkClass('help', $_activePage) ?> py-1.5">Help</a>
+<div id="navbar-mobile-menu" class="hidden md:hidden bg-brand-dark text-white px-6 pb-5 pt-3 border-t border-gray-700/60 shadow-lg">
+    <?php if ($_navUser): ?>
+        <!-- Info Profil User di Mobile Menu -->
+        <div class="flex items-center justify-between pb-3 mb-2 border-b border-gray-700/60">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                    <?= htmlspecialchars(strtoupper(substr($_navUser['nama'], 0, 2))) ?>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-white leading-tight"><?= htmlspecialchars($_navUser['nama']) ?></p>
+                    <p class="text-[11px] text-gray-400 capitalize"><?= htmlspecialchars($_navUser['peran'] ?? 'Pengguna') ?></p>
+                </div>
+            </div>
+            <a href="auth.php?action=logout" class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded-lg font-medium transition" title="Keluar">
+                Keluar
+            </a>
+        </div>
+    <?php endif; ?>
+
+    <div class="flex flex-col gap-2 text-sm font-medium">
+        <a href="<?= $_navUser ? 'index.php' : 'landingpage.php' ?>" class="<?= _navLinkClass('home', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Home</a>
+        <a href="categories.php" class="<?= _navLinkClass('categories', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Categories</a>
+        <a href="<?= $_navUser ? 'index.php#why-loote' : 'landingpage.php#why-loote' ?>" class="<?= _navLinkClass('about', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">About</a>
+        <a href="help.php" class="<?= _navLinkClass('help', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Help</a>
         <?php if (!$_navUser): ?>
-            <div class="pt-2 border-t border-gray-700/50 flex gap-2 sm:hidden">
-                <a href="login.php" class="text-xs text-center flex-1 bg-brand-yellow text-brand-dark py-2 rounded-lg font-bold">Login</a>
-                <a href="register.php" class="text-xs text-center flex-1 border border-gray-500 py-2 rounded-lg text-gray-300">Register</a>
+            <div class="pt-3 mt-1 border-t border-gray-700/50 flex gap-2">
+                <a href="login.php" class="text-xs text-center flex-1 bg-brand-yellow text-brand-dark py-2.5 rounded-lg font-bold hover:brightness-95 transition">Login</a>
+                <a href="register.php" class="text-xs text-center flex-1 border border-gray-500 py-2.5 rounded-lg text-gray-300 hover:text-white transition">Register</a>
             </div>
         <?php endif; ?>
     </div>
@@ -121,9 +134,11 @@ if (!function_exists('_navLinkClass')) {
                 const isHidden = mobileMenu.classList.contains('hidden');
                 if (isHidden) {
                     mobileMenu.classList.remove('hidden');
+                    toggleBtn.setAttribute('aria-expanded', 'true');
                     if (toggleIcon) toggleIcon.className = 'ph ph-x';
                 } else {
                     mobileMenu.classList.add('hidden');
+                    toggleBtn.setAttribute('aria-expanded', 'false');
                     if (toggleIcon) toggleIcon.className = 'ph ph-list';
                 }
             });
