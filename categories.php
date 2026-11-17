@@ -237,7 +237,7 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
                 <p class="text-gray-400 text-sm mt-1">Search directly to find the electronics you need.</p>
             </div>
             <div class="relative z-10 flex items-center gap-3 w-full lg:w-auto">
-                <form action="index.php" method="GET" class="flex items-center gap-3 w-full lg:w-auto">
+                <form action="search.php" method="GET" class="flex items-center gap-3 w-full lg:w-auto">
                     <div class="relative flex-1 sm:w-[360px] lg:w-[400px]">
                         <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base"></i>
                         <input type="text" name="q" placeholder="Cari produk yang ingin kamu cari..."
