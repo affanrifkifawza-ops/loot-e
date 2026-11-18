@@ -8,7 +8,7 @@ if (!isLoggedIn()) {
 }
 
 $currentUser = getCurrentUser();
-$navActivePage = 'categories';
+$navActivePage = '';
 
 $searchQuery    = trim($_GET['q'] ?? '');
 $kategoriFilter = isset($_GET['kategori']) && is_numeric($_GET['kategori']) ? (int)$_GET['kategori'] : null;
@@ -175,11 +175,11 @@ $categoryIconMap = [
                 <span class="mx-1 text-gray-400">/</span>
                 <span class="text-gray-800">Pencarian</span>
             </nav>
-            <form action="search.php" method="GET" class="relative max-w-sm sm:max-w-md w-full sm:mx-auto">
-                <input type="text" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Cari barang atau kategori..."
+            <form action="search.php" method="GET" onsubmit="if(!this.q.value.trim()){ this.q.focus(); return false; }" class="relative max-w-sm sm:max-w-md w-full sm:mx-auto">
+                <input type="text" name="q" required value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Cari barang atau kategori..."
                     class="w-full bg-white border border-gray-300 rounded-full pl-4 pr-9 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
-                <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center hover:brightness-95 transition shadow-xs" aria-label="Cari produk">
-                    <i class="ph ph-arrow-right text-[11px] font-bold"></i>
+                <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-brand-yellow text-white flex items-center justify-center hover:brightness-95 transition shadow-xs" aria-label="Cari produk">
+                    <i class="ph ph-arrow-right text-[11px] font-bold text-white"></i>
                 </button>
             </form>
             <div class="w-8 hidden sm:block shrink-0"></div>
