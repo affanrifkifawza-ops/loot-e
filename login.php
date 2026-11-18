@@ -3,8 +3,9 @@
 require_once "auth.php";
 
 $redirect = $_GET["redirect"] ?? $_POST["redirect"] ?? "index.php";
-$allowedRedirects = ["index.php", "categories.php"];
-if (!in_array($redirect, $allowedRedirects)) {
+$allowedRedirects = ["index.php", "categories.php", "search.php"];
+$redirectBase = parse_url($redirect, PHP_URL_PATH);
+if (!in_array($redirectBase, $allowedRedirects) && !in_array($redirect, $allowedRedirects)) {
   $redirect = "index.php";
 }
 
