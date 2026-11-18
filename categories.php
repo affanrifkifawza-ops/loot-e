@@ -111,46 +111,43 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
     require_once 'components/navbar.php'; ?>
 
     <!-- Hero Section -->
-    <section class="relative overflow-hidden">
-        <!-- Background Image khusus tampilan Mobile -->
-        <div class="absolute inset-0 md:hidden pointer-events-none -z-0 overflow-hidden">
-            <img src="./assets/image.png" alt="Electronics Background"
-                class="w-full h-full object-cover object-center opacity-25 filter blur-[0.5px]" />
-            <div class="absolute inset-0 bg-gradient-to-b from-[#F4F5F7]/70 via-[#F4F5F7]/85 to-[#F4F5F7]"></div>
+    <section class="relative bg-brand-yellow overflow-hidden">
+        <!-- Background Image Hero -->
+        <div class="absolute inset-0 w-full h-full pointer-events-none select-none overflow-hidden">
+            <img src="assets/categoriesimage.png" alt="Explore Categories Background"
+                class="w-full h-full object-cover object-right md:object-[85%_center] filter brightness-[0.98]"
+                fetchpriority="high" />
+            <div class="absolute inset-0 bg-gradient-to-r from-brand-yellow via-brand-yellow/85 sm:via-brand-yellow/60 to-transparent"></div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-6 md:px-12 <?= $searchQuery !== '' ? 'pt-10 pb-6 md:pt-14 md:pb-8' : 'py-12 md:py-16' ?> grid md:grid-cols-2 gap-8 items-center relative z-10">
-            <div>
-                <h1 class="text-4xl sm:text-5xl md:text-[3.25rem] font-black text-gray-900 leading-tight mb-6">
-                    Explore <span class="text-brand-yellow">Categories</span>
+        <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-12 <?= $searchQuery !== '' ? 'pt-10 pb-6 md:pt-14 md:pb-8' : 'py-12 md:py-16' ?> flex items-center min-h-[260px] sm:min-h-[300px] md:min-h-[340px]">
+            <div class="max-w-xl w-full">
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#272727] leading-tight mb-5 tracking-tight">
+                    Explore Categories
                 </h1>
-                <form action="categories.php" method="GET" class="relative max-w-lg shadow-lg rounded-full">
+                <form action="categories.php" method="GET" onsubmit="if(!this.q.value.trim()){ this.q.focus(); return false; }" class="relative max-w-lg shadow-lg rounded-full">
                     <i class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none"></i>
-                    <input type="text" name="q" id="categorySearch"
+                    <input type="text" name="q" id="categorySearch" required
                         value="<?= htmlspecialchars($searchQuery) ?>"
                         placeholder="Cari GPU, CPU, Laptop, monitor, dll..."
                         class="w-full pl-12 pr-14 py-3.5 rounded-full border border-transparent focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/50 bg-white text-sm text-gray-800" />
                     <button type="submit"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-brand-yellow text-white h-9 w-9 rounded-full flex items-center justify-center hover:bg-yellow-500 transition shadow-md">
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-[#FFC914] text-white h-9 w-9 rounded-full flex items-center justify-center hover:brightness-95 transition shadow-xs" aria-label="Cari kategori">
                         <i class="ph ph-arrow-right font-bold"></i>
                     </button>
                 </form>
 
                 <?php if ($searchQuery !== ''): ?>
                     <div class="mt-3.5 flex items-center gap-3 flex-wrap pl-2">
-                        <p class="text-xs sm:text-sm text-gray-600">
-                            Hasil pencarian untuk <span class="font-semibold text-gray-900">"<?= htmlspecialchars($searchQuery) ?>"</span>
-                            <span class="text-gray-400">&bull;</span> <?= count($pcComponents) + count($otherElectronics) ?> kategori ditemukan
+                        <p class="text-xs sm:text-sm text-[#272727] font-medium">
+                            Hasil pencarian untuk <span class="font-bold text-[#272727]">&ldquo;<?= htmlspecialchars($searchQuery) ?>&rdquo;</span>
+                            <span class="text-[#272727]/60">&bull;</span> <?= count($pcComponents) + count($otherElectronics) ?> kategori ditemukan
                         </p>
-                        <a href="categories.php" class="text-xs text-brand-dark bg-brand-yellow/20 hover:bg-brand-yellow px-2.5 py-0.5 rounded-full font-medium transition flex items-center gap-1">
+                        <a href="categories.php" class="text-xs text-white bg-[#272727] hover:bg-neutral-800 px-3 py-1 rounded-full font-semibold transition flex items-center gap-1 shadow-xs">
                             <i class="ph ph-x text-xs"></i> Hapus pencarian
                         </a>
                     </div>
                 <?php endif; ?>
-            </div>
-            <!-- Hero Illustration -->
-            <div class="relative hidden md:flex justify-center md:justify-end">
-                <img src="./assets/image.png" alt="Electronics" class="w-full max-w-[600px] drop-shadow-xl" />
             </div>
         </div>
     </section>
