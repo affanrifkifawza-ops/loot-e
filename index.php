@@ -9,159 +9,46 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $navActivePage = 'home';
 
-$categories = [
-    ['slug' => 'gpu',        'name' => 'GPU',        'icon' => 'ph-graphics-card'],
-    ['slug' => 'cpu',        'name' => 'CPU',        'icon' => 'ph-cpu'],
-    ['slug' => 'ram',        'name' => 'RAM',        'icon' => 'ph-memory'],
-    ['slug' => 'laptop',     'name' => 'Laptop',     'icon' => 'ph-laptop'],
-    ['slug' => 'phone',      'name' => 'Phone',      'icon' => 'ph-device-mobile'],
-    ['slug' => 'monitor',    'name' => 'Monitor',    'icon' => 'ph-monitor'],
-    ['slug' => 'headphones', 'name' => 'Headphones', 'icon' => 'ph-headphones'],
-    ['slug' => 'more',       'name' => 'More',       'icon' => 'ph-dots-three'],
-];
+$db = getDbConnection();
 
-$curatedPilihan = [
-    [
-        'title'        => 'ASUS GeForce GTX 750 Ti 2GB GDDR5 Dual Fan',
-        'price'        => 680000,
-        'strike_price' => 850000,
-        'rating'       => '4.8',
-        'reviews'      => 64,
-        'city'         => 'Bandung',
-        'tag'          => 'GPU',
-    ],
-    [
-        'title'        => 'Kingston A400 240GB SATA III 2.5 SSD Garansi Resmi',
-        'price'        => 300000,
-        'strike_price' => 385000,
-        'rating'       => '4.9',
-        'reviews'      => 180,
-        'city'         => 'Jakarta Barat',
-        'tag'          => 'SSD',
-    ],
-    [
-        'title'        => 'Apple iPhone 11 128GB Black Resmi iBox Fullset Mulus 99%',
-        'price'        => 3150000,
-        'strike_price' => 3600000,
-        'rating'       => '4.9',
-        'reviews'      => 42,
-        'city'         => 'Jakarta Selatan',
-        'tag'          => 'Phone',
-    ],
-    [
-        'title'        => 'Team T-Force Delta RGB White 16GB (2x8GB) DDR4...',
-        'price'        => 968200,
-        'strike_price' => 1150000,
-        'rating'       => '4.7',
-        'reviews'      => 29,
-        'city'         => 'Surabaya',
-        'tag'          => 'RAM',
-    ],
-    [
-        'title'        => 'ASUS ROG Strix 27" 165Hz 1ms IPS 2K WQHD Gaming Monitor',
-        'price'        => 6441000,
-        'strike_price' => 7800000,
-        'rating'       => '4.8',
-        'reviews'      => 15,
-        'city'         => 'Yogyakarta',
-        'tag'          => 'Monitor',
-    ],
-];
+$categories = $db->query("SELECT id, nama_kategori FROM kategori ORDER BY id LIMIT 7")->fetchAll();
 
-$curatedTrending = [
-    [
-        'category'     => 'POWER SUPPLY',
-        'title'        => 'Corsair CV450 450W 80 Plus Bronze Power Supply',
-        'price'        => 350000,
-        'strike_price' => 480000,
-        'rating'       => '4.8',
-        'reviews'      => 48,
-        'city'         => 'Semarang',
-    ],
-    [
-        'category'     => 'GAMING MOUSE',
-        'title'        => 'Logitech G Pro X Superlight Wireless Gaming Mouse White',
-        'price'        => 1425000,
-        'strike_price' => 1890000,
-        'rating'       => '4.9',
-        'reviews'      => 112,
-        'city'         => 'Jakarta Pusat',
-    ],
-    [
-        'category'     => 'KEYBOARD',
-        'title'        => 'Keychron K2 V2 Wireless Mechanical Keyboard Gateron...',
-        'price'        => 920000,
-        'strike_price' => 1350000,
-        'rating'       => '4.9',
-        'reviews'      => 95,
-        'city'         => 'Bandung',
-    ],
-    [
-        'category'     => 'DISPLAY',
-        'title'        => 'Samsung 24-inch IPS Borderless White 75Hz FreeSync',
-        'price'        => 1350000,
-        'strike_price' => 1699000,
-        'rating'       => '4.8',
-        'reviews'      => 67,
-        'city'         => 'Surabaya',
-    ],
-    [
-        'category'     => 'AUDIO',
-        'title'        => 'HyperX Cloud II 7.1 Surround Sound Gaming Headset Red',
-        'price'        => 890000,
-        'strike_price' => 1250000,
-        'rating'       => '4.8',
-        'reviews'      => 84,
-        'city'         => 'Tangerang',
-    ],
-];
+function ambilProduk(PDO $db, string $where, string $order): array
+{
+    // $where dan $order hanya diisi string tetap dari file ini, bukan input pengguna
+    return $db->query("
+        SELECT p.id, p.nama_produk, p.harga, p.kondisi, p.bisa_nego, p.bisa_barter, k.nama_kategori,
+               (SELECT AVG(rating) FROM ulasan WHERE id_produk = p.id) AS rating,
+               (SELECT COUNT(*) FROM ulasan WHERE id_produk = p.id) AS total_ulasan
+        FROM produk p
+        JOIN kategori k ON k.id = p.id_kategori
+        WHERE p.status_produk = 'tersedia' $where
+        ORDER BY $order
+        LIMIT 5
+    ")->fetchAll();
+}
 
-$curatedNewArrivals = [
+$sections = [
     [
-        'category'     => 'COOLER',
-        'title'        => 'DeepCool AK400 Digital Display Air Cooler Intel AMD',
-        'price'        => 485000,
-        'strike_price' => 560000,
-        'rating'       => '4.9',
-        'reviews'      => 58,
-        'city'         => 'Depok',
+        'id'    => 'products',
+        'class' => 'pt-8 pb-4',
+        'judul' => 'Penawaran Pilihan Hari Ini',
+        'sub'   => 'Produk yang bisa dinego atau dibarter',
+        'items' => ambilProduk($db, 'AND (p.bisa_nego = 1 OR p.bisa_barter = 1)', 'p.harga ASC'),
     ],
     [
-        'category'     => 'HEADPHONES',
-        'title'        => 'Sony WH-1000XM4 Wireless Noise Cancelling Headphone',
-        'price'        => 2750000,
-        'strike_price' => 3800000,
-        'rating'       => '4.8',
-        'reviews'      => 76,
-        'city'         => 'Tangerang',
+        'id'    => 'trending',
+        'class' => 'py-6',
+        'judul' => 'Trending Minggu Ini',
+        'sub'   => 'Produk dengan ulasan terbanyak',
+        'items' => ambilProduk($db, '', 'total_ulasan DESC, p.created_at DESC'),
     ],
     [
-        'category'     => 'POWER SUPPLY',
-        'title'        => 'Seasonic Focus GX-650 650W 80+ Gold Fully Modular',
-        'price'        => 1150000,
-        'strike_price' => 1550000,
-        'rating'       => '4.8',
-        'reviews'      => 34,
-        'city'         => 'Jakarta',
-    ],
-    [
-        'category'     => 'TABLET',
-        'title'        => 'iPad Air 5 64GB WiFi Space Grey Chip M1 Garansi Resmi',
-        'price'        => 6890000,
-        'strike_price' => 8200000,
-        'rating'       => '4.9',
-        'reviews'      => 38,
-        'city'         => 'Jakarta',
-    ],
-    [
-        'category'     => 'ACCESSORIES',
-        'title'        => 'Baseus GaN5 Pro 65W Dual Type-C Quick Fast Charger',
-        'price'        => 2750000,
-        'strike_price' => 350000,
-        'price'        => 275000,
-        'rating'       => '4.9',
-        'reviews'      => 110,
-        'city'         => 'Tangerang',
+        'id'    => 'new-arrivals',
+        'class' => 'pt-2 pb-14',
+        'judul' => 'New Arrivals',
+        'sub'   => 'Produk terbaru yang baru tersedia di Loot-E.',
+        'items' => ambilProduk($db, '', 'p.created_at DESC, p.id DESC'),
     ],
 ];
 ?>
@@ -271,13 +158,19 @@ $curatedNewArrivals = [
             <section aria-label="Kategori Produk" class="bg-white shadow-sm border border-gray-100 p-4 sm:p-6">
                 <div class="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4 text-center">
                     <?php foreach ($categories as $cat): ?>
-                        <a href="categories.php?cat=<?= urlencode($cat['slug']) ?>" class="flex flex-col items-center gap-2 group cursor-pointer">
+                        <a href="search.php?kategori=<?= (int)$cat['id'] ?>" class="flex flex-col items-center gap-2 group cursor-pointer">
                             <div class="w-13 h-13 sm:w-20 sm:h-16 rounded-xl bg-[#F4F4F4] group-hover:bg-brand-yellow/20 flex items-center justify-center transition shadow-2xs">
-                                <i class="ph <?= htmlspecialchars($cat['icon']) ?> text-2xl sm:text-3xl text-gray-800 group-hover:text-brand-dark transition"></i>
+                                <i class="ph <?= htmlspecialchars(kategoriIcon($cat['nama_kategori'])) ?> text-2xl sm:text-3xl text-gray-800 group-hover:text-brand-dark transition"></i>
                             </div>
-                            <span class="text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition"><?= htmlspecialchars($cat['name']) ?></span>
+                            <span class="text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition"><?= htmlspecialchars($cat['nama_kategori']) ?></span>
                         </a>
                     <?php endforeach; ?>
+                    <a href="categories.php" class="flex flex-col items-center gap-2 group cursor-pointer">
+                        <div class="w-13 h-13 sm:w-20 sm:h-16 rounded-xl bg-[#F4F4F4] group-hover:bg-brand-yellow/20 flex items-center justify-center transition shadow-2xs">
+                            <i class="ph ph-dots-three text-2xl sm:text-3xl text-gray-800 group-hover:text-brand-dark transition"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition">Lainnya</span>
+                    </a>
                 </div>
             </section>
 
@@ -325,140 +218,54 @@ $curatedNewArrivals = [
             </section>
         </div>
 
-        <!-- Section 1: Penawaran Pilihan Hari Ini -->
-        <section id="products" class="max-w-7xl mx-auto px-6 md:px-12 pt-8 pb-4">
-            <div class="mb-4">
-                <h2 class="text-base sm:text-lg font-bold text-gray-900">Penawaran Pilihan Hari Ini</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Barang paling dicari komunitas minggu ini</p>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-                <?php foreach ($curatedPilihan as $item): ?>
-                    <article class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
-                        <div>
-                            <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-3 mb-2.5 relative">
-                                <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
-                                    <i class="ph ph-cpu text-3xl text-gray-400"></i>
-                                    <span class="text-[9px] mt-1 text-gray-400 font-medium"><?= htmlspecialchars($item['tag']) ?></span>
+        <!-- Section Produk: Pilihan, Trending, New Arrivals (data dari tabel produk) -->
+        <?php foreach ($sections as $sec): ?>
+            <section id="<?= $sec['id'] ?>" class="max-w-7xl mx-auto px-6 md:px-12 <?= $sec['class'] ?>">
+                <div class="mb-4">
+                    <h2 class="text-base sm:text-lg font-bold text-gray-900"><?= htmlspecialchars($sec['judul']) ?></h2>
+                    <p class="text-xs text-gray-400 mt-0.5"><?= htmlspecialchars($sec['sub']) ?></p>
+                </div>
+                <?php if (empty($sec['items'])): ?>
+                    <p class="text-xs text-gray-500 bg-white border border-gray-200/70 p-6 text-center">Belum ada produk tersedia.</p>
+                <?php else: ?>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+                        <?php foreach ($sec['items'] as $item): ?>
+                            <article class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
+                                <div>
+                                    <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-3 mb-2.5 relative">
+                                        <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
+                                            <i class="ph <?= htmlspecialchars(kategoriIcon($item['nama_kategori'])) ?> text-3xl text-gray-400"></i>
+                                            <span class="text-[9px] mt-1 text-gray-400 font-medium"><?= htmlspecialchars($item['nama_kategori']) ?></span>
+                                        </div>
+                                    </div>
+                                    <h3 class="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-dark transition min-h-[32px]">
+                                        <?= htmlspecialchars($item['nama_produk']) ?>
+                                    </h3>
+                                    <div class="mt-2">
+                                        <span class="font-bold text-sm text-gray-900 block"><?= formatRupiah((int)$item['harga']) ?></span>
+                                        <span class="text-[10px] text-gray-400"><?= htmlspecialchars($item['kondisi']) ?></span>
+                                    </div>
                                 </div>
-                            </div>
-                            <h3 class="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-dark transition min-h-[32px]">
-                                <?= htmlspecialchars($item['title']) ?>
-                            </h3>
-                            <div class="mt-2">
-                                <span class="font-bold text-sm text-gray-900 block">
-                                    Rp <?= number_format($item['price'], 0, ',', '.') ?>
-                                </span>
-                                <span class="text-[10px] text-gray-400 line-through">
-                                    Rp <?= number_format($item['strike_price'], 0, ',', '.') ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px] text-gray-500 mt-2.5 pt-2 border-t border-gray-50">
-                            <span class="flex items-center gap-1 font-medium">
-                                <i class="ph-fill ph-star text-amber-400 text-xs"></i>
-                                <?= htmlspecialchars($item['rating']) ?>
-                                <span class="text-gray-400 font-normal">(<?= htmlspecialchars($item['reviews']) ?>)</span>
-                            </span>
-                            <span class="text-gray-400 text-[10px] truncate max-w-[65px]">
-                                <?= htmlspecialchars($item['city']) ?>
-                            </span>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </section>
-
-        <!-- Section 2: Trending Minggu Ini -->
-        <section id="trending" class="max-w-7xl mx-auto px-6 md:px-12 py-6">
-            <div class="mb-4">
-                <h2 class="text-base sm:text-lg font-bold text-gray-900">Trending Minggu Ini</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Barang paling dicari komunitas minggu ini</p>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-                <?php foreach ($curatedTrending as $item): ?>
-                    <article class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
-                        <div>
-                            <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-3 mb-2.5 relative">
-                                <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
-                                    <i class="ph ph-package text-3xl text-gray-400"></i>
-                                    <span class="text-[9px] mt-1 text-gray-400 font-medium"><?= htmlspecialchars($item['category']) ?></span>
+                                <div class="flex items-center justify-between text-[11px] text-gray-500 mt-2.5 pt-2 border-t border-gray-50">
+                                    <?php if ((int)$item['total_ulasan'] > 0): ?>
+                                        <span class="flex items-center gap-1 font-medium">
+                                            <i class="ph-fill ph-star text-amber-400 text-xs"></i>
+                                            <?= number_format((float)$item['rating'], 1) ?>
+                                            <span class="text-gray-400 font-normal">(<?= (int)$item['total_ulasan'] ?>)</span>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-gray-400 text-[10px]">Belum ada ulasan</span>
+                                    <?php endif; ?>
+                                    <span class="text-gray-400 text-[10px] truncate">
+                                        <?= htmlspecialchars(implode(' · ', array_filter([$item['bisa_nego'] ? 'Nego' : null, $item['bisa_barter'] ? 'Barter' : null]))) ?>
+                                    </span>
                                 </div>
-                            </div>
-                            <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                                <?= htmlspecialchars($item['category']) ?>
-                            </span>
-                            <h3 class="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-dark transition min-h-[32px]">
-                                <?= htmlspecialchars($item['title']) ?>
-                            </h3>
-                            <div class="mt-2">
-                                <span class="font-bold text-sm text-gray-900 block">
-                                    Rp <?= number_format($item['price'], 0, ',', '.') ?>
-                                </span>
-                                <span class="text-[10px] text-gray-400 line-through">
-                                    Rp <?= number_format($item['strike_price'], 0, ',', '.') ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px] text-gray-500 mt-2.5 pt-2 border-t border-gray-50">
-                            <span class="flex items-center gap-1 font-medium">
-                                <i class="ph-fill ph-star text-amber-400 text-xs"></i>
-                                <?= htmlspecialchars($item['rating']) ?>
-                                <span class="text-gray-400 font-normal">(<?= htmlspecialchars($item['reviews']) ?>)</span>
-                            </span>
-                            <span class="text-gray-400 text-[10px] truncate max-w-[65px]">
-                                <?= htmlspecialchars($item['city']) ?>
-                            </span>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </section>
-
-        <!-- Section 3: New Arrivals -->
-        <section id="new-arrivals" class="max-w-7xl mx-auto px-6 md:px-12 pt-2 pb-14">
-            <div class="mb-4">
-                <h2 class="text-base sm:text-lg font-bold text-gray-900">New Arrivals</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Produk terbaru yang baru tersedia di Loot-E.</p>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-                <?php foreach ($curatedNewArrivals as $item): ?>
-                    <article class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
-                        <div>
-                            <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-3 mb-2.5 relative">
-                                <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
-                                    <i class="ph ph-lightning text-3xl text-gray-400"></i>
-                                    <span class="text-[9px] mt-1 text-gray-400 font-medium"><?= htmlspecialchars($item['category']) ?></span>
-                                </div>
-                            </div>
-                            <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                                <?= htmlspecialchars($item['category']) ?>
-                            </span>
-                            <h3 class="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-dark transition min-h-[32px]">
-                                <?= htmlspecialchars($item['title']) ?>
-                            </h3>
-                            <div class="mt-2">
-                                <span class="font-bold text-sm text-gray-900 block">
-                                    Rp <?= number_format($item['price'], 0, ',', '.') ?>
-                                </span>
-                                <span class="text-[10px] text-gray-400 line-through">
-                                    Rp <?= number_format($item['strike_price'], 0, ',', '.') ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px] text-gray-500 mt-2.5 pt-2 border-t border-gray-50">
-                            <span class="flex items-center gap-1 font-medium">
-                                <i class="ph-fill ph-star text-amber-400 text-xs"></i>
-                                <?= htmlspecialchars($item['rating']) ?>
-                                <span class="text-gray-400 font-normal">(<?= htmlspecialchars($item['reviews']) ?>)</span>
-                            </span>
-                            <span class="text-gray-400 text-[10px] truncate max-w-[65px]">
-                                <?= htmlspecialchars($item['city']) ?>
-                            </span>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </section>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+        <?php endforeach; ?>
     </main>
 
     <!-- Footer -->

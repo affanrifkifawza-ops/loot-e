@@ -1,19 +1,7 @@
 <?php
 // help.php - Pusat Bantuan Loot-E
-if (session_status() === PHP_SESSION_NONE) {
-    @session_start();
-}
-
-// Ambil data user yang sedang login jika ada
-$currentUser = null;
-if (isset($_SESSION['user_id'])) {
-    $currentUser = [
-        'id'    => $_SESSION['user_id'] ?? '',
-        'nama'  => $_SESSION['nama'] ?? 'Pengguna',
-        'email' => $_SESSION['email'] ?? '',
-        'peran' => $_SESSION['peran'] ?? 'buyer'
-    ];
-}
+require_once "auth.php";
+$currentUser = getCurrentUser();
 
 $navActivePage = 'help';
 ?>

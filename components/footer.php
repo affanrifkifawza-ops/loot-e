@@ -4,6 +4,12 @@
  * components/footer.php - Komponen Footer Loot-E
  */
 $_footerUser = $currentUser ?? (isset($_SESSION['user_id']) ? true : false);
+$_fActive   = $navActivePage ?? '';
+$_fBaseHome = $_footerUser ? 'index.php' : 'landingpage.php';
+$_fOnMain   = ($_fActive === 'landing' || $_fActive === 'home');
+$_fHome     = $_fOnMain ? '#' : $_fBaseHome;
+$_fProd     = $_fOnMain ? '#products' : $_fBaseHome . '#products';
+$_fAbout    = $_fActive === 'landing' ? '#why-loote' : 'landingpage.php#why-loote';
 ?>
 <footer class="bg-[#272727] text-gray-300 py-12 px-6 md:px-12">
     <div
@@ -17,9 +23,9 @@ $_footerUser = $currentUser ?? (isset($_SESSION['user_id']) ? true : false);
             <p class="text-xs">Find Better, Trade Smarter.</p>
         </div>
         <div class="flex flex-wrap justify-center gap-6 text-sm">
-            <a href="<?= $_footerUser ? 'index.php' : 'landingpage.php' ?>" class="hover:text-brand-yellow transition">Home</a>
-            <a href="categories.php" class="hover:text-brand-yellow transition">Categories</a>
-            <a href="<?= $_footerUser ? 'index.php#why-loote' : 'landingpage.php#why-loote' ?>" class="hover:text-brand-yellow transition">About</a>
+            <a href="<?= $_fHome ?>" class="hover:text-brand-yellow transition">Home</a>
+            <a href="<?= $_fProd ?>" class="hover:text-brand-yellow transition">Products</a>
+            <a href="<?= $_fAbout ?>" class="hover:text-brand-yellow transition">About</a>
             <a href="help.php" class="hover:text-brand-yellow transition">Help</a>
         </div>
         <div class="flex gap-4">

@@ -13,43 +13,21 @@ $currentUser = getCurrentUser();
 // ===== Search Filter PHP =====
 $searchQuery = trim($_GET['q'] ?? '');
 
-// ===== Data Kategori =====
-// PC Components
-$allPcComponents = [
-    ['name' => 'GPU',          'icon' => 'ph-graphics-card', 'slug' => 'gpu'],
-    ['name' => 'CPU',          'icon' => 'ph-cpu',           'slug' => 'cpu'],
-    ['name' => 'RAM',          'icon' => 'ph-memory',        'slug' => 'ram'],
-    ['name' => 'Motherboard',  'icon' => 'ph-circuit-board', 'slug' => 'motherboard'],
-    ['name' => 'Storage',      'icon' => 'ph-hard-drives',   'slug' => 'storage'],
-    ['name' => 'Power Supply', 'icon' => 'ph-lightning',     'slug' => 'power-supply'],
-    ['name' => 'PC Case',      'icon' => 'ph-desktop-tower', 'slug' => 'pc-case'],
-    ['name' => 'CPU Cooler',   'icon' => 'ph-fan',           'slug' => 'cpu-cooler'],
-];
+// ===== Data Kategori (dari tabel kategori) =====
+// Kategori yang masuk grup "PC Components"; kategori lain (termasuk yang baru ditambah) masuk "Elektronik Lainnya"
+$pcComponentNames = ['gpu', 'cpu', 'ram', 'motherboard', 'storage', 'power supply', 'pc case', 'cpu cooler'];
 
-// Elektronik Lainnya
-$allOtherElectronics = [
-    ['name' => 'Laptop',     'icon' => 'ph-laptop',        'slug' => 'laptop'],
-    ['name' => 'Smartphone', 'icon' => 'ph-device-mobile', 'slug' => 'smartphone'],
-    ['name' => 'Monitor',    'icon' => 'ph-monitor',       'slug' => 'monitor'],
-    ['name' => 'Headset',    'icon' => 'ph-headphones',    'slug' => 'headset'],
-    ['name' => 'Keyboard',   'icon' => 'ph-keyboard',      'slug' => 'keyboard'],
-    ['name' => 'Mouse',      'icon' => 'ph-mouse',         'slug' => 'mouse'],
-    ['name' => 'Tablet',     'icon' => 'ph-device-tablet', 'slug' => 'tablet'],
-    ['name' => 'Aksesoris',  'icon' => 'ph-bag-simple',    'slug' => 'aksesoris'],
-];
+$stmt = getDbConnection()->prepare("SELECT id, nama_kategori FROM kategori WHERE nama_kategori LIKE ? ORDER BY id");
+$stmt->execute(['%' . $searchQuery . '%']);
 
-// Fungsi filter berdasarkan query pencarian
-function filterCategories(array $categories, string $query): array
-{
-    if ($query === '') return $categories;
-    return array_values(array_filter($categories, function ($cat) use ($query) {
-        return stripos($cat['name'], $query) !== false ||
-            stripos($cat['slug'], $query) !== false;
-    }));
+$pcComponents = $otherElectronics = [];
+foreach ($stmt->fetchAll() as $cat) {
+    if (in_array(strtolower($cat['nama_kategori']), $pcComponentNames, true)) {
+        $pcComponents[] = $cat;
+    } else {
+        $otherElectronics[] = $cat;
+    }
 }
-
-$pcComponents    = filterCategories($allPcComponents, $searchQuery);
-$otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
 ?>
 <!doctype html>
 <html lang="id" class="scroll-smooth">
@@ -161,14 +139,14 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="pcComponentsGrid">
             <?php foreach ($pcComponents as $cat): ?>
-                <a href="index.php?kategori=<?= urlencode($cat['slug']) ?>"
+                <a href="search.php?kategori=<?= (int)$cat['id'] ?>"
                     class="group relative overflow-hidden bg-white border border-gray-100 p-5 flex items-center gap-4 transition-all duration-300 hover:border-brand-yellow hover:shadow-[0_8px_30px_rgba(245,183,0,0.12)] hover:-translate-y-1 text-gray-800">
                     <div class="w-[72px] h-[72px] min-w-[72px] rounded-xl bg-gray-50 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                        <i class="ph <?= htmlspecialchars($cat['icon']) ?> text-3xl text-gray-700 group-hover:text-brand-yellow transition-colors"></i>
+                        <i class="ph <?= htmlspecialchars(kategoriIcon($cat['nama_kategori'])) ?> text-3xl text-gray-700 group-hover:text-brand-yellow transition-colors"></i>
                     </div>
                     <div class="flex-1 min-w-0 relative z-10">
                         <h3 class="font-bold text-sm text-gray-900 mb-0.5 group-hover:text-brand-yellow transition-colors">
-                            <?= htmlspecialchars($cat['name']) ?>
+                            <?= htmlspecialchars($cat['nama_kategori']) ?>
                         </h3>
                         <p class="text-xs text-gray-400">Browse Products</p>
                     </div>
@@ -195,14 +173,14 @@ $otherElectronics = filterCategories($allOtherElectronics, $searchQuery);
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="otherElectronicsGrid">
             <?php foreach ($otherElectronics as $cat): ?>
-                <a href="index.php?kategori=<?= urlencode($cat['slug']) ?>"
+                <a href="search.php?kategori=<?= (int)$cat['id'] ?>"
                     class="group relative overflow-hidden bg-white border border-gray-100 p-5 flex items-center gap-4 transition-all duration-300 hover:border-brand-yellow hover:shadow-[0_8px_30px_rgba(245,183,0,0.12)] hover:-translate-y-1 text-gray-800">
                     <div class="w-[72px] h-[72px] min-w-[72px] rounded-xl bg-gray-50 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                        <i class="ph <?= htmlspecialchars($cat['icon']) ?> text-3xl text-gray-700 group-hover:text-brand-yellow transition-colors"></i>
+                        <i class="ph <?= htmlspecialchars(kategoriIcon($cat['nama_kategori'])) ?> text-3xl text-gray-700 group-hover:text-brand-yellow transition-colors"></i>
                     </div>
                     <div class="flex-1 min-w-0 relative z-10">
                         <h3 class="font-bold text-sm text-gray-900 mb-0.5 group-hover:text-brand-yellow transition-colors">
-                            <?= htmlspecialchars($cat['name']) ?>
+                            <?= htmlspecialchars($cat['nama_kategori']) ?>
                         </h3>
                         <p class="text-xs text-gray-400">Browse Products</p>
                     </div>

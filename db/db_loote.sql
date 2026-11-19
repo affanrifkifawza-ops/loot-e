@@ -1,83 +1,241 @@
--- phpMyAdmin SQL Dump
--- version 5.2.3
--- https://www.phpmyadmin.net/
---
--- Host: localhost:3306
--- Generation Time: Oct 27, 2026 at 01:06 AM
--- Server version: 8.4.3
--- PHP Version: 8.3.33
-
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
-SET time_zone = "+00:00";
+SET time_zone = "+07:00";
+SET FOREIGN_KEY_CHECKS = 0;
 
+CREATE DATABASE IF NOT EXISTS `db_loote` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+USE `db_loote`;
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
---
--- Database: `db_loote`
---
+-- ----------------------------------------------------------
+-- Hapus tabel lama jika sudah ada (agar aman saat re-import)
+-- ----------------------------------------------------------
+DROP TABLE IF EXISTS `ulasan`;
+DROP TABLE IF EXISTS `detail_pesanan`;
+DROP TABLE IF EXISTS `pesanan`;
+DROP TABLE IF EXISTS `riwayat_barter`;
+DROP TABLE IF EXISTS `barter`;
+DROP TABLE IF EXISTS `riwayat_negosiasi`;
+DROP TABLE IF EXISTS `negosiasi`;
+DROP TABLE IF EXISTS `antrean`;
+DROP TABLE IF EXISTS `keranjang`;
+DROP TABLE IF EXISTS `produk`;
+DROP TABLE IF EXISTS `kategori`;
+DROP TABLE IF EXISTS `pengguna`;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `antrean`
---
-
-CREATE TABLE `antrean` (
-  `id` char(36) NOT NULL,
-  `id_pembeli` char(36) DEFAULT NULL,
-  `id_produk` char(36) DEFAULT NULL,
-  `status` varchar(50) DEFAULT NULL COMMENT 'menunggu, aktif'
+-- ----------------------------------------------------------
+-- 1. Table `pengguna`
+-- ----------------------------------------------------------
+CREATE TABLE `pengguna` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nama` VARCHAR(100) NOT NULL,
+  `email` VARCHAR(100) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `peran` ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+  `no_hp` VARCHAR(20) DEFAULT NULL COMMENT 'Diisi saat verifikasi jual barang',
+  `alamat` TEXT DEFAULT NULL COMMENT 'Diisi saat verifikasi jual barang',
+  `info_rekening` VARCHAR(100) DEFAULT NULL COMMENT 'Contoh: BCA - 1234567890 (Syarat pencairan Escrow)',
+  `is_verified` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Boleh upload produk',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pengguna_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `barter`
---
-
-CREATE TABLE `barter` (
-  `id` char(36) NOT NULL,
-  `id_pembeli` char(36) DEFAULT NULL,
-  `id_produk_diincar` char(36) DEFAULT NULL,
-  `id_produk_ditawarkan` char(36) DEFAULT NULL,
-  `kuantitas_diincar` int DEFAULT NULL,
-  `status` varchar(50) DEFAULT NULL COMMENT 'pending, counter_offer, diterima, ditolak'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `detail_pesanan`
---
-
-CREATE TABLE `detail_pesanan` (
-  `id` char(36) NOT NULL,
-  `id_pesanan` char(36) DEFAULT NULL,
-  `id_produk` char(36) DEFAULT NULL,
-  `kuantitas` int DEFAULT NULL,
-  `harga_satuan` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `kategori`
---
-
+-- ----------------------------------------------------------
+-- 2. Table `kategori`
+-- ----------------------------------------------------------
 CREATE TABLE `kategori` (
-  `id` int NOT NULL,
-  `nama_kategori` varchar(255) DEFAULT NULL
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nama_kategori` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Dumping data for table `kategori`
---
+-- ----------------------------------------------------------
+-- 3. Table `produk`
+-- ----------------------------------------------------------
+CREATE TABLE `produk` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_penjual` INT NOT NULL,
+  `id_kategori` INT NOT NULL,
+  `nama_produk` VARCHAR(255) NOT NULL,
+  `foto` VARCHAR(255) DEFAULT NULL,
+  `harga` INT NOT NULL,
+  `stok` INT NOT NULL DEFAULT 1,
+  `kondisi` VARCHAR(100) NOT NULL COMMENT 'Contoh: Bekas - Mulus / Bekas - Ada Minus',
+  `deskripsi` TEXT DEFAULT NULL COMMENT 'Hasil gabungan form kondisi fisik, fungsi, pakai, servis, minus & kelengkapan',
+  `bisa_nego` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Centang Bisa Nego, 0 = Tidak',
+  `bisa_barter` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Centang Bisa Barter, 0 = Tidak',
+  `status_produk` ENUM('tersedia', 'terkunci', 'habis') NOT NULL DEFAULT 'tersedia',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_produk_penjual` (`id_penjual`),
+  KEY `idx_produk_kategori` (`id_kategori`),
+  CONSTRAINT `fk_produk_penjual` FOREIGN KEY (`id_penjual`) REFERENCES `pengguna` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_produk_kategori` FOREIGN KEY (`id_kategori`) REFERENCES `kategori` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- ----------------------------------------------------------
+-- 4. Table `keranjang`
+-- ----------------------------------------------------------
+CREATE TABLE `keranjang` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_pembeli` INT NOT NULL,
+  `id_produk` INT NOT NULL,
+  `kuantitas` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_keranjang_user_produk` (`id_pembeli`, `id_produk`),
+  KEY `idx_keranjang_pembeli` (`id_pembeli`),
+  KEY `idx_keranjang_produk` (`id_produk`),
+  CONSTRAINT `fk_keranjang_pembeli` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_keranjang_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 5. Table `antrean`
+-- ----------------------------------------------------------
+CREATE TABLE `antrean` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_pembeli` INT NOT NULL,
+  `id_produk` INT NOT NULL,
+  `status` ENUM('menunggu', 'aktif', 'selesai', 'batal') NOT NULL DEFAULT 'menunggu',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Penentu urutan antrean',
+  PRIMARY KEY (`id`),
+  KEY `idx_antrean_pembeli` (`id_pembeli`),
+  KEY `idx_antrean_produk` (`id_produk`),
+  CONSTRAINT `fk_antrean_pembeli` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_antrean_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 6. Table `negosiasi`
+-- ----------------------------------------------------------
+CREATE TABLE `negosiasi` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_pembeli` INT NOT NULL,
+  `id_produk` INT NOT NULL,
+  `kuantitas` INT NOT NULL DEFAULT 1,
+  `harga_deal` INT DEFAULT NULL,
+  `status` ENUM('pending', 'counter_offer', 'diterima', 'ditolak', 'expired') NOT NULL DEFAULT 'pending',
+  `batas_waktu` DATETIME NOT NULL COMMENT 'Timer 30 menit, reset saat counter_offer',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_negosiasi_pembeli` (`id_pembeli`),
+  KEY `idx_negosiasi_produk` (`id_produk`),
+  CONSTRAINT `fk_negosiasi_pembeli` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_negosiasi_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 7. Table `riwayat_negosiasi`
+-- ----------------------------------------------------------
+CREATE TABLE `riwayat_negosiasi` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_negosiasi` INT NOT NULL,
+  `pengirim_tawaran` ENUM('pembeli', 'penjual') NOT NULL,
+  `harga` INT NOT NULL,
+  `waktu` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_riwayat_negosiasi` (`id_negosiasi`),
+  CONSTRAINT `fk_riwayat_negosiasi` FOREIGN KEY (`id_negosiasi`) REFERENCES `negosiasi` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 8. Table `barter`
+-- ----------------------------------------------------------
+CREATE TABLE `barter` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_pembeli` INT NOT NULL,
+  `id_produk_diincar` INT NOT NULL,
+  `id_produk_ditawarkan` INT NOT NULL,
+  `kuantitas_diincar` INT NOT NULL DEFAULT 1,
+  `tambah_dana_deal` INT NOT NULL DEFAULT 0,
+  `status` ENUM('pending', 'counter_offer', 'diterima', 'ditolak', 'expired') NOT NULL DEFAULT 'pending',
+  `batas_waktu` DATETIME NOT NULL COMMENT 'Timer 30 menit, reset saat counter_offer',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_barter_pembeli` (`id_pembeli`),
+  KEY `idx_barter_produk_diincar` (`id_produk_diincar`),
+  KEY `idx_barter_produk_ditawarkan` (`id_produk_ditawarkan`),
+  CONSTRAINT `fk_barter_pembeli` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_barter_produk_diincar` FOREIGN KEY (`id_produk_diincar`) REFERENCES `produk` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_barter_produk_ditawarkan` FOREIGN KEY (`id_produk_ditawarkan`) REFERENCES `produk` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 9. Table `riwayat_barter`
+-- ----------------------------------------------------------
+CREATE TABLE `riwayat_barter` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_barter` INT NOT NULL,
+  `pengirim_tawaran` ENUM('pembeli', 'penjual') NOT NULL,
+  `tambah_dana` INT NOT NULL DEFAULT 0,
+  `waktu` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_riwayat_barter` (`id_barter`),
+  CONSTRAINT `fk_riwayat_barter` FOREIGN KEY (`id_barter`) REFERENCES `barter` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 10. Table `pesanan`
+-- ----------------------------------------------------------
+CREATE TABLE `pesanan` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_pembeli` INT NOT NULL,
+  `tipe_transaksi` ENUM('beli_langsung', 'hasil_nego', 'hasil_barter') NOT NULL,
+  `biaya_layanan` INT NOT NULL DEFAULT 5000 COMMENT 'Keuntungan platform / biaya proteksi rekber',
+  `total_harga` INT NOT NULL COMMENT 'Harga barang (atau tambah dana) + biaya_layanan',
+  `metode_bayar` ENUM('qris', 'transfer_bank', 'ewallet', 'tanpa_pembayaran') NOT NULL,
+  `alamat_kirim` TEXT NOT NULL,
+  `nomor_resi` VARCHAR(100) DEFAULT NULL COMMENT 'Diisi seller saat kirim barang',
+  `status_pesanan` ENUM('menunggu_pembayaran', 'dibayar', 'dikirim', 'selesai', 'dibatalkan') NOT NULL DEFAULT 'menunggu_pembayaran',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pesanan_pembeli` (`id_pembeli`),
+  CONSTRAINT `fk_pesanan_pembeli` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 11. Table `detail_pesanan`
+-- ----------------------------------------------------------
+CREATE TABLE `detail_pesanan` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_pesanan` INT NOT NULL,
+  `id_produk` INT NOT NULL,
+  `kuantitas` INT NOT NULL DEFAULT 1,
+  `harga_satuan` INT NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_detail_pesanan` (`id_pesanan`),
+  KEY `idx_detail_produk` (`id_produk`),
+  CONSTRAINT `fk_detail_pesanan` FOREIGN KEY (`id_pesanan`) REFERENCES `pesanan` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_detail_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 12. Table `ulasan`
+-- ----------------------------------------------------------
+CREATE TABLE `ulasan` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_pesanan` INT NOT NULL,
+  `id_produk` INT NOT NULL,
+  `rating` TINYINT NOT NULL COMMENT '1 sampai 5',
+  `komentar` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ulasan_pesanan` (`id_pesanan`),
+  KEY `idx_ulasan_produk` (`id_produk`),
+  CONSTRAINT `fk_ulasan_pesanan` FOREIGN KEY (`id_pesanan`) REFERENCES `pesanan` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_ulasan_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ==========================================================
+-- DATA AWAL (SEEDER) SIAP TEST DI LOCALHOST
+-- ==========================================================
+
+-- Kategori awal
 INSERT INTO `kategori` (`id`, `nama_kategori`) VALUES
 (1, 'GPU'),
 (2, 'CPU'),
@@ -88,292 +246,28 @@ INSERT INTO `kategori` (`id`, `nama_kategori`) VALUES
 (7, 'Headphones'),
 (8, 'Aksesoris');
 
--- --------------------------------------------------------
+-- Akun awal (Semua akun dummy menggunakan password: "password")
+-- Hash bcrypt $2y$10$ kompatibel langsung dengan PHP password_verify()
+-- 1. Admin          : admin@loote.com  | pass: password
+-- 2. Verified User  : seller@loote.com | pass: password (is_verified = 1, bisa jual barang)
+-- 3. Regular User   : rizky@gmail.com  | pass: password (is_verified = 0, wajib verifikasi dulu untuk jual)
+INSERT INTO `pengguna` (`id`, `nama`, `email`, `password`, `peran`, `no_hp`, `alamat`, `info_rekening`, `is_verified`) VALUES
+(1, 'Admin Loot-E', 'admin@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, NULL, NULL, 0),
+(2, 'Loot-E Official Store', 'seller@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', '081234567890', 'Jl. Teknologi No. 10, Jakarta Selatan', 'BCA - 1234567890', 1),
+(3, 'Rizky', 'rizky@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', NULL, NULL, NULL, 0);
 
---
--- Table structure for table `negosiasi`
---
+-- Produk contoh (milik user id = 2 / Loot-E Official Store)
+INSERT INTO `produk` (`id`, `id_penjual`, `id_kategori`, `nama_produk`, `foto`, `harga`, `stok`, `kondisi`, `deskripsi`, `bisa_nego`, `bisa_barter`, `status_produk`) VALUES
+(1, 2, 1, 'GTX 1660 Super 6GB GDDR6', NULL, 2400000, 5, 'Bekas - Seperti Baru', 'Kondisi Fisik: Mulus terawat\nFungsi: Normal 100%, suhu adem\nLama Pemakaian: 1 tahun pemakaian gaming ringan\nRiwayat Servis: Belum pernah servis\nMinus / Defect: Tidak ada\nKelengkapan: Fullset Box Original', 1, 1, 'tersedia'),
+(2, 2, 2, 'AMD Ryzen 5 5600X 6-Core 12-Thread', NULL, 2100000, 7, 'Baru', 'Kondisi Fisik: Baru segel\nFungsi: Normal 100%\nLama Pemakaian: Baru\nRiwayat Servis: Tidak pernah\nMinus / Defect: Tidak ada\nKelengkapan: Fullset dengan Wraith Stealth cooler bawaan', 1, 0, 'tersedia'),
+(3, 2, 3, 'Team T-Force Delta RGB 16GB (2x8GB) DDR4 3200MHz', NULL, 850000, 10, 'Baru', 'Kondisi Fisik: Baru segel\nFungsi: Normal 100%\nLama Pemakaian: Baru\nRiwayat Servis: Tidak pernah\nMinus / Defect: Tidak ada\nKelengkapan: Fullset, garansi resmi lifetime warranty', 0, 0, 'tersedia'),
+(4, 2, 4, 'Lenovo Ideapad S145-15AST', NULL, 1725000, 3, 'Bekas - Mulus', 'Kondisi Fisik: Mulus 95%, lecet halus wajar\nFungsi: Normal, baterai tahan 3-4 jam\nLama Pemakaian: 2 tahun\nRiwayat Servis: Belum pernah servis\nMinus / Defect: Tidak ada\nKelengkapan: Unit + Charger Original', 1, 1, 'tersedia'),
+(5, 2, 5, 'iPhone 11 128GB Black iBox', NULL, 3150000, 4, 'Bekas - Mulus', 'Kondisi Fisik: Mulus, layar bening\nFungsi: True Tone dan Face ID normal lancar, BH 85%\nLama Pemakaian: 2 tahun\nRiwayat Servis: Belum pernah bongkar\nMinus / Defect: Tidak ada\nKelengkapan: Fullset resmi iBox', 1, 1, 'tersedia'),
+(6, 2, 6, 'ASUS ROG Strix XG27AQM 270Hz', NULL, 6441000, 2, 'Baru', 'Kondisi Fisik: Baru segel\nFungsi: 27 inch Fast IPS 2K WQHD 270Hz 0.5ms, no dead pixel\nLama Pemakaian: Baru\nRiwayat Servis: Tidak pernah\nMinus / Defect: Tidak ada\nKelengkapan: Fullset Box Original', 0, 0, 'tersedia'),
+(7, 2, 7, 'Sony WH-1000XM4 Wireless Noise Cancelling', NULL, 3200000, 3, 'Bekas - Seperti Baru', 'Kondisi Fisik: Earpad mulus tidak mengelupas\nFungsi: Active Noise Cancelling normal 100%\nLama Pemakaian: 8 bulan\nRiwayat Servis: Belum pernah servis\nMinus / Defect: Tidak ada\nKelengkapan: Unit, Carrying Case, Kabel USB-C & Aux', 1, 0, 'tersedia'),
+(8, 2, 8, 'Logitech G Pro X Superlight Wireless', NULL, 1450000, 6, 'Bekas - Mulus', 'Kondisi Fisik: Mulus, grip bersih\nFungsi: Sensor Hero 25K normal, baterai tahan hingga 70 jam\nLama Pemakaian: 6 bulan\nRiwayat Servis: Belum pernah servis\nMinus / Defect: Tidak ada\nKelengkapan: Fullset Dongle + Kabel + Box', 1, 1, 'tersedia');
 
-CREATE TABLE `negosiasi` (
-  `id` char(36) NOT NULL,
-  `id_pembeli` char(36) DEFAULT NULL,
-  `id_produk` char(36) DEFAULT NULL,
-  `kuantitas` int DEFAULT NULL,
-  `status` varchar(50) DEFAULT NULL COMMENT 'pending, counter_offer, diterima, ditolak, expired',
-  `batas_waktu` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `pengguna`
---
-
-CREATE TABLE `pengguna` (
-  `id` char(36) NOT NULL,
-  `nama` varchar(255) DEFAULT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `password` varchar(255) DEFAULT NULL,
-  `peran` varchar(50) DEFAULT NULL COMMENT 'buyer, seller, admin'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `pengguna`
---
-
-INSERT INTO `pengguna` (`id`, `nama`, `email`, `password`, `peran`) VALUES
-('2f8b9f39-c0dc-4aec-bfe4-30e6c82e16c4', 'alfi', 'pantathitambergetar69@yahoo.com', '$2y$10$gZbGq4dwvXvhiwOrZTMVKeCkgfRLRNF.bNT/M89KEQ2J3NOxfRcgu', 'buyer'),
-('57e37f19-1491-4665-aed5-7577767447f4', 'Loot-E Official Store', 'seller@loote.com', '$2y$10$zCE6nSrFntq5f23oVd/rfOcIvD2LSLpHI1QK9mVlyI4BZQ2eHlWDK', 'seller'),
-('846e532e-67f5-4379-99a2-eba03711326c', 'Rizky', 'rizky@gmail.com', '$2y$10$quqO6hf8YKN97vHBwztd7uW5RdjMQmhwdwW/lBqZEJKxQoAfh5RXS', 'buyer');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `pesanan`
---
-
-CREATE TABLE `pesanan` (
-  `id` char(36) NOT NULL,
-  `id_pembeli` char(36) DEFAULT NULL,
-  `tipe_transaksi` varchar(50) DEFAULT NULL COMMENT 'beli_langsung, hasil_nego, hasil_barter',
-  `total_harga` int DEFAULT NULL,
-  `status_pesanan` varchar(50) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `produk`
---
-
-CREATE TABLE `produk` (
-  `id` char(36) NOT NULL,
-  `id_penjual` char(36) DEFAULT NULL,
-  `id_kategori` int DEFAULT NULL,
-  `nama_produk` varchar(255) DEFAULT NULL,
-  `harga` int DEFAULT NULL,
-  `stok` int DEFAULT NULL,
-  `deskripsi` text,
-  `kondisi` varchar(255) DEFAULT NULL,
-  `status_produk` varchar(50) DEFAULT NULL COMMENT 'tersedia, habis'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `produk`
---
-
-INSERT INTO `produk` (`id`, `id_penjual`, `id_kategori`, `nama_produk`, `harga`, `stok`, `deskripsi`, `kondisi`, `status_produk`) VALUES
-('0396be61-4e98-4bb3-845e-3638b86be2d1', '57e37f19-1491-4665-aed5-7577767447f4', 5, 'iPhone 11 128GB Black iBox', 3150000, 4, 'iPhone 11 resmi iBox, battery health 85%, True Tone dan Face ID normal lancar.', 'Bekas - Mulus', 'tersedia'),
-('0fcdd962-379f-4dee-a989-80f6674cc41b', '57e37f19-1491-4665-aed5-7577767447f4', 4, 'Lenovo Ideapad S145-15AST', 1725000, 3, 'Laptop kerja & sekolah, layar 15.6 inch, baterai masih tahan 3-4 jam.', 'Bekas - Mulus', 'tersedia'),
-('2e61db61-9511-4585-b6dc-9307080084b9', '57e37f19-1491-4665-aed5-7577767447f4', 3, 'Team T-Force Delta RGB 16GB (2x8GB) DDR4 3200MHz', 850000, 10, 'RAM Gaming RGB White Edition, lifetime warranty, garansi resmi.', 'Baru', 'tersedia'),
-('3e91cfd2-252c-4239-ab9c-222d7abc0c5a', '57e37f19-1491-4665-aed5-7577767447f4', 8, 'Logitech G Pro X Superlight Wireless', 1450000, 6, 'Mouse gaming ultra-ringan 63g sensor Hero 25K, baterai tahan hingga 70 jam.', 'Bekas - Mulus', 'tersedia'),
-('65449220-fa37-4a8f-8407-b65d4230d087', '57e37f19-1491-4665-aed5-7577767447f4', 2, 'AMD Ryzen 5 5600X 6-Core 12-Thread', 2100000, 7, 'Processor gaming kencang, lengkap dengan Wraith Stealth cooler bawaan.', 'Baru', 'tersedia'),
-('a3d88102-07cd-457a-b3e5-fffd2c92c0ca', '57e37f19-1491-4665-aed5-7577767447f4', 7, 'Sony WH-1000XM4 Wireless Noise Cancelling', 3200000, 3, 'Headphone flagship Sony dengan Active Noise Cancelling terbaik, earpad mulus.', 'Bekas - Seperti Baru', 'tersedia'),
-('da1bd27c-386c-4eb0-9498-3d33290d4af7', '57e37f19-1491-4665-aed5-7577767447f4', 1, 'GTX 1660 Super 6GB GDDR6', 2400000, 5, 'Kartu grafis gaming kondisi sangat terawat, suhu adem, pemakaian normal gaming.', 'Bekas - Seperti Baru', 'tersedia'),
-('e5ea304b-dc95-45f5-b5ab-5bca4bee07f0', '57e37f19-1491-4665-aed5-7577767447f4', 6, 'ASUS ROG Strix XG27AQM 270Hz', 6441000, 2, 'Monitor gaming 27 inch Fast IPS 2K WQHD 270Hz 0.5ms G-Sync Compatible, no dead pixel.', 'Baru', 'tersedia');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `riwayat_barter`
---
-
-CREATE TABLE `riwayat_barter` (
-  `id` char(36) NOT NULL,
-  `id_barter` char(36) DEFAULT NULL,
-  `pengirim` varchar(50) DEFAULT NULL COMMENT 'pembeli, penjual',
-  `tambah_dana` int DEFAULT NULL,
-  `waktu` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `riwayat_negosiasi`
---
-
-CREATE TABLE `riwayat_negosiasi` (
-  `id` char(36) NOT NULL,
-  `id_negosiasi` char(36) DEFAULT NULL,
-  `pengirim` varchar(50) DEFAULT NULL COMMENT 'pembeli, penjual',
-  `harga` int DEFAULT NULL,
-  `waktu` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `ulasan`
---
-
-CREATE TABLE `ulasan` (
-  `id` char(36) NOT NULL,
-  `id_pesanan` char(36) DEFAULT NULL,
-  `id_produk` char(36) DEFAULT NULL,
-  `rating` int DEFAULT NULL,
-  `komentar` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `antrean`
---
-ALTER TABLE `antrean`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_pembeli` (`id_pembeli`),
-  ADD KEY `id_produk` (`id_produk`);
-
---
--- Indexes for table `barter`
---
-ALTER TABLE `barter`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_pembeli` (`id_pembeli`),
-  ADD KEY `id_produk_diincar` (`id_produk_diincar`),
-  ADD KEY `id_produk_ditawarkan` (`id_produk_ditawarkan`);
-
---
--- Indexes for table `detail_pesanan`
---
-ALTER TABLE `detail_pesanan`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_pesanan` (`id_pesanan`),
-  ADD KEY `id_produk` (`id_produk`);
-
---
--- Indexes for table `kategori`
---
-ALTER TABLE `kategori`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `negosiasi`
---
-ALTER TABLE `negosiasi`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_pembeli` (`id_pembeli`),
-  ADD KEY `id_produk` (`id_produk`);
-
---
--- Indexes for table `pengguna`
---
-ALTER TABLE `pengguna`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `pesanan`
---
-ALTER TABLE `pesanan`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_pembeli` (`id_pembeli`);
-
---
--- Indexes for table `produk`
---
-ALTER TABLE `produk`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_penjual` (`id_penjual`),
-  ADD KEY `id_kategori` (`id_kategori`);
-
---
--- Indexes for table `riwayat_barter`
---
-ALTER TABLE `riwayat_barter`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_barter` (`id_barter`);
-
---
--- Indexes for table `riwayat_negosiasi`
---
-ALTER TABLE `riwayat_negosiasi`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_negosiasi` (`id_negosiasi`);
-
---
--- Indexes for table `ulasan`
---
-ALTER TABLE `ulasan`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `id_pesanan` (`id_pesanan`),
-  ADD KEY `id_produk` (`id_produk`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `kategori`
---
-ALTER TABLE `kategori`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `antrean`
---
-ALTER TABLE `antrean`
-  ADD CONSTRAINT `antrean_ibfk_1` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`),
-  ADD CONSTRAINT `antrean_ibfk_2` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`);
-
---
--- Constraints for table `barter`
---
-ALTER TABLE `barter`
-  ADD CONSTRAINT `barter_ibfk_1` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`),
-  ADD CONSTRAINT `barter_ibfk_2` FOREIGN KEY (`id_produk_diincar`) REFERENCES `produk` (`id`),
-  ADD CONSTRAINT `barter_ibfk_3` FOREIGN KEY (`id_produk_ditawarkan`) REFERENCES `produk` (`id`);
-
---
--- Constraints for table `detail_pesanan`
---
-ALTER TABLE `detail_pesanan`
-  ADD CONSTRAINT `detail_pesanan_ibfk_1` FOREIGN KEY (`id_pesanan`) REFERENCES `pesanan` (`id`),
-  ADD CONSTRAINT `detail_pesanan_ibfk_2` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`);
-
---
--- Constraints for table `negosiasi`
---
-ALTER TABLE `negosiasi`
-  ADD CONSTRAINT `negosiasi_ibfk_1` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`),
-  ADD CONSTRAINT `negosiasi_ibfk_2` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`);
-
---
--- Constraints for table `pesanan`
---
-ALTER TABLE `pesanan`
-  ADD CONSTRAINT `pesanan_ibfk_1` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`);
-
---
--- Constraints for table `produk`
---
-ALTER TABLE `produk`
-  ADD CONSTRAINT `produk_ibfk_1` FOREIGN KEY (`id_penjual`) REFERENCES `pengguna` (`id`),
-  ADD CONSTRAINT `produk_ibfk_2` FOREIGN KEY (`id_kategori`) REFERENCES `kategori` (`id`);
-
---
--- Constraints for table `riwayat_barter`
---
-ALTER TABLE `riwayat_barter`
-  ADD CONSTRAINT `riwayat_barter_ibfk_1` FOREIGN KEY (`id_barter`) REFERENCES `barter` (`id`);
-
---
--- Constraints for table `riwayat_negosiasi`
---
-ALTER TABLE `riwayat_negosiasi`
-  ADD CONSTRAINT `riwayat_negosiasi_ibfk_1` FOREIGN KEY (`id_negosiasi`) REFERENCES `negosiasi` (`id`);
-
---
--- Constraints for table `ulasan`
---
-ALTER TABLE `ulasan`
-  ADD CONSTRAINT `ulasan_ibfk_1` FOREIGN KEY (`id_pesanan`) REFERENCES `pesanan` (`id`),
-  ADD CONSTRAINT `ulasan_ibfk_2` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`);
+SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
