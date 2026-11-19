@@ -37,3 +37,31 @@ $_footerUser = $currentUser ?? (isset($_SESSION['user_id']) ? true : false);
         </div>
     </div>
 </footer>
+
+<!-- Floating Action Button (FAB) Bantuan -->
+<aside aria-label="Bantuan Cepat">
+    <a href="help.php"
+        id="loote-help-fab"
+        class="fixed bottom-6 right-6 z-50 flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full drop-shadow-xl hover:drop-shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-yellow/40 group"
+        title="Pusat Bantuan Loot-E"
+        aria-label="Buka Pusat Bantuan">
+        <img src="assets/help.png" alt="Help" class="w-full h-full object-contain pointer-events-none select-none transition-transform group-hover:rotate-6" width="56" height="56" />
+    </a>
+</aside>
+
+<script>
+    (function() {
+        if (window.location.pathname.endsWith('help.php')) {
+            var fab = document.getElementById('loote-help-fab');
+            if (fab) {
+                fab.addEventListener('click', function(e) {
+                    var openBtn = document.getElementById('open-support-dialog');
+                    if (openBtn) {
+                        e.preventDefault();
+                        openBtn.click();
+                    }
+                });
+            }
+        }
+    })();
+</script>
