@@ -382,9 +382,6 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                             Bisa Barter
                         </span>
                     <?php endif; ?>
-                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">
-                        Escrow Protected
-                    </span>
                 </div>
 
                 <!-- Grid Tombol Aksi 2x2 -->
