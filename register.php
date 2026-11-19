@@ -1,10 +1,11 @@
-﻿<?php
+<?php
 // register.php - Pendaftaran Pengguna Baru Loot-E
 require_once "auth.php";
 
 $redirect = $_GET["redirect"] ?? $_POST["redirect"] ?? "index.php";
-$allowedRedirects = ["index.php", "categories.php"];
-if (!in_array($redirect, $allowedRedirects)) {
+$allowedRedirects = ["index.php", "categories.php", "search.php"];
+$redirectBase = parse_url($redirect, PHP_URL_PATH);
+if (!in_array($redirectBase, $allowedRedirects, true)) {
   $redirect = "index.php";
 }
 
@@ -18,21 +19,16 @@ $errors = [];
 
 // Proses saat form disubmit via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
   $nama            = trim($_POST['nama_lengkap'] ?? '');
   $email           = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
   $password        = $_POST['password'] ?? '';
   $confirmPassword = $_POST['confirm_password'] ?? '';
-  $peran           = trim($_POST['peran'] ?? 'buyer');
 
   // Validasi
-  if (empty($nama))           $errors[] = "Nama lengkap wajib diisi.";
-  if (!$email)                $errors[] = "Format alamat email tidak valid.";
-  if (strlen($password) < 8) $errors[] = "Kata sandi minimal harus 8 karakter.";
+  if (empty($nama))                   $errors[] = "Nama lengkap wajib diisi.";
+  if (!$email)                        $errors[] = "Format alamat email tidak valid.";
+  if (strlen($password) < 8)          $errors[] = "Kata sandi minimal harus 8 karakter.";
   if ($password !== $confirmPassword) $errors[] = "Konfirmasi kata sandi tidak cocok.";
-
-  $validPeran = ['buyer', 'seller', 'admin'];
-  if (!in_array($peran, $validPeran)) $peran = 'buyer';
 
   if (empty($errors)) {
     try {
@@ -44,16 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Email tersebut sudah terdaftar. Silakan gunakan email lain atau langsung masuk.";
       } else {
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $id = generateUuidV4();
 
-        $stmtInsert = $db->prepare("INSERT INTO pengguna (id, nama, email, password, peran) VALUES (?, ?, ?, ?, ?)");
-        $stmtInsert->execute([$id, $nama, $email, $hashedPassword, $peran]);
+        $stmtInsert = $db->prepare("INSERT INTO pengguna (nama, email, password, peran, is_verified) VALUES (?, ?, ?, 'user', 0)");
+        $stmtInsert->execute([$nama, $email, $hashedPassword]);
+
+        $userId = (int)$db->lastInsertId();
 
         // Login otomatis setelah register
-        $_SESSION['user_id'] = $id;
-        $_SESSION['nama']    = $nama;
-        $_SESSION['email']   = $email;
-        $_SESSION['peran']   = $peran;
+        session_regenerate_id(true);
+        $_SESSION['user_id']     = $userId;
+        $_SESSION['nama']        = $nama;
+        $_SESSION['email']       = $email;
+        $_SESSION['peran']       = 'user';
+        $_SESSION['is_verified'] = 0;
 
         header("Location: " . $redirect);
         exit;
@@ -104,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10 overflow-y-auto">
       <!-- Header Brand -->
       <div>
-        <a href="" class="inline-flex items-center gap-3 group">
+        <a href="landingpage.php" class="inline-flex items-center gap-3 group">
           <img src="assets/logo.png" alt="Logo Loot - E"
             class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm" />
           <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span class="text-brand-yellow">E</span></span>

@@ -1,17 +1,17 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-  @session_start();
-}
-$currentUser = null;
-if (isset($_SESSION['user_id'])) {
-  $currentUser = [
-    'id'    => $_SESSION['user_id'],
-    'nama'  => $_SESSION['nama']  ?? 'Pengguna',
-    'email' => $_SESSION['email'] ?? '',
-    'peran' => $_SESSION['peran'] ?? 'buyer',
-  ];
-}
+require_once "auth.php";
+$currentUser = getCurrentUser();
 $navActivePage = 'landing';
+
+// Etalase untuk pengunjung: hanya tampilan, klik produk diarahkan ke login jika belum masuk
+$produkTampil = getDbConnection()->query("
+  SELECT p.id, p.nama_produk, p.harga, k.nama_kategori
+  FROM produk p
+  JOIN kategori k ON k.id = p.id_kategori
+  WHERE p.status_produk = 'tersedia'
+  ORDER BY p.created_at DESC, p.id DESC
+  LIMIT 5
+")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -224,76 +224,23 @@ $navActivePage = 'landing';
       <p class="mx-auto mt-3 max-w-md text-xs text-[var(--mute)]">Setiap transaksi tidak harus dilakukan dengan cara
         yang sama. Tentukan metode yang paling menguntungkan kebutuhanmu.</p>
       <div class="mt-10 grid grid-cols-2 gap-3 text-left sm:grid-cols-3 lg:grid-cols-5">
-        <article class="flex flex-col justify-between bg-[var(--lt)] p-4">
-          <div
-            class="relative flex h-28 w-full items-center justify-center overflow-hidden bg-[var(--card)] border border-[var(--line)]">
-            <img src="" alt="GTX 1660 Super" class="h-full w-full object-contain p-2"
-              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
-            <div class="flex flex-col items-center justify-center gap-1 text-[var(--mute)] text-[10px]">
-              <i data-i="image" class="h-5 w-5"></i>
-              <span>Foto GPU</span>
+        <?php foreach ($produkTampil as $p):
+          $tujuan = 'search.php?q=' . urlencode($p['nama_produk']);
+          $href = $currentUser ? $tujuan : 'login.php?redirect=' . urlencode($tujuan);
+        ?>
+          <a href="<?= htmlspecialchars($href) ?>" class="flex flex-col justify-between bg-[var(--lt)] p-4 hover:shadow-md transition">
+            <div class="relative flex h-28 w-full flex-col items-center justify-center gap-1 overflow-hidden bg-[var(--card)] border border-[var(--line)] text-[var(--mute)] text-[10px]">
+              <i class="ph <?= htmlspecialchars(kategoriIcon($p['nama_kategori'])) ?> text-2xl" aria-hidden="true"></i>
+              <span><?= htmlspecialchars($p['nama_kategori']) ?></span>
             </div>
-          </div>
-          <h3 class="mt-4 truncate text-sm font-semibold">GTX 1660 Super</h3>
-          <p class="text-xs text-[var(--mute)]">GPU - Nvidia</p>
-          <p class="mt-2 text-sm font-semibold">Rp 2.400.000</p>
-        </article>
-        <article class="flex flex-col justify-between bg-[var(--lt)] p-4">
-          <div
-            class="relative flex h-28 w-full items-center justify-center overflow-hidden bg-[var(--card)] border border-[var(--line)]">
-            <img src="" alt="Lenovo S145-15AST" class="h-full w-full object-contain p-2"
-              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
-            <div class="flex flex-col items-center justify-center gap-1 text-[var(--mute)] text-[10px]">
-              <i data-i="image" class="h-5 w-5"></i>
-              <span>Foto Laptop</span>
-            </div>
-          </div>
-          <h3 class="mt-4 truncate text-sm font-semibold">Lenovo S145-15AST</h3>
-          <p class="text-xs text-[var(--mute)]">Laptop - Lenovo</p>
-          <p class="mt-2 text-sm font-semibold">Rp 1.725.000</p>
-        </article>
-        <article class="flex flex-col justify-between bg-[var(--lt)] p-4">
-          <div
-            class="relative flex h-28 w-full items-center justify-center overflow-hidden bg-[var(--card)] border border-[var(--line)]">
-            <img src="" alt="Iphone 11" class="h-full w-full object-contain p-2"
-              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
-            <div class="flex flex-col items-center justify-center gap-1 text-[var(--mute)] text-[10px]">
-              <i data-i="image" class="h-5 w-5"></i>
-              <span>Foto Phone</span>
-            </div>
-          </div>
-          <h3 class="mt-4 truncate text-sm font-semibold">Iphone 11</h3>
-          <p class="text-xs text-[var(--mute)]">Phone - Apple</p>
-          <p class="mt-2 text-sm font-semibold">Rp 3.150.000</p>
-        </article>
-        <article class="flex flex-col justify-between bg-[var(--lt)] p-4">
-          <div
-            class="relative flex h-28 w-full items-center justify-center overflow-hidden bg-[var(--card)] border border-[var(--line)]">
-            <img src="" alt="ASUS ROG Strix XG27.." class="h-full w-full object-contain p-2"
-              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
-            <div class="flex flex-col items-center justify-center gap-1 text-[var(--mute)] text-[10px]">
-              <i data-i="image" class="h-5 w-5"></i>
-              <span>Foto Monitor</span>
-            </div>
-          </div>
-          <h3 class="mt-4 truncate text-sm font-semibold">ASUS ROG Strix XG27..</h3>
-          <p class="text-xs text-[var(--mute)]">Monitor - Asus</p>
-          <p class="mt-2 text-sm font-semibold">Rp 6.441.000</p>
-        </article>
-        <article class="flex flex-col justify-between bg-[var(--lt)] p-4">
-          <div
-            class="relative flex h-28 w-full items-center justify-center overflow-hidden bg-[var(--card)] border border-[var(--line)]">
-            <img src="" alt="Team T-Force Delta R.." class="h-full w-full object-contain p-2"
-              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
-            <div class="flex flex-col items-center justify-center gap-1 text-[var(--mute)] text-[10px]">
-              <i data-i="image" class="h-5 w-5"></i>
-              <span>Foto RAM</span>
-            </div>
-          </div>
-          <h3 class="mt-4 truncate text-sm font-semibold">Team T-Force Delta R..</h3>
-          <p class="text-xs text-[var(--mute)]">RAM - T-Force</p>
-          <p class="mt-2 text-sm font-semibold">Rp 968.200</p>
-        </article>
+            <h3 class="mt-4 truncate text-sm font-semibold"><?= htmlspecialchars($p['nama_produk']) ?></h3>
+            <p class="text-xs text-[var(--mute)]"><?= htmlspecialchars($p['nama_kategori']) ?></p>
+            <p class="mt-2 text-sm font-semibold"><?= formatRupiah((int)$p['harga']) ?></p>
+          </a>
+        <?php endforeach; ?>
+        <?php if (empty($produkTampil)): ?>
+          <p class="col-span-full text-xs text-[var(--mute)]">Belum ada produk tersedia.</p>
+        <?php endif; ?>
       </div>
       <a href="<?php echo $currentUser ? 'index.php' : 'login.php'; ?>"
         class="mt-6 inline-flex items-center gap-2 bg-ye px-5 py-2.5 text-xs font-bold text-[#272727] hover:brightness-95">Lihat
