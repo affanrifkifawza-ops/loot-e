@@ -12,99 +12,102 @@ $navActivePage = '';
 
 $searchQuery    = trim($_GET['q'] ?? '');
 $kategoriFilter = isset($_GET['kategori']) && is_numeric($_GET['kategori']) ? (int)$_GET['kategori'] : null;
-$kondisiFilter  = isset($_GET['kondisi']) ? trim($_GET['kondisi']) : '';
+$kondisiFilter  = in_array($_GET['kondisi'] ?? '', ['Baru', 'Bekas'], true) ? $_GET['kondisi'] : '';
 $minPrice       = isset($_GET['min_price']) && is_numeric($_GET['min_price']) ? (int)$_GET['min_price'] : null;
 $maxPrice       = isset($_GET['max_price']) && is_numeric($_GET['max_price']) ? (int)$_GET['max_price'] : null;
+$filterNego     = !empty($_GET['nego']);
+$filterBarter   = !empty($_GET['barter']);
 $page           = max(1, (int)($_GET['page'] ?? 1));
 $perPage        = 9;
 
 $products = [];
 $totalResults = 0;
+$totalPages = 1;
 $allCategories = [];
 
 try {
     $db = getDbConnection();
-    if ($db) {
-        // Ambil daftar kategori beserta jumlah produk yang tersedia
-        $stmtCat = $db->query("
-            SELECT k.id, k.nama_kategori, COUNT(p.id) AS total_produk
-            FROM kategori k
-            LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia'
-            GROUP BY k.id, k.nama_kategori
-            ORDER BY k.id ASC
-        ");
-        $allCategories = $stmtCat->fetchAll();
 
-        // Bangun query dinamis berdasarkan input pencarian dan filter
-        $sql = "
-            SELECT p.*, k.nama_kategori, u.nama AS nama_penjual,
-                   COALESCE(AVG(ul.rating), 4.8) AS avg_rating,
-                   COUNT(ul.id) AS total_reviews
-            FROM produk p
-            LEFT JOIN kategori k ON p.id_kategori = k.id
-            LEFT JOIN pengguna u ON p.id_penjual = u.id
-            LEFT JOIN ulasan ul ON p.id = ul.id_produk
-            WHERE p.status_produk = 'tersedia'
-        ";
-        $params = [];
+    // Daftar kategori beserta jumlah produk yang tersedia
+    $allCategories = $db->query("
+        SELECT k.id, k.nama_kategori, COUNT(p.id) AS total_produk
+        FROM kategori k
+        LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia'
+        GROUP BY k.id, k.nama_kategori
+        ORDER BY k.id ASC
+    ")->fetchAll();
 
-        if ($searchQuery !== '') {
-            $sql .= " AND (p.nama_produk LIKE ? OR p.deskripsi LIKE ? OR k.nama_kategori LIKE ?)";
-            $term = "%" . $searchQuery . "%";
-            $params[] = $term;
-            $params[] = $term;
-            $params[] = $term;
-        }
+    // Kondisi filter disusun dinamis, semua nilai lewat prepared statement
+    $where  = ["p.status_produk = 'tersedia'"];
+    $params = [];
 
-        if ($kategoriFilter !== null && $kategoriFilter > 0) {
-            $sql .= " AND p.id_kategori = ?";
-            $params[] = $kategoriFilter;
-        }
-
-        if ($kondisiFilter !== '') {
-            $sql .= " AND p.kondisi LIKE ?";
-            $params[] = "%" . $kondisiFilter . "%";
-        }
-
-        if ($minPrice !== null && $minPrice > 0) {
-            $sql .= " AND p.harga >= ?";
-            $params[] = $minPrice;
-        }
-
-        if ($maxPrice !== null && $maxPrice > 0) {
-            $sql .= " AND p.harga <= ?";
-            $params[] = $maxPrice;
-        }
-
-        $sql .= " GROUP BY p.id ORDER BY p.harga ASC";
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-        $allResults = $stmt->fetchAll();
-
-        $totalResults = count($allResults);
-        $totalPages   = max(1, (int)ceil($totalResults / $perPage));
-        $offset       = ($page - 1) * $perPage;
-
-        $products = array_slice($allResults, $offset, $perPage);
+    if ($searchQuery !== '') {
+        $where[] = "(p.nama_produk LIKE ? OR p.deskripsi LIKE ? OR k.nama_kategori LIKE ?)";
+        $term = "%" . $searchQuery . "%";
+        array_push($params, $term, $term, $term);
     }
-} catch (Exception $e) {
+    if ($kategoriFilter) {
+        $where[]  = "p.id_kategori = ?";
+        $params[] = $kategoriFilter;
+    }
+    if ($kondisiFilter === 'Baru') {
+        $where[] = "p.kondisi = 'Baru'";
+    } elseif ($kondisiFilter === 'Bekas') {
+        $where[] = "p.kondisi LIKE 'Bekas%'";
+    }
+    if ($minPrice) {
+        $where[]  = "p.harga >= ?";
+        $params[] = $minPrice;
+    }
+    if ($maxPrice) {
+        $where[]  = "p.harga <= ?";
+        $params[] = $maxPrice;
+    }
+    if ($filterNego)   $where[] = "p.bisa_nego = 1";
+    if ($filterBarter) $where[] = "p.bisa_barter = 1";
+
+    $whereSql = implode(' AND ', $where);
+
+    $stmtCount = $db->prepare("
+        SELECT COUNT(*) FROM produk p
+        JOIN kategori k ON p.id_kategori = k.id
+        WHERE $whereSql
+    ");
+    $stmtCount->execute($params);
+    $totalResults = (int)$stmtCount->fetchColumn();
+    $totalPages   = max(1, (int)ceil($totalResults / $perPage));
+    $page         = min($page, $totalPages);
+    $offset       = ($page - 1) * $perPage;
+
+    // $perPage dan $offset sudah berupa integer
+    $stmt = $db->prepare("
+        SELECT p.*, k.nama_kategori, u.nama AS nama_penjual,
+               (SELECT AVG(rating) FROM ulasan WHERE id_produk = p.id) AS avg_rating,
+               (SELECT COUNT(*) FROM ulasan WHERE id_produk = p.id) AS total_reviews
+        FROM produk p
+        JOIN kategori k ON p.id_kategori = k.id
+        JOIN pengguna u ON p.id_penjual = u.id
+        WHERE $whereSql
+        ORDER BY p.harga ASC
+        LIMIT $perPage OFFSET $offset
+    ");
+    $stmt->execute($params);
+    $products = $stmt->fetchAll();
+} catch (PDOException $e) {
     $products = [];
-    $totalResults = 0;
-    $totalPages = 1;
 }
 
-// Ikon representatif per kategori produk
-$categoryIconMap = [
-    'gpu'        => 'ph-graphics-card',
-    'cpu'        => 'ph-cpu',
-    'ram'        => 'ph-memory',
-    'laptop'     => 'ph-laptop',
-    'phone'      => 'ph-device-mobile',
-    'monitor'    => 'ph-monitor',
-    'headphones' => 'ph-headphones',
-    'aksesoris'  => 'ph-mouse',
-];
+// Query string filter untuk link pagination agar filter tidak hilang
+$filterQuery = http_build_query(array_filter([
+    'q'         => $searchQuery,
+    'kategori'  => $kategoriFilter,
+    'kondisi'   => $kondisiFilter,
+    'min_price' => $minPrice,
+    'max_price' => $maxPrice,
+    'nego'      => $filterNego ? 1 : null,
+    'barter'    => $filterBarter ? 1 : null,
+]));
+$pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '&' : '') . 'page=' . $n;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -215,7 +218,7 @@ $categoryIconMap = [
 
                     <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                         <h2 class="text-base font-bold text-[#272727]">Filter</h2>
-                        <?php if ($kategoriFilter || $kondisiFilter || $minPrice || $maxPrice): ?>
+                        <?php if ($kategoriFilter || $kondisiFilter || $minPrice || $maxPrice || $filterNego || $filterBarter): ?>
                             <a href="search.php?q=<?= urlencode($searchQuery) ?>" class="text-[11px] font-semibold text-red-500 hover:underline">Reset</a>
                         <?php endif; ?>
                     </div>
@@ -274,13 +277,19 @@ $categoryIconMap = [
                         </button>
                     </div>
 
-                    <!-- Filter Penjual Terpercaya -->
+                    <!-- Filter Opsi Transaksi -->
                     <div class="pt-4">
-                        <h3 class="text-xs font-bold text-[#272727] mb-2.5">Trusted Seller</h3>
-                        <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer hover:text-black">
-                            <input type="checkbox" checked class="w-3.5 h-3.5 rounded text-[#272727] focus:ring-brand-yellow border-gray-300" />
-                            <span>Hanya penjual terpercaya</span>
-                        </label>
+                        <h3 class="text-xs font-bold text-[#272727] mb-2.5">Opsi Transaksi</h3>
+                        <div class="space-y-2 text-xs text-gray-700">
+                            <label class="flex items-center gap-2 cursor-pointer hover:text-black">
+                                <input type="checkbox" name="nego" value="1" <?= $filterNego ? 'checked' : '' ?> onchange="this.form.submit()" class="w-3.5 h-3.5 rounded text-[#272727] focus:ring-brand-yellow border-gray-300" />
+                                <span>Bisa Nego</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer hover:text-black">
+                                <input type="checkbox" name="barter" value="1" <?= $filterBarter ? 'checked' : '' ?> onchange="this.form.submit()" class="w-3.5 h-3.5 rounded text-[#272727] focus:ring-brand-yellow border-gray-300" />
+                                <span>Bisa Barter</span>
+                            </label>
+                        </div>
                     </div>
                 </form>
             </aside>
@@ -291,15 +300,12 @@ $categoryIconMap = [
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                         <?php foreach ($products as $item): ?>
                             <?php
-                            $catKey = strtolower($item['nama_kategori'] ?? 'hardware');
-                            $catIcon = $categoryIconMap[$catKey] ?? 'ph-package';
-                            $isBaru = str_contains(strtolower($item['kondisi'] ?? ''), 'baru');
+                            $catIcon = kategoriIcon($item['nama_kategori']);
+                            $isBaru = $item['kondisi'] === 'Baru';
                             $badgeLabel = $isBaru ? 'Baru' : 'Bekas';
-                            $ratingVal = number_format((float)($item['avg_rating'] ?? 4.8), 1);
-                            $reviewVal = (int)($item['total_reviews'] ?? 0);
-                            if ($reviewVal === 0) {
-                                $reviewVal = 24;
-                            }
+                            $reviewVal = (int)$item['total_reviews'];
+                            $ratingVal = number_format((float)$item['avg_rating'], 1);
+                            $isOwnProduct = (int)$item['id_penjual'] === $currentUser['id']; // BR-01
                             ?>
                             <article class="bg-white border border-gray-200/80 p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between group">
                                 <!-- Tag Kondisi & Tombol Wishlist -->
@@ -342,25 +348,32 @@ $categoryIconMap = [
                                     </p>
 
                                     <!-- Badge Nego & Barter -->
-                                    <div class="flex items-center gap-3 text-[11px] text-brand-yellow font-medium mt-1.5">
-                                        <span class="flex items-center gap-1">
-                                            <i class="ph ph-tag text-xs font-bold"></i> Bisa Nego
-                                        </span>
-                                        <span class="flex items-center gap-1">
-                                            <i class="ph ph-arrows-left-right text-xs font-bold"></i> Bisa Barter
-                                        </span>
-                                    </div>
+                                    <?php if ($item['bisa_nego'] || $item['bisa_barter']): ?>
+                                        <div class="flex items-center gap-3 text-[11px] text-brand-yellow font-medium mt-1.5">
+                                            <?php if ($item['bisa_nego']): ?>
+                                                <span class="flex items-center gap-1">
+                                                    <i class="ph ph-tag text-xs font-bold"></i> Bisa Nego
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if ($item['bisa_barter']): ?>
+                                                <span class="flex items-center gap-1">
+                                                    <i class="ph ph-arrows-left-right text-xs font-bold"></i> Bisa Barter
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
 
-                                    <!-- Rating & Lokasi -->
+                                    <!-- Rating -->
                                     <div class="flex items-center justify-between text-xs text-gray-600 mt-2 pb-2.5 border-b border-gray-100">
-                                        <span class="flex items-center gap-1 font-semibold text-gray-800">
-                                            <i class="ph-fill ph-star text-amber-400 text-xs"></i>
-                                            <?= htmlspecialchars($ratingVal) ?>
-                                            <span class="text-gray-400 font-normal">(<?= htmlspecialchars((string)$reviewVal) ?>)</span>
-                                        </span>
-                                        <span class="flex items-center gap-1 text-gray-400 text-[11px]">
-                                            <i class="ph ph-map-pin text-xs"></i> Jakarta
-                                        </span>
+                                        <?php if ($reviewVal > 0): ?>
+                                            <span class="flex items-center gap-1 font-semibold text-gray-800">
+                                                <i class="ph-fill ph-star text-amber-400 text-xs"></i>
+                                                <?= htmlspecialchars($ratingVal) ?>
+                                                <span class="text-gray-400 font-normal">(<?= $reviewVal ?>)</span>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-gray-400 text-[11px]">Belum ada ulasan</span>
+                                        <?php endif; ?>
                                     </div>
 
                                     <!-- Info Penjual -->
@@ -380,6 +393,7 @@ $categoryIconMap = [
                                     </div>
                                 </div>
 
+<<<<<<< HEAD
                                 <!-- Tombol Aksi: Ajukan Harga, Ajukan Barter, Chat Seller -->
                                 <div class="mt-3.5 space-y-2">
                                     <div class="grid grid-cols-2 gap-2">
@@ -394,6 +408,23 @@ $categoryIconMap = [
                                         <i class="ph ph-chat-circle-dots text-sm"></i> Chat Seller
                                     </button>
                                 </div>
+=======
+                                <!-- Tombol Aksi: hanya tampil sesuai opsi produk dan bukan produk milik sendiri (BR-01) -->
+                                <?php if (!$isOwnProduct && ($item['bisa_nego'] || $item['bisa_barter'])): ?>
+                                    <div class="mt-3.5 grid grid-cols-2 gap-2">
+                                        <?php if ($item['bisa_nego']): ?>
+                                            <a href="#nego-<?= (int)$item['id'] ?>" class="bg-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:brightness-95 transition shadow-2xs <?= $item['bisa_barter'] ? '' : 'col-span-2' ?>">
+                                                Ajukan Harga
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if ($item['bisa_barter']): ?>
+                                            <a href="#barter-<?= (int)$item['id'] ?>" class="border border-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:bg-brand-yellow/15 transition <?= $item['bisa_nego'] ? '' : 'col-span-2' ?>">
+                                                Ajukan Barter
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+>>>>>>> 24467b84eb7bcdb841612e8240dde3ef19ec7530
                             </article>
                         <?php endforeach; ?>
                     </div>
@@ -402,7 +433,7 @@ $categoryIconMap = [
                     <?php if ($totalPages > 1): ?>
                         <nav aria-label="Navigasi Halaman" class="flex items-center justify-center gap-2 mt-10">
                             <?php if ($page > 1): ?>
-                                <a href="search.php?q=<?= urlencode($searchQuery) ?>&page=<?= $page - 1 ?>"
+                                <a href="<?= $pageUrl($page - 1) ?>"
                                     class="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center text-xs text-gray-600 hover:bg-gray-100 transition" aria-label="Halaman Sebelumnya">
                                     <i class="ph ph-caret-left font-bold"></i>
                                 </a>
@@ -414,7 +445,7 @@ $categoryIconMap = [
                                         <?= $i ?>
                                     </span>
                                 <?php else: ?>
-                                    <a href="search.php?q=<?= urlencode($searchQuery) ?>&page=<?= $i ?>"
+                                    <a href="<?= $pageUrl($i) ?>"
                                         class="w-8 h-8 rounded-full text-gray-700 hover:bg-gray-100 text-xs font-semibold flex items-center justify-center transition">
                                         <?= $i ?>
                                     </a>
@@ -422,7 +453,7 @@ $categoryIconMap = [
                             <?php endfor; ?>
 
                             <?php if ($page < $totalPages): ?>
-                                <a href="search.php?q=<?= urlencode($searchQuery) ?>&page=<?= $page + 1 ?>"
+                                <a href="<?= $pageUrl($page + 1) ?>"
                                     class="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center text-xs text-gray-600 hover:bg-gray-100 transition" aria-label="Halaman Berikutnya">
                                     <i class="ph ph-caret-right font-bold"></i>
                                 </a>

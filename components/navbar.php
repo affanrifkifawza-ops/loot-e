@@ -1,7 +1,12 @@
 <?php
 // Ambil variabel dari scope pemanggil
-$_navUser       = $currentUser ?? null;
-$_activePage    = $navActivePage ?? '';
+$_navUser    = $currentUser ?? null;
+$_activePage = $navActivePage ?? '';
+$_baseHome   = $_navUser ? 'index.php' : 'landingpage.php';
+$_onMainPage = ($_activePage === 'landing' || $_activePage === 'home');
+$_hrefHome   = $_onMainPage ? '#' : $_baseHome;
+$_hrefProd   = $_onMainPage ? '#products' : $_baseHome . '#products';
+$_hrefAbout  = $_activePage === 'landing' ? '#why-loote' : 'landingpage.php#why-loote';
 
 /**
  * Helper: tentukan class link navbar
@@ -28,11 +33,11 @@ if (!function_exists('_navLinkClass')) {
 
     <!-- Menu Navigasi (Desktop) -->
     <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
-        <a href="<?= $_navUser ? 'index.php' : 'landingpage.php' ?>"
+        <a href="<?= $_hrefHome ?>"
             class="<?= _navLinkClass('home', $_activePage) ?>">Home</a>
-        <a href="categories.php"
-            class="<?= _navLinkClass('categories', $_activePage) ?>">Categories</a>
-        <a href="<?= $_navUser ? 'index.php#why-loote' : 'landingpage.php#why-loote' ?>"
+        <a href="<?= $_hrefProd ?>"
+            class="<?= _navLinkClass('categories', $_activePage) ?>">Products</a>
+        <a href="<?= $_hrefAbout ?>"
             class="<?= _navLinkClass('about', $_activePage) ?>">About</a>
         <a href="help.php"
             class="<?= _navLinkClass('help', $_activePage) ?>">Help</a>
@@ -101,7 +106,7 @@ if (!function_exists('_navLinkClass')) {
                 </div>
                 <div>
                     <p class="text-xs font-bold text-white leading-tight"><?= htmlspecialchars($_navUser['nama']) ?></p>
-                    <p class="text-[11px] text-gray-400 capitalize"><?= htmlspecialchars($_navUser['peran'] ?? 'Pengguna') ?></p>
+                    <p class="text-[11px] text-gray-400 capitalize"><?= $_navUser['peran'] === 'admin' ? 'Admin' : ($_navUser['is_verified'] ? 'Verified Seller' : 'Pengguna') ?></p>
                 </div>
             </div>
             <a href="auth.php?action=logout" class="text-xs bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded-lg font-medium transition" title="Keluar">
@@ -111,9 +116,9 @@ if (!function_exists('_navLinkClass')) {
     <?php endif; ?>
 
     <div class="flex flex-col gap-2 text-sm font-medium">
-        <a href="<?= $_navUser ? 'index.php' : 'landingpage.php' ?>" class="<?= _navLinkClass('home', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Home</a>
-        <a href="categories.php" class="<?= _navLinkClass('categories', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Categories</a>
-        <a href="<?= $_navUser ? 'index.php#why-loote' : 'landingpage.php#why-loote' ?>" class="<?= _navLinkClass('about', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">About</a>
+        <a href="<?= $_hrefHome ?>" class="<?= _navLinkClass('home', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Home</a>
+        <a href="<?= $_hrefProd ?>" class="<?= _navLinkClass('categories', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Products</a>
+        <a href="<?= $_hrefAbout ?>" class="<?= _navLinkClass('about', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">About</a>
         <a href="help.php" class="<?= _navLinkClass('help', $_activePage) ?> py-2 px-2 rounded-lg hover:bg-white/5">Help</a>
         <?php if (!$_navUser): ?>
             <div class="pt-3 mt-1 border-t border-gray-700/50 flex gap-2">

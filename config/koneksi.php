@@ -20,12 +20,7 @@ try {
     );
 } catch (PDOException $e) {
     http_response_code(500);
-    header("Content-Type: application/json");
-    echo json_encode([
-        "status"  => "error",
-        "message" => "Koneksi database gagal: " . $e->getMessage()
-    ]);
-    exit;
+    die('Koneksi database gagal. Pastikan layanan MySQL aktif dan database "' . htmlspecialchars($database) . '" sudah tersedia.');
 }
 
 /**

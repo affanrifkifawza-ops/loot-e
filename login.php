@@ -17,8 +17,8 @@ if (isLoggedIn()) {
 
 $error = "";
 $info = "";
-if ($redirect === "categories.php" && $_SERVER["REQUEST_METHOD"] !== "POST") {
-  $info = "Silakan login terlebih dahulu untuk mengakses halaman Kategori.";
+if ($redirect !== "index.php" && $_SERVER["REQUEST_METHOD"] !== "POST") {
+  $info = "Silakan login terlebih dahulu untuk melanjutkan.";
 }
 
 // Proses saat form disubmit via POST
@@ -31,19 +31,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   } else {
     try {
       $db   = getDbConnection();
-      $stmt = $db->prepare("SELECT id, nama, email, password, peran FROM pengguna WHERE email = ?");
+      $stmt = $db->prepare("SELECT id, nama, email, password, peran, is_verified FROM pengguna WHERE email = ?");
       $stmt->execute([$email]);
       $user = $stmt->fetch();
 
       if (!$user || !password_verify($password, $user['password'])) {
         $error = "Email atau kata sandi salah. Silakan coba lagi.";
       } else {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['nama']    = $user['nama'];
-        $_SESSION['email']   = $user['email'];
-        $_SESSION['peran']   = $user['peran'];
+        session_regenerate_id(true);
+        $_SESSION['user_id']     = (int)$user['id'];
+        $_SESSION['nama']        = $user['nama'];
+        $_SESSION['email']       = $user['email'];
+        $_SESSION['peran']       = $user['peran'];
+        $_SESSION['is_verified'] = (int)$user['is_verified'];
 
-        header("Location: " . $redirect);
+        // shortcut: fallback ke $redirect sampai admin/index.php dibuat
+        if ($user['peran'] === 'admin' && file_exists(__DIR__ . '/admin/index.php')) {
+          header("Location: admin/index.php");
+        } else {
+          header("Location: " . $redirect);
+        }
         exit;
       }
     } catch (PDOException $e) {
@@ -84,7 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       },
     };
   </script>
-  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body class="bg-[#F8F9FA] font-sans antialiased text-gray-900 min-h-screen">
@@ -93,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white shadow-sm z-10">
       <!-- Header Brand -->
       <div>
-        <a href="" class="inline-flex items-center gap-3 group">
+        <a href="landingpage.php" class="inline-flex items-center gap-3 group">
           <img src="assets/logo.png" alt="Logo Loot - E"
             class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm" />
           <span class="font-bold text-xl tracking-tight text-gray-900">Loot - <span class="text-brand-yellow">E</span></span>
@@ -111,6 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </p>
         </div>
 
+        <!-- Alert Info -->
+        <?php if (!empty($info)): ?>
+          <div class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-start gap-3">
+            <i class="ph ph-info text-xl flex-shrink-0 text-amber-600 mt-0.5"></i>
+            <div class="flex-1 font-medium"><?= htmlspecialchars($info) ?></div>
+          </div>
+        <?php endif; ?>
+
         <!-- Alert Error -->
         <?php if (!empty($error)): ?>
           <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3">
@@ -119,7 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
 
-        <form action="login.php" method="POST" class="space-y-5">
+        <form action="login.php<?= $redirect !== 'index.php' ? '?redirect=' . urlencode($redirect) : '' ?>" method="POST" class="space-y-5">
+          <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>" />
           <!-- Input Email -->
           <div>
             <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">Alamat Email</label>
