@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once "auth.php";
 
 if (!isLoggedIn()) {
@@ -230,7 +230,7 @@ $sections = [
                 <?php else: ?>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
                         <?php foreach ($sec['items'] as $item): ?>
-                            <article class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
+                            <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
                                 <div>
                                     <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-3 mb-2.5 relative">
                                         <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
@@ -260,7 +260,7 @@ $sections = [
                                         <?= htmlspecialchars(implode(' · ', array_filter([$item['bisa_nego'] ? 'Nego' : null, $item['bisa_barter'] ? 'Barter' : null]))) ?>
                                     </span>
                                 </div>
-                            </article>
+                            </a>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>

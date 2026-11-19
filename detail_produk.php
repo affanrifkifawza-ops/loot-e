@@ -1,9 +1,74 @@
 <?php
 require_once "auth.php";
+require_once "config/helpers.php";
 
 $currentUser = getCurrentUser();
-
 $navActivePage = 'categories';
+
+$productId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : null;
+$produk = null;
+$relatedProducts = [];
+
+try {
+    $db = getDbConnection();
+    $sqlBase = "
+        SELECT p.*, k.nama_kategori, u.nama AS nama_penjual, u.alamat AS alamat_penjual
+        FROM produk p
+        JOIN kategori k ON p.id_kategori = k.id
+        JOIN pengguna u ON p.id_penjual = u.id
+    ";
+    if ($productId !== null) {
+        $stmt = $db->prepare($sqlBase . " WHERE p.id = ? LIMIT 1");
+        $stmt->execute([$productId]);
+        $produk = $stmt->fetch() ?: null;
+    } else {
+        $produk = $db->query($sqlBase . " WHERE p.status_produk = 'tersedia' ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
+    }
+
+    if ($produk) {
+        $stmtRel = $db->prepare("
+            SELECT p.id, p.nama_produk, p.harga, p.kondisi, p.stok, k.nama_kategori, u.nama AS nama_penjual
+            FROM produk p
+            JOIN kategori k ON p.id_kategori = k.id
+            JOIN pengguna u ON p.id_penjual = u.id
+            WHERE p.status_produk = 'tersedia' AND p.id != ?
+            ORDER BY (p.id_kategori = ?) DESC, p.id DESC
+            LIMIT 3
+        ");
+        $stmtRel->execute([(int)$produk['id'], (int)$produk['id_kategori']]);
+        $relatedProducts = $stmtRel->fetchAll();
+    }
+} catch (PDOException $e) {
+    $produk = null;
+    $relatedProducts = [];
+}
+
+if (!$produk) {
+    header("Location: search.php");
+    exit;
+}
+
+$namaProduk      = $produk['nama_produk'];
+$kategoriNama    = $produk['nama_kategori'];
+$kondisiProduk   = $produk['kondisi'];
+$hargaProduk     = (int)$produk['harga'];
+$stokProduk      = (int)$produk['stok'];
+$bisaNego        = (int)$produk['bisa_nego'] === 1;
+$bisaBarter      = (int)$produk['bisa_barter'] === 1;
+$namaPenjual     = $produk['nama_penjual'];
+$alamatPenjual   = $produk['alamat_penjual'] ?? '';
+
+$parsedDeskripsi = parseDeskripsiProduk($produk['deskripsi'] ?? '');
+$labelRiwayatMap = [
+    'fisik'       => 'Kondisi Fisik',
+    'fungsi'      => 'Fungsi',
+    'lama_pakai'  => 'Lama Pemakaian',
+    'servis'      => 'Riwayat Servis',
+    'minus'       => 'Minus / Defect',
+    'kelengkapan' => 'Kelengkapan',
+];
+
+$inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenjual), 0, 2) ?: 'LE');
 ?>
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth">
@@ -11,7 +76,7 @@ $navActivePage = 'categories';
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ASUS GTX 750 Ti 2GB | Loot-E</title>
+    <title><?= htmlspecialchars($namaProduk) ?> | Loot-E</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -201,16 +266,16 @@ $navActivePage = 'categories';
 
                     <!-- Main Image Frame -->
                     <div class="relative flex-1 aspect-square bg-[#FAFAFA] border border-gray-200/80 flex items-center justify-center p-6 order-1 sm:order-2 overflow-hidden">
-                        <!-- Badge Bekas -->
+                        <!-- Badge Kondisi -->
                         <span class="absolute top-3 left-3 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-md tracking-wide">
-                            Bekas
+                            <?= htmlspecialchars($kondisiProduk) ?>
                         </span>
 
                         <!-- Main visual placeholder/render -->
                         <div id="main-preview-container" class="w-full h-full flex flex-col items-center justify-center text-center p-4">
-                            <i class="ph ph-graphics-card text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
-                            <p id="main-preview-title" class="text-sm font-bold text-gray-800">ASUS GeForce GTX 750 Ti 2GB GDDR5</p>
-                            <p class="text-xs text-gray-500 mt-1">Dual Fan Edition • PCIe 3.0</p>
+                            <i class="ph <?= kategoriIcon($kategoriNama) ?> text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
+                            <p id="main-preview-title" class="text-sm font-bold text-gray-800"><?= htmlspecialchars($namaProduk) ?></p>
+                            <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($kategoriNama) ?> • <?= htmlspecialchars($kondisiProduk) ?></p>
                         </div>
 
                         <!-- Mini indicator bottom left & counter bottom right -->
@@ -230,7 +295,7 @@ $navActivePage = 'categories';
                 <!-- Judul Produk -->
                 <div>
                     <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
-                        ASUS GTX 750 Ti 2GB
+                        <?= htmlspecialchars($namaProduk) ?>
                     </h1>
 
                     <!-- Rating & Meta -->
@@ -241,11 +306,11 @@ $navActivePage = 'categories';
                             <span class="text-gray-500 font-normal">(28 ulasan)</span>
                         </div>
                         <span aria-hidden="true" class="text-gray-300">•</span>
-                        <span>Terjual 45+</span>
+                        <span>Stok <?= $stokProduk ?></span>
                         <span aria-hidden="true" class="text-gray-300">•</span>
-                        <span>Jakarta</span>
+                        <span><?= htmlspecialchars($kategoriNama) ?></span>
                         <span class="bg-emerald-50 text-emerald-700 text-[11px] font-medium px-2 py-0.5 rounded-full">
-                            Kondisi Normal
+                            <?= htmlspecialchars($kondisiProduk) ?>
                         </span>
                     </div>
                 </div>
@@ -253,13 +318,7 @@ $navActivePage = 'categories';
                 <!-- Bagian Harga -->
                 <div class="flex flex-wrap items-baseline gap-2.5 pt-1 border-t border-gray-100">
                     <span class="text-2xl sm:text-3xl font-extrabold text-gray-900">
-                        Rp 680.000
-                    </span>
-                    <span class="text-sm text-gray-400 line-through">
-                        Rp 850.000
-                    </span>
-                    <span class="bg-brand-yellow text-white text-xs font-bold px-2 py-0.5 rounded">
-                        20% OFF
+                        <?= formatRupiah($hargaProduk) ?>
                     </span>
                 </div>
 
@@ -270,7 +329,7 @@ $navActivePage = 'categories';
                             <i class="ph-fill ph-tag text-amber-600" aria-hidden="true"></i>
                             <span>Harga Pasar</span>
                         </div>
-                        <span class="text-gray-600 text-xs">Harga listing Rp 680.000</span>
+                        <span class="text-gray-600 text-xs">Harga listing <?= formatRupiah($hargaProduk) ?></span>
                     </div>
 
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -313,35 +372,40 @@ $navActivePage = 'categories';
 
                 <!-- Badges Fasilitas Transaksi -->
                 <div class="flex flex-wrap gap-1.5 text-xs">
-                    <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
-                        Bisa Nego
-                    </span>
-                    <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
-                        Bisa Barter
-                    </span>
+                    <?php if ($bisaNego): ?>
+                        <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
+                            Bisa Nego
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($bisaBarter): ?>
+                        <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
+                            Bisa Barter
+                        </span>
+                    <?php endif; ?>
                     <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">
-                        Fast Response
-                    </span>
-                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">
-                        Trusted Seller
+                        Escrow Protected
                     </span>
                 </div>
 
                 <!-- Grid Tombol Aksi 2x2 -->
                 <div class="grid grid-cols-2 gap-2.5 pt-2">
-                    <button
-                        type="button"
-                        id="btn-nego"
-                        class="min-h-[44px] px-3 py-2.5 bg-brand-yellow hover:bg-yellow-400 text-brand-dark font-bold text-xs uppercase tracking-wide transition shadow-2xs cursor-pointer">
-                        Ajukan Harga
-                    </button>
+                    <?php if ($bisaNego): ?>
+                        <button
+                            type="button"
+                            id="btn-nego"
+                            class="min-h-[44px] px-3 py-2.5 bg-brand-yellow hover:bg-yellow-400 text-brand-dark font-bold text-xs uppercase tracking-wide transition shadow-2xs cursor-pointer">
+                            Ajukan Harga
+                        </button>
+                    <?php endif; ?>
 
-                    <button
-                        type="button"
-                        id="btn-barter"
-                        class="min-h-[44px] px-3 py-2.5 bg-white hover:bg-amber-50 text-amber-800 font-bold text-xs uppercase tracking-wide transition border border-amber-400 cursor-pointer">
-                        Ajukan Barter
-                    </button>
+                    <?php if ($bisaBarter): ?>
+                        <button
+                            type="button"
+                            id="btn-barter"
+                            class="min-h-[44px] px-3 py-2.5 bg-white hover:bg-amber-50 text-amber-800 font-bold text-xs uppercase tracking-wide transition border border-amber-400 cursor-pointer">
+                            Ajukan Barter
+                        </button>
+                    <?php endif; ?>
 
                     <button
                         type="button"
@@ -368,13 +432,13 @@ $navActivePage = 'categories';
 
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-full bg-brand-dark text-brand-yellow flex items-center justify-center font-bold text-base shadow-xs shrink-0">
-                        TB
+                        <?= htmlspecialchars($inisialPenjual) ?>
                     </div>
                     <div>
-                        <h3 class="font-bold text-sm text-gray-900 leading-tight">Tech Bandung</h3>
-                        <p class="text-xs text-gray-500 mt-0.5">Kota Bandung</p>
+                        <h3 class="font-bold text-sm text-gray-900 leading-tight"><?= htmlspecialchars($namaPenjual) ?></h3>
+                        <p class="text-xs text-gray-500 mt-0.5"><?= htmlspecialchars($alamatPenjual ?: 'Indonesia') ?></p>
                         <span class="inline-block mt-1 text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                            Online 15 Menit Lalu
+                            Verified Seller
                         </span>
                     </div>
                 </div>
@@ -480,7 +544,11 @@ $navActivePage = 'categories';
                         <div>
                             <h2 class="text-base font-bold text-gray-900 mb-2">Deskripsi Produk</h2>
                             <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                                ASUS GTX 750 Ti 2GB GDDR5, kondisi bekas pemakaian normal. Masih berfungsi dengan baik, tidak pernah mining. Cocok untuk gaming ringan dan kerja harian. Sudah dibersihkan, siap langsung pakai.
+                                <?php if ($parsedDeskripsi['ringkasan'] !== ''): ?>
+                                    <?= nl2br(htmlspecialchars($parsedDeskripsi['ringkasan'])) ?>
+                                <?php else: ?>
+                                    Belum ada deskripsi tambahan untuk produk ini.
+                                <?php endif; ?>
                             </p>
                         </div>
 
@@ -488,24 +556,33 @@ $navActivePage = 'categories';
                             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-y-2.5 gap-x-6 text-xs sm:text-sm">
                                 <div class="flex items-center justify-between border-b border-gray-100 pb-1.5">
                                     <dt class="text-gray-500 font-medium">Kondisi:</dt>
-                                    <dd class="text-gray-900 font-semibold">Bekas (Normal)</dd>
+                                    <dd class="text-gray-900 font-semibold"><?= htmlspecialchars($kondisiProduk) ?></dd>
                                 </div>
                                 <div class="flex items-center justify-between border-b border-gray-100 pb-1.5">
-                                    <dt class="text-gray-500 font-medium">Garansi:</dt>
-                                    <dd class="text-gray-900 font-semibold">Tidak Ada Garansi</dd>
+                                    <dt class="text-gray-500 font-medium">Kategori:</dt>
+                                    <dd class="text-gray-900 font-semibold"><?= htmlspecialchars($kategoriNama) ?></dd>
                                 </div>
                                 <div class="flex items-center justify-between border-b border-gray-100 pb-1.5">
-                                    <dt class="text-gray-500 font-medium">Min. PSU:</dt>
-                                    <dd class="text-gray-900 font-semibold">400 W</dd>
+                                    <dt class="text-gray-500 font-medium">Stok Tersedia:</dt>
+                                    <dd class="text-gray-900 font-semibold"><?= $stokProduk ?> Unit</dd>
                                 </div>
                                 <div class="flex items-center justify-between border-b border-gray-100 pb-1.5">
-                                    <dt class="text-gray-500 font-medium">Port:</dt>
-                                    <dd class="text-gray-900 font-semibold">1x HDMI, 1x DVI, 1x DP</dd>
+                                    <dt class="text-gray-500 font-medium">Opsi Transaksi:</dt>
+                                    <dd class="text-gray-900 font-semibold">
+                                        <?php
+                                        $opsi = ['Beli Langsung'];
+                                        if ($bisaNego) $opsi[] = 'Nego';
+                                        if ($bisaBarter) $opsi[] = 'Barter';
+                                        echo htmlspecialchars(implode(' - ', $opsi));
+                                        ?>
+                                    </dd>
                                 </div>
-                                <div class="flex items-center justify-between border-b border-gray-100 pb-1.5 sm:col-span-2">
-                                    <dt class="text-gray-500 font-medium">Kelengkapan:</dt>
-                                    <dd class="text-gray-900 font-semibold">Unit Saja (Tanpa Box)</dd>
-                                </div>
+                                <?php if (!empty($parsedDeskripsi['riwayat']['kelengkapan'])): ?>
+                                    <div class="flex items-center justify-between border-b border-gray-100 pb-1.5">
+                                        <dt class="text-gray-500 font-medium">Kelengkapan:</dt>
+                                        <dd class="text-gray-900 font-semibold text-right"><?= htmlspecialchars($parsedDeskripsi['riwayat']['kelengkapan']) ?></dd>
+                                    </div>
+                                <?php endif; ?>
                             </dl>
                         </div>
                     </div>
@@ -513,49 +590,45 @@ $navActivePage = 'categories';
                     <!-- Panel Spesifikasi Lengkap -->
                     <div id="panel-spesifikasi" class="tab-panel hidden space-y-4" role="tabpanel">
                         <h2 class="text-base font-bold text-gray-900 mb-2">Spesifikasi Lengkap</h2>
-                        <table class="w-full text-xs sm:text-sm border border-gray-200 overflow-hidden">
-                            <tbody>
-                                <tr class="border-b border-gray-200 bg-gray-50">
-                                    <th class="p-2.5 text-left font-medium text-gray-600 w-1/3">Graphics Engine</th>
-                                    <td class="p-2.5 text-gray-900 font-semibold">NVIDIA GeForce GTX 750 Ti</td>
-                                </tr>
-                                <tr class="border-b border-gray-200">
-                                    <th class="p-2.5 text-left font-medium text-gray-600">Bus Standard</th>
-                                    <td class="p-2.5 text-gray-900">PCI Express 3.0</td>
-                                </tr>
-                                <tr class="border-b border-gray-200 bg-gray-50">
-                                    <th class="p-2.5 text-left font-medium text-gray-600">Video Memory</th>
-                                    <td class="p-2.5 text-gray-900 font-semibold">2GB GDDR5 128-bit</td>
-                                </tr>
-                                <tr class="border-b border-gray-200">
-                                    <th class="p-2.5 text-left font-medium text-gray-600">CUDA Cores</th>
-                                    <td class="p-2.5 text-gray-900">640</td>
-                                </tr>
-                                <tr class="border-b border-gray-200 bg-gray-50">
-                                    <th class="p-2.5 text-left font-medium text-gray-600">Power Consumption</th>
-                                    <td class="p-2.5 text-gray-900">Maksimal 60W (Tanpa 6-pin tambahan)</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <?php if (!empty($parsedDeskripsi['spesifikasi'])): ?>
+                            <table class="w-full text-xs sm:text-sm border border-gray-200 overflow-hidden">
+                                <tbody>
+                                    <?php foreach ($parsedDeskripsi['spesifikasi'] as $idx => $spec): ?>
+                                        <tr class="border-b border-gray-200 <?= $idx % 2 === 0 ? 'bg-gray-50' : '' ?>">
+                                            <th class="p-2.5 text-left font-medium text-gray-600 w-1/3"><?= htmlspecialchars($spec['label']) ?></th>
+                                            <td class="p-2.5 text-gray-900 font-semibold"><?= htmlspecialchars($spec['nilai']) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php else: ?>
+                            <p class="text-xs sm:text-sm text-gray-500">
+                                Penjual belum menambahkan detail spesifikasi teknis untuk produk ini.
+                            </p>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Panel Riwayat & Kondisi -->
                     <div id="panel-riwayat" class="tab-panel hidden space-y-4" role="tabpanel">
                         <h2 class="text-base font-bold text-gray-900 mb-2">Riwayat Pemakaian &amp; Kondisi Fisik</h2>
-                        <ul class="space-y-2 text-xs sm:text-sm text-gray-700">
-                            <li class="flex items-start gap-2">
-                                <i class="ph ph-check text-emerald-600 text-base shrink-0 mt-0.5" aria-hidden="true"></i>
-                                <span>Thermal paste baru diganti menggunakan Arctic MX-4 bulan lalu.</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="ph ph-check text-emerald-600 text-base shrink-0 mt-0.5" aria-hidden="true"></i>
-                                <span>Kedua kipas berputar lancar tanpa bunyi bising atau kendala bearing.</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="ph ph-check text-emerald-600 text-base shrink-0 mt-0.5" aria-hidden="true"></i>
-                                <span>Suhu idle berada di kisaran 34 derajat dan full load Furmark stabil di 68 derajat.</span>
-                            </li>
-                        </ul>
+                        <?php if (!empty($parsedDeskripsi['riwayat'])): ?>
+                            <ul class="space-y-2.5 text-xs sm:text-sm text-gray-700">
+                                <?php foreach ($parsedDeskripsi['riwayat'] as $key => $val): ?>
+                                    <?php $label = $labelRiwayatMap[$key] ?? ucwords(str_replace('_', ' ', $key)); ?>
+                                    <li class="flex items-start gap-2">
+                                        <i class="ph ph-check-circle text-emerald-600 text-base shrink-0 mt-0.5" aria-hidden="true"></i>
+                                        <span>
+                                            <strong class="text-gray-900"><?= htmlspecialchars($label) ?>:</strong>
+                                            <?= htmlspecialchars($val) ?>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php else: ?>
+                            <p class="text-xs sm:text-sm text-gray-500">
+                                Kondisi umum produk tercatat sebagai <strong><?= htmlspecialchars($kondisiProduk) ?></strong>.
+                            </p>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Panel Ulasan Full -->
@@ -728,94 +801,40 @@ $navActivePage = 'categories';
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <!-- Kartu Produk Terkait 1 -->
-                <a href="detail_produk.php" class="bg-white border border-gray-200/80 p-4 space-y-3 hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between shadow-2xs">
-                    <div class="space-y-3">
-                        <div class="relative w-full aspect-video bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
-                            <span class="absolute top-2 left-2 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
-                                Bekas
-                            </span>
-                            <div class="text-center text-gray-400">
-                                <i class="ph ph-graphics-card text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
-                                <span class="block text-[11px]">Preview Unit</span>
+                <?php if (!empty($relatedProducts)): ?>
+                    <?php foreach ($relatedProducts as $rel): ?>
+                        <a href="detail_produk.php?id=<?= (int)$rel['id'] ?>" class="bg-white border border-gray-200/80 p-4 space-y-3 hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between shadow-2xs">
+                            <div class="space-y-3">
+                                <div class="relative w-full aspect-video bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
+                                    <span class="absolute top-2 left-2 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
+                                        <?= htmlspecialchars($rel['kondisi']) ?>
+                                    </span>
+                                    <div class="text-center text-gray-400">
+                                        <i class="ph <?= htmlspecialchars(kategoriIcon($rel['nama_kategori'])) ?> text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
+                                        <span class="block text-[11px]"><?= htmlspecialchars($rel['nama_kategori']) ?></span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-sm text-gray-900 leading-snug line-clamp-2">
+                                        <?= htmlspecialchars($rel['nama_produk']) ?>
+                                    </h3>
+                                    <p class="text-base font-extrabold text-gray-900 mt-1">
+                                        <?= formatRupiah((int)$rel['harga']) ?>
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-sm text-gray-900 leading-snug">
-                                <p>
-                                    Gigabyte GTX 1050 Ti 4GB OC
-                                </p>
-                            </h3>
-                            <p class="text-base font-extrabold text-gray-900 mt-1">
-                                Rp 1.150.000
-                            </p>
-                        </div>
-                    </div>
 
-                    <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5">
-                        <span>Jakarta Barat</span>
-                        <span>Terjual 12</span>
-                    </div>
-                </a>
-                <!-- Kartu Produk Terkait 2 -->
-                <a href="detail_produk.php" class="bg-white border border-gray-200/80 p-4 space-y-3 hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between shadow-2xs">
-                    <div class="space-y-3">
-                        <div class="relative w-full aspect-video bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
-                            <span class="absolute top-2 left-2 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
-                                Bekas
-                            </span>
-                            <div class="text-center text-gray-400">
-                                <i class="ph ph-graphics-card text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
-                                <span class="block text-[11px]">Preview Unit</span>
+                            <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5">
+                                <span class="truncate"><?= htmlspecialchars($rel['nama_penjual']) ?></span>
+                                <span class="shrink-0">Stok <?= (int)$rel['stok'] ?></span>
                             </div>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-sm text-gray-900 leading-snug">
-                                <p>
-                                    Sapphire RX 570 4GB Nitro+
-                                </p>
-                            </h3>
-                            <p class="text-base font-extrabold text-gray-900 mt-1">
-                                Rp 950.000
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5">
-                        <span>Bandung</span>
-                        <span>Terjual 8</span>
-                    </div>
-                </a>
-
-                <!-- Kartu Produk Terkait 3 -->
-                <a href="detail_produk.php" class="bg-white border border-gray-200/80 p-4 space-y-3 hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between shadow-2xs">
-                    <div class="space-y-3">
-                        <div class="relative w-full aspect-video bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
-                            <span class="absolute top-2 left-2 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
-                                Bekas
-                            </span>
-                            <div class="text-center text-gray-400">
-                                <i class="ph ph-lightning text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
-                                <span class="block text-[11px]">Preview Unit</span>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-sm text-gray-900 leading-snug">
-                                <p>
-                                    Power Supply Corsair CV450 450W 80+
-                                </p>
-                            </h3>
-                            <p class="text-base font-extrabold text-gray-900 mt-1">
-                                Rp 420.000
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5">
-                        <span>Surabaya</span>
-                        <span>Terjual 30+</span>
-                    </div>
-                </a>
+                        </a>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="col-span-full text-xs text-gray-500 bg-white border border-gray-200/80 p-6 text-center">
+                        Belum ada produk terkait lainnya.
+                    </p>
+                <?php endif; ?>
             </div>
         </section>
 

@@ -42,9 +42,9 @@ try {
     $params = [];
 
     if ($searchQuery !== '') {
-        $where[] = "(p.nama_produk LIKE ? OR p.deskripsi LIKE ? OR k.nama_kategori LIKE ?)";
+        $where[] = "(p.nama_produk LIKE ? OR k.nama_kategori LIKE ?)";
         $term = "%" . $searchQuery . "%";
-        array_push($params, $term, $term, $term);
+        array_push($params, $term, $term);
     }
     if ($kategoriFilter) {
         $where[]  = "p.id_kategori = ?";
@@ -317,32 +317,37 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                     </button>
                                 </div>
 
-                                <div class="w-full h-40 overflow-hidden flex items-center justify-center p-3 relative mb-2">
-                                    <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
-                                        <span class="text-[9px] font-extrabold tracking-widest text-brand-yellow uppercase mb-1">
-                                            <?= htmlspecialchars($item['nama_kategori'] ?? 'Loot-E') ?>
-                                        </span>
-                                        <i class="ph <?= $catIcon ?> text-4xl text-gray-200 my-1 group-hover:scale-105 transition"></i>
-                                        <span class="text-[10px] font-bold text-gray-300 text-center line-clamp-1">
-                                            <?= htmlspecialchars($item['nama_produk']) ?>
-                                        </span>
-                                        <span class="absolute bottom-1 right-2 text-[8px] text-brand-yellow font-bold">VERIFIED</span>
+                                <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="block">
+                                    <div class="w-full h-40 overflow-hidden flex items-center justify-center p-3 relative mb-2">
+                                        <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
+                                            <span class="text-[9px] font-extrabold tracking-widest text-brand-yellow uppercase mb-1">
+                                                <?= htmlspecialchars($item['nama_kategori'] ?? 'Loot-E') ?>
+                                            </span>
+                                            <i class="ph <?= $catIcon ?> text-4xl text-gray-200 my-1 group-hover:scale-105 transition"></i>
+                                            <span class="text-[10px] font-bold text-gray-300 text-center line-clamp-1">
+                                                <?= htmlspecialchars($item['nama_produk']) ?>
+                                            </span>
+                                            <span class="absolute bottom-1 right-2 text-[8px] text-brand-yellow font-bold">VERIFIED</span>
+                                        </div>
                                     </div>
-                                </div>
+
+                                    <div>
+                                        <span class="text-[10px] text-gray-400 font-medium block">
+                                            <?= htmlspecialchars($item['kondisi'] ?? 'Kondisi Normal') ?>
+                                        </span>
+                                        <h3 class="text-sm font-bold text-[#272727] leading-snug mt-0.5 group-hover:text-black line-clamp-2 min-h-[38px]">
+                                            <?= htmlspecialchars($item['nama_produk']) ?>
+                                        </h3>
+                                        <span class="text-xs font-bold text-brand-yellow block mt-0.5">
+                                            <?= htmlspecialchars($item['nama_kategori'] ?? 'Elektronik') ?>
+                                        </span>
+                                        <p class="text-base font-extrabold text-[#272727] mt-1">
+                                            Rp <?= number_format((int)$item['harga'], 0, ',', '.') ?>
+                                        </p>
+                                    </div>
+                                </a>
 
                                 <div>
-                                    <span class="text-[10px] text-gray-400 font-medium block">
-                                        <?= htmlspecialchars($item['kondisi'] ?? 'Kondisi Normal') ?>
-                                    </span>
-                                    <h3 class="text-sm font-bold text-[#272727] leading-snug mt-0.5 group-hover:text-black line-clamp-2 min-h-[38px]">
-                                        <?= htmlspecialchars($item['nama_produk']) ?>
-                                    </h3>
-                                    <span class="text-xs font-bold text-brand-yellow block mt-0.5">
-                                        <?= htmlspecialchars($item['nama_kategori'] ?? 'Elektronik') ?>
-                                    </span>
-                                    <p class="text-base font-extrabold text-[#272727] mt-1">
-                                        Rp <?= number_format((int)$item['harga'], 0, ',', '.') ?>
-                                    </p>
 
                                     <?php if ($item['bisa_nego'] || $item['bisa_barter']): ?>
                                         <div class="flex items-center gap-3 text-[11px] text-brand-yellow font-medium mt-1.5">
@@ -390,12 +395,12 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                 <?php if (!$isOwnProduct && ($item['bisa_nego'] || $item['bisa_barter'])): ?>
                                     <div class="mt-3.5 grid grid-cols-2 gap-2">
                                         <?php if ($item['bisa_nego']): ?>
-                                            <a href="#nego-<?= (int)$item['id'] ?>" class="bg-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:brightness-95 transition shadow-2xs <?= $item['bisa_barter'] ? '' : 'col-span-2' ?>">
+                                            <a href="detail_produk.php?id=<?= (int)$item['id'] ?>#nego" class="bg-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:brightness-95 transition shadow-2xs <?= $item['bisa_barter'] ? '' : 'col-span-2' ?>">
                                                 Ajukan Harga
                                             </a>
                                         <?php endif; ?>
                                         <?php if ($item['bisa_barter']): ?>
-                                            <a href="#barter-<?= (int)$item['id'] ?>" class="border border-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:bg-brand-yellow/15 transition <?= $item['bisa_nego'] ? '' : 'col-span-2' ?>">
+                                            <a href="detail_produk.php?id=<?= (int)$item['id'] ?>#barter" class="border border-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:bg-brand-yellow/15 transition <?= $item['bisa_nego'] ? '' : 'col-span-2' ?>">
                                                 Ajukan Barter
                                             </a>
                                         <?php endif; ?>

@@ -225,8 +225,7 @@ $produkTampil = getDbConnection()->query("
         yang sama. Tentukan metode yang paling menguntungkan kebutuhanmu.</p>
       <div class="mt-10 grid grid-cols-2 gap-3 text-left sm:grid-cols-3 lg:grid-cols-5">
         <?php foreach ($produkTampil as $p):
-          $tujuan = 'search.php?q=' . urlencode($p['nama_produk']);
-          $href = $currentUser ? $tujuan : 'login.php?redirect=' . urlencode($tujuan);
+          $href = 'detail_produk.php?id=' . (int)$p['id'];
         ?>
           <a href="<?= htmlspecialchars($href) ?>" class="flex flex-col justify-between bg-[var(--lt)] p-4 hover:shadow-md transition">
             <div class="relative flex h-28 w-full flex-col items-center justify-center gap-1 overflow-hidden bg-[var(--card)] border border-[var(--line)] text-[var(--mute)] text-[10px]">
