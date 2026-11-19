@@ -209,7 +209,7 @@ $categoryIconMap = [
         <div class="flex flex-col md:flex-row items-start gap-8">
             <!-- Sidebar Filter Kiri -->
             <aside id="filterSidebar" class="hidden md:block w-full md:w-60 lg:w-64 shrink-0 bg-transparent">
-                <form action="search.php" method="GET" class="bg-white border border-gray-100 rounded-xl p-5 shadow-2xs">
+                <form action="search.php" method="GET" class="bg-white border border-gray-100 p-5 shadow-2xs">
                     <!-- Menyimpan query pencarian saat filter diubah -->
                     <input type="hidden" name="q" value="<?= htmlspecialchars($searchQuery) ?>" />
 
@@ -269,7 +269,7 @@ $categoryIconMap = [
                                 class="w-full border border-gray-300 rounded px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow" />
                         </div>
                         <button type="submit"
-                            class="w-full bg-[#272727] text-white py-1.5 rounded text-xs font-semibold hover:bg-neutral-800 active:scale-[0.99] transition shadow-2xs">
+                            class="w-full bg-[#272727] text-white py-1.5 text-xs font-semibold hover:bg-neutral-800 active:scale-[0.99] transition shadow-2xs">
                             Terapkan
                         </button>
                     </div>
@@ -301,7 +301,7 @@ $categoryIconMap = [
                                 $reviewVal = 24;
                             }
                             ?>
-                            <article class="bg-white border border-gray-200/80 rounded-xl p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between group">
+                            <article class="bg-white border border-gray-200/80 p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between group">
                                 <!-- Tag Kondisi & Tombol Wishlist -->
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="<?= $isBaru ? 'bg-emerald-50 text-emerald-700' : 'bg-[#FFF8E1] text-[#B88A00]' ?> text-[10px] font-bold px-2 py-0.5 rounded">
@@ -313,8 +313,8 @@ $categoryIconMap = [
                                 </div>
 
                                 <!-- Gambar Hardware / Kotak Produk -->
-                                <div class="w-full h-40 bg-[#FAFAFA] rounded-lg overflow-hidden flex items-center justify-center p-3 relative mb-2">
-                                    <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white rounded p-3 relative shadow-inner">
+                                <div class="w-full h-40 overflow-hidden flex items-center justify-center p-3 relative mb-2">
+                                    <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
                                         <span class="text-[9px] font-extrabold tracking-widest text-brand-yellow uppercase mb-1">
                                             <?= htmlspecialchars($item['nama_kategori'] ?? 'Loot-E') ?>
                                         </span>
@@ -383,14 +383,14 @@ $categoryIconMap = [
                                 <!-- Tombol Aksi: Ajukan Harga, Ajukan Barter, Chat Seller -->
                                 <div class="mt-3.5 space-y-2">
                                     <div class="grid grid-cols-2 gap-2">
-                                        <a href="#nego-<?= htmlspecialchars($item['id']) ?>" class="bg-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:brightness-95 transition shadow-2xs">
+                                        <a href="#nego-<?= htmlspecialchars($item['id']) ?>" class="bg-brand-yellow text-brand-dark py-1.5 px-2 text-xs font-bold text-center hover:brightness-95 transition shadow-2xs">
                                             Ajukan Harga
                                         </a>
-                                        <a href="#barter-<?= htmlspecialchars($item['id']) ?>" class="border border-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:bg-brand-yellow/15 transition">
+                                        <a href="#barter-<?= htmlspecialchars($item['id']) ?>" class="border border-brand-yellow text-brand-dark py-1.5 px-2 text-xs font-bold text-center hover:bg-brand-yellow/15 transition">
                                             Ajukan Barter
                                         </a>
                                     </div>
-                                    <button type="button" class="w-full bg-[#272727] text-white py-1.5 px-3 rounded text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-neutral-800 active:scale-[0.99] transition shadow-2xs">
+                                    <button type="button" class="w-full bg-[#272727] text-white py-1.5 px-3 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-neutral-800 active:scale-[0.99] transition shadow-2xs">
                                         <i class="ph ph-chat-circle-dots text-sm"></i> Chat Seller
                                     </button>
                                 </div>
