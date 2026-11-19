@@ -308,6 +308,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                             $isOwnProduct = (int)$item['id_penjual'] === $currentUser['id']; // BR-01
                             ?>
                             <article class="bg-white border border-gray-200/80 p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between group">
+                                <!-- Tag Kondisi & Tombol Wishlist -->
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="<?= $isBaru ? 'bg-emerald-50 text-emerald-700' : 'bg-[#FFF8E1] text-[#B88A00]' ?> text-[10px] font-bold px-2 py-0.5 rounded">
                                         <?= htmlspecialchars($badgeLabel) ?>
@@ -317,6 +318,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                     </button>
                                 </div>
 
+                                <!-- Gambar Hardware / Kotak Produk -->
                                 <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="block">
                                     <div class="w-full h-40 overflow-hidden flex items-center justify-center p-3 relative mb-2">
                                         <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
@@ -347,8 +349,10 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                     </div>
                                 </a>
 
+                                <!-- Detail Spesifikasi & Harga -->
                                 <div>
 
+                                    <!-- Badge Nego & Barter -->
                                     <?php if ($item['bisa_nego'] || $item['bisa_barter']): ?>
                                         <div class="flex items-center gap-3 text-[11px] text-brand-yellow font-medium mt-1.5">
                                             <?php if ($item['bisa_nego']): ?>
@@ -364,6 +368,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                         </div>
                                     <?php endif; ?>
 
+                                    <!-- Rating -->
                                     <div class="flex items-center justify-between text-xs text-gray-600 mt-2 pb-2.5 border-b border-gray-100">
                                         <?php if ($reviewVal > 0): ?>
                                             <span class="flex items-center gap-1 font-semibold text-gray-800">
@@ -376,6 +381,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                         <?php endif; ?>
                                     </div>
 
+                                    <!-- Info Penjual -->
                                     <div class="flex items-center justify-between pt-2.5 text-xs">
                                         <div class="flex items-center gap-2">
                                             <div class="w-6 h-6 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-[10px]">
@@ -392,6 +398,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                     </div>
                                 </div>
 
+                                <!-- Tombol Aksi: hanya tampil sesuai opsi produk dan bukan produk milik sendiri (BR-01) -->
                                 <?php if (!$isOwnProduct && ($item['bisa_nego'] || $item['bisa_barter'])): ?>
                                     <div class="mt-3.5 grid grid-cols-2 gap-2">
                                         <?php if ($item['bisa_nego']): ?>
