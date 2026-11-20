@@ -21,7 +21,7 @@ if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
 $filterNego     = !empty($_GET['nego']);
 $filterBarter   = !empty($_GET['barter']);
 $page           = max(1, (int)($_GET['page'] ?? 1));
-$perPage        = 9;
+$perPage        = 6;
 
 $products = [];
 $totalResults = 0;
@@ -410,34 +410,82 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                         <?php endforeach; ?>
                     </div>
 
-                    <!-- Pagination Dinamis -->
+                    <!-- Pagination Dinamis Sesuai pagination.png -->
                     <?php if ($totalPages > 1): ?>
-                        <nav aria-label="Navigasi Halaman" class="flex items-center justify-center gap-2 mt-10">
+                        <?php
+                        $pagesToShow = [];
+                        if ($totalPages <= 7) {
+                            $pagesToShow = range(1, $totalPages);
+                        } else {
+                            $pagesToShow[] = 1;
+                            $start = max(2, $page - 1);
+                            $end   = min($totalPages - 1, $page + 1);
+
+                            if ($page <= 3) {
+                                $start = 2;
+                                $end   = 4;
+                            } elseif ($page >= $totalPages - 2) {
+                                $start = $totalPages - 3;
+                                $end   = $totalPages - 1;
+                            }
+
+                            if ($start > 2) {
+                                $pagesToShow[] = '...';
+                            }
+                            for ($i = $start; $i <= $end; $i++) {
+                                $pagesToShow[] = $i;
+                            }
+                            if ($end < $totalPages - 1) {
+                                $pagesToShow[] = '...';
+                            }
+                            $pagesToShow[] = $totalPages;
+                        }
+                        ?>
+                        <nav aria-label="Navigasi Halaman" class="flex items-center justify-center gap-1.5 sm:gap-3 mt-8 sm:mt-10 mb-4 sm:mb-6 select-none">
                             <?php if ($page > 1): ?>
                                 <a href="<?= $pageUrl($page - 1) ?>"
-                                    class="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center text-xs text-gray-600 hover:bg-gray-100 transition" aria-label="Halaman Sebelumnya">
-                                    <i class="ph ph-caret-left font-bold"></i>
+                                    class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl sm:rounded-xl border-2 border-[#373737] bg-[#F5FAFE] flex items-center justify-center text-[#373737] hover:bg-white active:scale-95 transition shadow-2xs shrink-0"
+                                    aria-label="Halaman Sebelumnya">
+                                    <i class="ph-bold ph-caret-left text-sm sm:text-base"></i>
                                 </a>
+                            <?php else: ?>
+                                <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl sm:rounded-xl border-2 border-[#373737] bg-[#F5FAFE] flex items-center justify-center text-[#373737] opacity-40 cursor-not-allowed shrink-0"
+                                    aria-disabled="true" aria-label="Halaman Sebelumnya">
+                                    <i class="ph-bold ph-caret-left text-sm sm:text-base"></i>
+                                </span>
                             <?php endif; ?>
 
-                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                <?php if ($i === $page): ?>
-                                    <span class="w-8 h-8 rounded-full bg-[#272727] text-white text-xs font-bold flex items-center justify-center shadow-xs" aria-current="page">
-                                        <?= $i ?>
-                                    </span>
-                                <?php else: ?>
-                                    <a href="<?= $pageUrl($i) ?>"
-                                        class="w-8 h-8 rounded-full text-gray-700 hover:bg-gray-100 text-xs font-semibold flex items-center justify-center transition">
-                                        <?= $i ?>
-                                    </a>
-                                <?php endif; ?>
-                            <?php endfor; ?>
+                            <div class="flex items-center gap-1 sm:gap-2">
+                                <?php foreach ($pagesToShow as $p): ?>
+                                    <?php if ($p === '...'): ?>
+                                        <span class="w-6 sm:w-8 h-9 sm:h-10 text-[#373737] text-xs sm:text-sm font-bold flex items-center justify-center shrink-0">
+                                            &hellip;
+                                        </span>
+                                    <?php elseif ($p === $page): ?>
+                                        <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#373737] text-[#F5FAFE] text-xs sm:text-sm font-bold flex items-center justify-center shadow-xs shrink-0"
+                                            aria-current="page">
+                                            <?= $p ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <a href="<?= $pageUrl($p) ?>"
+                                            class="w-7 h-7 sm:w-8 sm:h-8 text-[#373737] hover:text-black hover:bg-gray-100/60 rounded-full text-xs sm:text-sm font-bold flex items-center justify-center transition shrink-0">
+                                            <?= $p ?>
+                                        </a>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
 
                             <?php if ($page < $totalPages): ?>
                                 <a href="<?= $pageUrl($page + 1) ?>"
-                                    class="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center text-xs text-gray-600 hover:bg-gray-100 transition" aria-label="Halaman Berikutnya">
-                                    <i class="ph ph-caret-right font-bold"></i>
+                                    class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl sm:rounded-xl border-2 border-[#373737] bg-[#F5FAFE] flex items-center justify-center text-[#373737] hover:bg-white active:scale-95 transition shadow-2xs shrink-0"
+                                    aria-label="Halaman Berikutnya">
+                                    <i class="ph-bold ph-caret-right text-sm sm:text-base"></i>
                                 </a>
+                            <?php else: ?>
+                                <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl sm:rounded-xl border-2 border-[#373737] bg-[#F5FAFE] flex items-center justify-center text-[#373737] opacity-40 cursor-not-allowed shrink-0"
+                                    aria-disabled="true" aria-label="Halaman Berikutnya">
+                                    <i class="ph-bold ph-caret-right text-sm sm:text-base"></i>
+                                </span>
                             <?php endif; ?>
                         </nav>
                     <?php endif; ?>
