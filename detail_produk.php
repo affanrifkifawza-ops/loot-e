@@ -1010,8 +1010,8 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         return;
                     }
                     modalNego.close();
-                    showToast('Tawaran harga Rp ' + nominal.toLocaleString('id-ID') + ' untuk ' + namaProduk + ' siap diproses.');
                     inputTawaran.value = '';
+                    window.location.href = 'status_negosiasi.php?produk_id=<?= (int)$idProduk ?>&tawaran=' + encodeURIComponent(nominal);
                 });
             }
 
