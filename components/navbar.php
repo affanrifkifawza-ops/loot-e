@@ -36,11 +36,11 @@ $_navName        = $_navUser ? htmlspecialchars($_navUser['nama']) : '';
                     title="Notifikasi" aria-label="Notifikasi">
                     <i class="ph ph-bell text-xl"></i>
                 </button>
-                <button type="button"
-                    class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/10 text-gray-300 hover:text-brand-yellow transition"
+                <a href="cart.php"
+                    class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/10 <?= ($navActivePage ?? '') === 'cart' ? 'text-brand-yellow' : 'text-gray-300 hover:text-brand-yellow' ?> transition"
                     title="Keranjang" aria-label="Keranjang belanja">
                     <i class="ph ph-shopping-cart text-xl"></i>
-                </button>
+                </a>
 
                 <!-- Dropdown Profil User (Desktop & Mobile) -->
                 <div class="relative md:border-l md:border-gray-600 md:pl-4" id="navbar-profile-wrapper">
