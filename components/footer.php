@@ -5,11 +5,10 @@
  */
 $_footerUser = $currentUser ?? (isset($_SESSION['user_id']) ? true : false);
 $_fActive   = $navActivePage ?? '';
-$_fBaseHome = $_footerUser ? 'index.php' : 'landingpage.php';
-$_fOnMain   = ($_fActive === 'landing' || $_fActive === 'home');
-$_fHome     = $_fOnMain ? '#' : $_fBaseHome;
-$_fProd     = $_fOnMain ? '#products' : $_fBaseHome . '#products';
-$_fAbout    = $_fActive === 'landing' ? '#why-loote' : 'landingpage.php#why-loote';
+$_fOnLand   = $_fActive === 'landing';
+$_fHome     = $_footerUser ? ($_fActive === 'home' ? '#' : 'index.php') : ($_fOnLand ? '#' : 'landingpage.php');
+$_fProd     = $_fOnLand ? '#products' : 'landingpage.php#products';
+$_fAbout    = $_fOnLand ? '#why-loote' : 'landingpage.php#why-loote';
 ?>
 <footer class="bg-[#272727] text-gray-300 py-12 px-6 md:px-12">
     <div
@@ -24,8 +23,13 @@ $_fAbout    = $_fActive === 'landing' ? '#why-loote' : 'landingpage.php#why-loot
         </div>
         <div class="flex flex-wrap justify-center gap-6 text-sm">
             <a href="<?= $_fHome ?>" class="hover:text-brand-yellow transition">Home</a>
-            <a href="<?= $_fProd ?>" class="hover:text-brand-yellow transition">Products</a>
-            <a href="<?= $_fAbout ?>" class="hover:text-brand-yellow transition">About</a>
+            <?php if ($_footerUser): ?>
+                <a href="categories.php" class="hover:text-brand-yellow transition">Categories</a>
+                <a href="search.php" class="hover:text-brand-yellow transition">Cari Produk</a>
+            <?php else: ?>
+                <a href="<?= $_fProd ?>" class="hover:text-brand-yellow transition">Products</a>
+                <a href="<?= $_fAbout ?>" class="hover:text-brand-yellow transition">About</a>
+            <?php endif; ?>
             <a href="help.php" class="hover:text-brand-yellow transition">Help</a>
         </div>
         <div class="flex gap-4">
@@ -48,7 +52,7 @@ $_fAbout    = $_fActive === 'landing' ? '#why-loote' : 'landingpage.php#why-loot
 <aside aria-label="Bantuan Cepat">
     <a href="help.php"
         id="loote-help-fab"
-        class="fixed bottom-6 right-6 z-50 flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full drop-shadow-xl hover:drop-shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-yellow/40 group"
+        class="fixed bottom-6 right-6 z-50 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full drop-shadow-xl hover:drop-shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-yellow/40 group"
         title="Pusat Bantuan Loot-E"
         aria-label="Buka Pusat Bantuan">
         <img src="assets/help.png" alt="Help" class="w-full h-full object-contain pointer-events-none select-none transition-transform group-hover:rotate-6" width="56" height="56" />

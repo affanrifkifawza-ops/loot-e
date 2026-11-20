@@ -171,28 +171,17 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
 <body class="bg-[#F8F9FA] font-sans text-gray-800 antialiased min-h-screen flex flex-col">
 
     <!-- Navbar Utama -->
-    <?php require_once 'components/navbar.php'; ?>
-
-    <!-- Sub-Navbar: Breadcrumb & Search Bar -->
-    <header class="bg-white border-b border-gray-200/80 px-6 md:px-12 py-2.5">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <nav aria-label="Breadcrumb" class="text-xs font-semibold text-gray-500 shrink-0">
-                <a href="categories.php" class="hover:text-brand-dark transition">Categories</a>
-                <span class="mx-1 text-gray-400">/</span>
-                <span class="text-gray-800">Pencarian</span>
-            </nav>
-            <form action="search.php" method="GET" onsubmit="if(!this.q.value.trim()){ this.q.focus(); return false; }" class="relative max-w-sm sm:max-w-md w-full sm:mx-auto">
-                <input type="text" name="q" required value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Cari barang atau kategori..."
-                    class="w-full bg-white border border-gray-300 rounded-full pl-4 pr-9 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
-                <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-brand-yellow text-white flex items-center justify-center hover:brightness-95 transition shadow-xs" aria-label="Cari produk">
-                    <i class="ph ph-arrow-right text-[11px] font-bold text-white"></i>
-                </button>
-            </form>
-            <div class="w-8 hidden sm:block shrink-0"></div>
-        </div>
-    </header>
+    <?php
+    $navSearchQuery = $searchQuery;
+    require_once 'components/navbar.php';
+    ?>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-6 md:px-12 py-8">
+        <nav aria-label="Breadcrumb" class="text-xs font-semibold text-gray-500 mb-4">
+            <a href="categories.php" class="hover:text-brand-dark transition">Categories</a>
+            <span class="mx-1 text-gray-400">/</span>
+            <span class="text-gray-800">Pencarian</span>
+        </nav>
         <!-- Header Judul Pencarian -->
         <div class="mb-6">
             <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#272727] tracking-tight">

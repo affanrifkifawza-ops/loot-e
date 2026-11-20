@@ -115,7 +115,7 @@ $navActivePage = 'help';
 <body class="bg-[#f5f5f6] text-[#363638] antialiased min-h-screen flex flex-col justify-between">
 
     <!-- Komponen Navigasi -->
-    <?php require_once 'components/navbar.php'; ?>
+    <?php require_once $currentUser ? 'components/navbar.php' : 'components/navbar_landing.php'; ?>
 
     <!-- Konten Utama -->
     <main id="main-content" class="flex-grow">
