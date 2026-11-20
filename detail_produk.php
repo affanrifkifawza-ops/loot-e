@@ -12,6 +12,7 @@ $navActivePage = 'categories';
 
 $productId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : null;
 $produk = null;
+$idProduk = 0;
 $relatedProducts = [];
 $reviews = [];
 $sellerStats = [
@@ -95,6 +96,7 @@ if (!$produk) {
     exit;
 }
 
+$idProduk        = (int)$produk['id'];
 $namaProduk      = $produk['nama_produk'];
 $kategoriNama    = $produk['nama_kategori'];
 $kondisiProduk   = $produk['kondisi'];
@@ -276,7 +278,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </h1>
 
                     <!-- Rating & Meta -->
-                    <div class="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-500">
+                    <div class="flex flex-wrap items-center gap-1 mt-2 text-xs text-gray-500">
                         <?php if ($totalUlasan > 0): ?>
                             <div class="flex items-center gap-1 text-gray-900 font-semibold">
                                 <i class="ph-fill ph-star text-amber-500 text-sm" aria-hidden="true"></i>
@@ -290,8 +292,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                             </div>
                         <?php endif; ?>
                         <span aria-hidden="true" class="text-gray-300">•</span>
-                        <span>Stok <?= $stokProduk ?></span>
-                        <span aria-hidden="true" class="text-gray-300">•</span>
+                        <span aria-hidden="true" class="text-gray-300"></span>
                         <span><?= htmlspecialchars($kategoriNama) ?></span>
                         <span class="bg-emerald-50 text-emerald-700 text-[11px] font-medium px-2 py-0.5 rounded-full">
                             <?= htmlspecialchars($kondisiProduk) ?>
@@ -299,10 +300,13 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </div>
                 </div>
 
-                <!-- Bagian Harga -->
-                <div class="flex flex-wrap items-baseline gap-2.5 pt-1 border-t border-gray-100">
-                    <span class="text-2xl sm:text-3xl font-extrabold text-gray-900">
+                <!-- Bagian Harga & Stok -->
+                <div class="flex items-baseline justify-between gap-3 pt-2 border-t border-gray-100">
+                    <span class="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
                         <?= formatRupiah($hargaProduk) ?>
+                    </span>
+                    <span class="text-xs text-gray-500 font-medium shrink-0">
+                        Stok: <span class="font-semibold text-gray-700"><?= $stokProduk ?></span>
                     </span>
                 </div>
 
@@ -410,6 +414,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         <button
                             type="button"
                             id="btn-cart"
+                            data-id="<?= (int)$idProduk ?>"
                             class="min-h-[44px] px-3 py-2.5 bg-white hover:bg-gray-100 text-gray-800 font-bold text-xs uppercase tracking-wide transition border border-gray-300 flex items-center justify-center gap-1.5 cursor-pointer">
                             <i class="ph ph-shopping-cart text-sm font-bold" aria-hidden="true"></i>
                             <span>Tambah ke Keranjang</span>
@@ -418,6 +423,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         <button
                             type="button"
                             id="btn-buy"
+                            data-id="<?= (int)$idProduk ?>"
                             class="min-h-[44px] px-3 py-2.5 bg-[#272727] hover:bg-black text-white font-bold text-xs uppercase tracking-wide transition cursor-pointer">
                             Beli Sekarang
                         </button>
@@ -1033,14 +1039,66 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             const btnCart = document.getElementById('btn-cart');
             if (btnCart) {
                 btnCart.addEventListener('click', function() {
-                    showToast(namaProduk + ' ditambahkan ke keranjang!');
+                    const idProduk = this.getAttribute('data-id') || '<?= (int)$idProduk ?>';
+                    const formData = new FormData();
+                    formData.append('action', 'add_to_cart');
+                    formData.append('produk_id', idProduk);
+                    formData.append('qty', '1');
+
+                    btnCart.disabled = true;
+                    fetch('cart.php', {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            btnCart.disabled = false;
+                            if (data.success) {
+                                showToast(data.message || (namaProduk + ' berhasil ditambahkan ke keranjang!'));
+                            } else {
+                                showToast(data.message || 'Gagal menambahkan ke keranjang.');
+                            }
+                        })
+                        .catch(() => {
+                            btnCart.disabled = false;
+                            showToast('Terjadi kesalahan saat menambahkan ke keranjang.');
+                        });
                 });
             }
 
             const btnBuy = document.getElementById('btn-buy');
             if (btnBuy) {
                 btnBuy.addEventListener('click', function() {
-                    showToast('Memproses checkout untuk ' + namaProduk + '...');
+                    const idProduk = this.getAttribute('data-id') || '<?= (int)$idProduk ?>';
+                    const formData = new FormData();
+                    formData.append('action', 'add_to_cart');
+                    formData.append('produk_id', idProduk);
+                    formData.append('qty', '1');
+
+                    btnBuy.disabled = true;
+                    fetch('cart.php', {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            btnBuy.disabled = false;
+                            if (data.success) {
+                                window.location.href = 'cart.php';
+                            } else {
+                                showToast(data.message || 'Gagal memproses pembelian.');
+                            }
+                        })
+                        .catch(() => {
+                            btnBuy.disabled = false;
+                            showToast('Terjadi kesalahan saat memproses pembelian.');
+                        });
                 });
             }
         });
