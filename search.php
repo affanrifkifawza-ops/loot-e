@@ -13,8 +13,11 @@ $navActivePage = '';
 $searchQuery    = trim($_GET['q'] ?? '');
 $kategoriFilter = isset($_GET['kategori']) && is_numeric($_GET['kategori']) ? (int)$_GET['kategori'] : null;
 $kondisiFilter  = in_array($_GET['kondisi'] ?? '', ['Baru', 'Bekas'], true) ? $_GET['kondisi'] : '';
-$minPrice       = isset($_GET['min_price']) && is_numeric($_GET['min_price']) ? (int)$_GET['min_price'] : null;
-$maxPrice       = isset($_GET['max_price']) && is_numeric($_GET['max_price']) ? (int)$_GET['max_price'] : null;
+$minPrice       = isset($_GET['min_price']) && is_numeric($_GET['min_price']) ? max(0, (int)$_GET['min_price']) : null;
+$maxPrice       = isset($_GET['max_price']) && is_numeric($_GET['max_price']) ? max(0, (int)$_GET['max_price']) : null;
+if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
+    [$minPrice, $maxPrice] = [$maxPrice, $minPrice];
+}
 $filterNego     = !empty($_GET['nego']);
 $filterBarter   = !empty($_GET['barter']);
 $page           = max(1, (int)($_GET['page'] ?? 1));
@@ -55,11 +58,11 @@ try {
     } elseif ($kondisiFilter === 'Bekas') {
         $where[] = "p.kondisi LIKE 'Bekas%'";
     }
-    if ($minPrice) {
+    if ($minPrice !== null) {
         $where[]  = "p.harga >= ?";
         $params[] = $minPrice;
     }
-    if ($maxPrice) {
+    if ($maxPrice !== null) {
         $where[]  = "p.harga <= ?";
         $params[] = $maxPrice;
     }
@@ -106,7 +109,7 @@ $filterQuery = http_build_query(array_filter([
     'max_price' => $maxPrice,
     'nego'      => $filterNego ? 1 : null,
     'barter'    => $filterBarter ? 1 : null,
-]));
+], fn($v) => $v !== null && $v !== ''));
 $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '&' : '') . 'page=' . $n;
 ?>
 <!DOCTYPE html>
@@ -218,7 +221,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
 
                     <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                         <h2 class="text-base font-bold text-[#272727]">Filter</h2>
-                        <?php if ($kategoriFilter || $kondisiFilter || $minPrice || $maxPrice || $filterNego || $filterBarter): ?>
+                        <?php if ($kategoriFilter || $kondisiFilter || $minPrice !== null || $maxPrice !== null || $filterNego || $filterBarter): ?>
                             <a href="search.php?q=<?= urlencode($searchQuery) ?>" class="text-[11px] font-semibold text-red-500 hover:underline">Reset</a>
                         <?php endif; ?>
                     </div>
@@ -266,9 +269,9 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                     <div class="py-4 border-b border-gray-200">
                         <h3 class="text-xs font-bold text-[#272727] mb-2.5">Harga</h3>
                         <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input type="number" name="min_price" value="<?= $minPrice ? htmlspecialchars((string)$minPrice) : '' ?>" placeholder="Min" aria-label="Harga Minimum"
+                            <input type="number" name="min_price" min="0" value="<?= $minPrice !== null ? htmlspecialchars((string)$minPrice) : '' ?>" placeholder="Min" aria-label="Harga Minimum"
                                 class="w-full border border-gray-300 rounded px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow" />
-                            <input type="number" name="max_price" value="<?= $maxPrice ? htmlspecialchars((string)$maxPrice) : '' ?>" placeholder="Maks" aria-label="Harga Maksimum"
+                            <input type="number" name="max_price" min="0" value="<?= $maxPrice !== null ? htmlspecialchars((string)$maxPrice) : '' ?>" placeholder="Maks" aria-label="Harga Maksimum"
                                 class="w-full border border-gray-300 rounded px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow" />
                         </div>
                         <button type="submit"
@@ -308,29 +311,30 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                             $isOwnProduct = (int)$item['id_penjual'] === $currentUser['id']; // BR-01
                             ?>
                             <article class="bg-white border border-gray-200/80 p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between group">
-                                <!-- Tag Kondisi & Tombol Wishlist -->
+                                <!-- Tag Kondisi -->
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="<?= $isBaru ? 'bg-emerald-50 text-emerald-700' : 'bg-[#FFF8E1] text-[#B88A00]' ?> text-[10px] font-bold px-2 py-0.5 rounded">
                                         <?= htmlspecialchars($badgeLabel) ?>
                                     </span>
-                                    <button type="button" class="text-gray-400 hover:text-red-500 transition p-1" title="Tambah ke wishlist" aria-label="Simpan ke wishlist">
-                                        <i class="ph ph-heart text-base"></i>
-                                    </button>
                                 </div>
 
                                 <!-- Gambar Hardware / Kotak Produk -->
                                 <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="block">
-                                    <div class="w-full h-40 overflow-hidden flex items-center justify-center p-3 relative mb-2">
-                                        <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
-                                            <span class="text-[9px] font-extrabold tracking-widest text-brand-yellow uppercase mb-1">
-                                                <?= htmlspecialchars($item['nama_kategori'] ?? 'Loot-E') ?>
-                                            </span>
-                                            <i class="ph <?= $catIcon ?> text-4xl text-gray-200 my-1 group-hover:scale-105 transition"></i>
-                                            <span class="text-[10px] font-bold text-gray-300 text-center line-clamp-1">
-                                                <?= htmlspecialchars($item['nama_produk']) ?>
-                                            </span>
-                                            <span class="absolute bottom-1 right-2 text-[8px] text-brand-yellow font-bold">VERIFIED</span>
-                                        </div>
+                                    <div class="w-full h-40 overflow-hidden flex items-center justify-center p-3 relative mb-2 bg-[#FAFAFA] border border-gray-100">
+                                        <?php if (!empty($item['foto'])): ?>
+                                            <img src="<?= htmlspecialchars($item['foto']) ?>" alt="<?= htmlspecialchars($item['nama_produk']) ?>" class="w-full h-full object-contain group-hover:scale-105 transition" />
+                                        <?php else: ?>
+                                            <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
+                                                <span class="text-[9px] font-extrabold tracking-widest text-brand-yellow uppercase mb-1">
+                                                    <?= htmlspecialchars($item['nama_kategori'] ?? 'Loot-E') ?>
+                                                </span>
+                                                <i class="ph <?= $catIcon ?> text-4xl text-gray-200 my-1 group-hover:scale-105 transition"></i>
+                                                <span class="text-[10px] font-bold text-gray-300 text-center line-clamp-1">
+                                                    <?= htmlspecialchars($item['nama_produk']) ?>
+                                                </span>
+                                                <span class="absolute bottom-1 right-2 text-[8px] text-brand-yellow font-bold">VERIFIED</span>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div>
@@ -344,7 +348,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                             <?= htmlspecialchars($item['nama_kategori'] ?? 'Elektronik') ?>
                                         </span>
                                         <p class="text-base font-extrabold text-[#272727] mt-1">
-                                            Rp <?= number_format((int)$item['harga'], 0, ',', '.') ?>
+                                            <?= formatRupiah((int)$item['harga']) ?>
                                         </p>
                                     </div>
                                 </a>

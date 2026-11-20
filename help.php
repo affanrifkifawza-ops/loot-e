@@ -681,12 +681,6 @@ $navActivePage = 'help';
             );
         }
 
-        document.querySelectorAll("[data-toast]").forEach((button) => {
-            button.addEventListener("click", () => {
-                showToast(button.dataset.toast);
-            });
-        });
-
         const supportDialog = document.querySelector("#support-dialog");
         const supportFeedback = document.querySelector("#support-feedback");
         const supportForm = document.querySelector("#support-form");

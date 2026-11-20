@@ -7,10 +7,12 @@
   - Spesifikasi produk & *business rules*: `PRD.md` (fokus bagian 4.1, 4.2, dan 5 / BR-01 s.d. BR-05)
   - Skema database & seeder: `db/db_loote.sql`
   - Kontrak format JSON `produk.deskripsi`: `docs/adr/0001-structured-product-description.md`
-  - Riwayat audit & refaktor tahap sebelumnya: `loote-audit-handoff.md`
+  - Riwayat audit & refaktor tahap sebelumnya: `docs/loote-audit-handoff.md`
 - **Status Kesiapan Saat Ini:**
   - Skema tabel `produk`, `kategori`, dan `pengguna` (termasuk kolom verifikasi seller `no_hp`, `alamat`, `info_rekening`, `is_verified`) sudah siap.
-  - Query etalase di `index.php`, `search.php`, `landingpage.php`, dan `detail_produk.php` aman menerima data produk baru (termasuk produk dengan 0 ulasan) tanpa error SQL/PHP.
+  - Query etalase di `index.php`, `search.php`, `landingpage.php`, dan `detail_produk.php` aman menerima data produk baru dan sudah mendukung rendering kolom `p.foto` (fallback ikon kategori jika kosong).
+  - Pembersihan data hardcoded, guard wajib login, serta aturan BR-01 pada `detail_produk.php` sudah diterapkan.
+  - Whitelist redirect di `login.php` & `register.php` sudah mencakup `detail_produk.php`.
   - Belum ada halaman verifikasi seller, halaman upload/kelola produk, maupun folder penyimpanan gambar `uploads/produk/`.
 
 ---
@@ -18,10 +20,7 @@
 ## Catatan Antisipasi Bug (Wajib Diperhatikan Saat Implementasi & Perbaikan)
 
 ### 1. Tampilan Foto Produk (`produk.foto`) & Folder Upload
-- **Masalah saat ini:** Foto yang nanti diupload belum akan tampil di halaman manapun.
-  - `index.php` (baris 20), `landingpage.php` (baris 8), dan query `$relatedProducts` di `detail_produk.php` (baris 30) **belum men-`SELECT p.foto`**.
-  - `search.php` (baris 321–332) dan `detail_produk.php` (baris 223–288) sudah `SELECT p.*`, namun HTML-nya masih merender placeholder ikon kategori (belum ada `<img src="...">` dengan fallback ikon jika `foto` kosong/NULL).
-  - JS galeri di `detail_produk.php` (baris 955–968) masih hardcoded ke data dummy `"ASUS GeForce GTX 750 Ti"`.
+- **Status rendering saat ini (Sudah Siap):** `index.php`, `search.php`, `landingpage.php`, dan `detail_produk.php` sudah men-`SELECT p.foto` dan menampilkan `<img src="...">` jika kolom terisi (fallback ikon kategori jika `NULL`/kosong).
 - **Antisipasi saat membuat upload:**
   - Buat folder `uploads/produk/` otomatis di PHP (`if (!is_dir(...)) mkdir(..., 0755, true)`) agar `move_uploaded_file()` tidak gagal.
   - Tambahkan `uploads/` ke `.gitignore` agar file upload lokal tidak ikut ter-commit.
@@ -46,14 +45,13 @@
   - Validasi input angka di PHP: `harga > 0` dan `<= 2000000000` (batas aman `INT` signed MySQL), `stok >= 1`, `id_kategori` harus eksis di tabel `kategori`.
 
 ### 5. Whitelist Redirect di `login.php` & `register.php`
-- **Masalah potensial:** `$allowedRedirects` di `login.php` (baris 6) dan `register.php` (baris 6) saat ini hanya `["index.php", "categories.php", "search.php"]`.
-- **Antisipasi:** Tambahkan halaman baru (`verifikasi_seller.php`, `tambah_produk.php`, `produk_saya.php`, serta `detail_produk.php`) ke `$allowedRedirects` agar redirect pasca-login tidak dilempar balik ke `index.php`.
+- **Status saat ini:** `$allowedRedirects` sudah mencakup `["index.php", "categories.php", "search.php", "detail_produk.php"]`.
+- **Antisipasi:** Saat membuat halaman seller baru (`verifikasi_seller.php`, `tambah_produk.php`, `produk_saya.php`), tambahkan file-file tersebut ke `$allowedRedirects` agar redirect pasca-login tetap berjalan.
 
-### 6. Pelanggaran BR-01 & Data Hardcoded di `detail_produk.php`
-- **Masalah saat ini:**
-  - `detail_produk.php` (baris 391–424) belum mengecek `$isOwnProduct`, sehingga penjual masih melihat tombol *Ajukan Harga / Barter / Keranjang / Beli Sekarang* di produknya sendiri (melanggar BR-01).
-  - Saat menambahkan pengecekan `$isOwnProduct`, pastikan cek `$currentUser !== null` dulu (`$isOwnProduct = $currentUser && (int)$produk['id_penjual'] === $currentUser['id'];`) karena `detail_produk.php` saat ini bisa diakses guest.
-  - Data masih hardcoded di `detail_produk.php`: rating `4.8 (28 ulasan)` & ulasan `BudiSantoso` (baris 305–306, 532, 636–788), harga pasar `Rp 600.000 - Rp 750.000` (baris 337, 354–364), teks modal/toast `"ASUS GTX 750 Ti"` (baris 853, 861–862, 1104), dan badge/statistik penjual (baris 440–464 — query baris 15 belum mengambil `u.is_verified`).
+### 6. Guard BR-01 & Data Dinamis di `detail_produk.php`
+- **Status saat ini (Sudah Diterapkan):**
+  - `detail_produk.php` sudah mewajibkan login, menerapkan guard BR-01 (`$isOwnProduct`), memuat statistik penjual & ulasan nyata dari database, dan menyinkronkan modal/toast dengan data produk asli.
+  - Fitur **Referensi Harga Pasar** sengaja tidak direfaktor karena akan disederhanakan dan dipindahkan terpisah di sisi frontend JS sesuai PRD.
 
 ### 7. Entry Point Navigasi
 - `components/navbar.php` belum memiliki link/tombol menuju halaman **Jual Barang** / **Produk Saya** (baik di desktop maupun mobile menu).
@@ -63,8 +61,7 @@
 ## Urutan Progres Berikutnya (Rekomendasi)
 1. **Seller Onboarding & Navbar:** Buat `verifikasi_seller.php` (gate `is_verified = 0 -> 1`) + tambahkan tombol "Jual Barang" di `components/navbar.php` + update `$allowedRedirects` di `login.php` & `register.php`.
 2. **CRUD Produk Seller:** Buat `tambah_produk.php` (form terstruktur JSON ADR-0001 + upload foto aman + dropdown kondisi baku) dan `produk_saya.php` (daftar, edit, hapus produk milik seller sendiri).
-3. **Sinkronisasi Tampilan Foto & Cleanup `detail_produk.php`:** Tampilkan `p.foto` (fallback ikon kategori) di `index.php`, `search.php`, `landingpage.php`, dan `detail_produk.php`; terapkan BR-01 dan query ulasan asli di `detail_produk.php`.
-4. **Jalur Transaksi MVP:** Keranjang & Buy Now/Checkout + Escrow (BR-02), Negosiasi & Barter dengan timer 30 menit (BR-03), Input Resi & Ulasan (BR-05), lalu Admin Panel (`admin/index.php`).
+3. **Jalur Transaksi MVP:** Keranjang & Buy Now/Checkout + Escrow (BR-02), Negosiasi & Barter dengan timer 30 menit (BR-03), Input Resi & Ulasan (BR-05), lalu Admin Panel (`admin/index.php`).
 
 ---
 

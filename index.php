@@ -17,7 +17,7 @@ function ambilProduk(PDO $db, string $where, string $order): array
 {
     // $where dan $order hanya diisi string tetap dari file ini, bukan input pengguna
     return $db->query("
-        SELECT p.id, p.nama_produk, p.harga, p.kondisi, p.bisa_nego, p.bisa_barter, k.nama_kategori,
+        SELECT p.id, p.nama_produk, p.foto, p.harga, p.kondisi, p.bisa_nego, p.bisa_barter, k.nama_kategori,
                (SELECT AVG(rating) FROM ulasan WHERE id_produk = p.id) AS rating,
                (SELECT COUNT(*) FROM ulasan WHERE id_produk = p.id) AS total_ulasan
         FROM produk p
@@ -233,10 +233,14 @@ $sections = [
                             <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
                                 <div>
                                     <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-3 mb-2.5 relative">
-                                        <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
-                                            <i class="ph <?= htmlspecialchars(kategoriIcon($item['nama_kategori'])) ?> text-3xl text-gray-400"></i>
-                                            <span class="text-[9px] mt-1 text-gray-400 font-medium"><?= htmlspecialchars($item['nama_kategori']) ?></span>
-                                        </div>
+                                        <?php if (!empty($item['foto'])): ?>
+                                            <img src="<?= htmlspecialchars($item['foto']) ?>" alt="<?= htmlspecialchars($item['nama_produk']) ?>" class="w-full h-full object-contain group-hover:scale-105 transition" />
+                                        <?php else: ?>
+                                            <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
+                                                <i class="ph <?= htmlspecialchars(kategoriIcon($item['nama_kategori'])) ?> text-3xl text-gray-400"></i>
+                                                <span class="text-[9px] mt-1 text-gray-400 font-medium"><?= htmlspecialchars($item['nama_kategori']) ?></span>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <h3 class="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-dark transition min-h-[32px]">
                                         <?= htmlspecialchars($item['nama_produk']) ?>

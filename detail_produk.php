@@ -1,6 +1,11 @@
 <?php
 require_once "auth.php";
-require_once "config/helpers.php";
+
+if (!isLoggedIn()) {
+    $redirectUrl = "detail_produk.php" . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '');
+    header("Location: login.php?redirect=" . urlencode($redirectUrl));
+    exit;
+}
 
 $currentUser = getCurrentUser();
 $navActivePage = 'categories';
@@ -8,11 +13,18 @@ $navActivePage = 'categories';
 $productId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : null;
 $produk = null;
 $relatedProducts = [];
+$reviews = [];
+$sellerStats = [
+    'produk_aktif'      => 0,
+    'produk_terjual'    => 0,
+    'rating_toko'       => null,
+    'total_ulasan_toko' => 0,
+];
 
 try {
     $db = getDbConnection();
     $sqlBase = "
-        SELECT p.*, k.nama_kategori, u.nama AS nama_penjual, u.alamat AS alamat_penjual
+        SELECT p.*, k.nama_kategori, u.nama AS nama_penjual, u.alamat AS alamat_penjual, u.is_verified AS penjual_verified
         FROM produk p
         JOIN kategori k ON p.id_kategori = k.id
         JOIN pengguna u ON p.id_penjual = u.id
@@ -26,8 +38,11 @@ try {
     }
 
     if ($produk) {
+        $idProduk  = (int)$produk['id'];
+        $idPenjual = (int)$produk['id_penjual'];
+
         $stmtRel = $db->prepare("
-            SELECT p.id, p.nama_produk, p.harga, p.kondisi, p.stok, k.nama_kategori, u.nama AS nama_penjual
+            SELECT p.id, p.nama_produk, p.foto, p.harga, p.kondisi, p.stok, k.nama_kategori, u.nama AS nama_penjual
             FROM produk p
             JOIN kategori k ON p.id_kategori = k.id
             JOIN pengguna u ON p.id_penjual = u.id
@@ -35,12 +50,44 @@ try {
             ORDER BY (p.id_kategori = ?) DESC, p.id DESC
             LIMIT 3
         ");
-        $stmtRel->execute([(int)$produk['id'], (int)$produk['id_kategori']]);
+        $stmtRel->execute([$idProduk, (int)$produk['id_kategori']]);
         $relatedProducts = $stmtRel->fetchAll();
+
+        $stmtRev = $db->prepare("
+            SELECT ul.id, ul.rating, ul.komentar, ul.created_at, pb.nama AS nama_pembeli
+            FROM ulasan ul
+            JOIN pesanan ps ON ul.id_pesanan = ps.id
+            JOIN pengguna pb ON ps.id_pembeli = pb.id
+            WHERE ul.id_produk = ?
+            ORDER BY ul.created_at DESC, ul.id DESC
+        ");
+        $stmtRev->execute([$idProduk]);
+        $reviews = $stmtRev->fetchAll();
+
+        $stmtSeller = $db->prepare("
+            SELECT
+                (SELECT COUNT(*) FROM produk WHERE id_penjual = ? AND status_produk = 'tersedia') AS produk_aktif,
+                (SELECT COALESCE(SUM(dp.kuantitas), 0)
+                 FROM detail_pesanan dp
+                 JOIN pesanan ps ON dp.id_pesanan = ps.id
+                 JOIN produk pr ON dp.id_produk = pr.id
+                 WHERE pr.id_penjual = ? AND ps.status_pesanan = 'selesai') AS produk_terjual,
+                (SELECT AVG(ul.rating)
+                 FROM ulasan ul
+                 JOIN produk pr ON ul.id_produk = pr.id
+                 WHERE pr.id_penjual = ?) AS rating_toko,
+                (SELECT COUNT(ul.id)
+                 FROM ulasan ul
+                 JOIN produk pr ON ul.id_produk = pr.id
+                 WHERE pr.id_penjual = ?) AS total_ulasan_toko
+        ");
+        $stmtSeller->execute([$idPenjual, $idPenjual, $idPenjual, $idPenjual]);
+        $sellerStats = $stmtSeller->fetch() ?: $sellerStats;
     }
 } catch (PDOException $e) {
     $produk = null;
     $relatedProducts = [];
+    $reviews = [];
 }
 
 if (!$produk) {
@@ -53,10 +100,28 @@ $kategoriNama    = $produk['nama_kategori'];
 $kondisiProduk   = $produk['kondisi'];
 $hargaProduk     = (int)$produk['harga'];
 $stokProduk      = (int)$produk['stok'];
+$statusProduk    = $produk['status_produk'];
 $bisaNego        = (int)$produk['bisa_nego'] === 1;
 $bisaBarter      = (int)$produk['bisa_barter'] === 1;
 $namaPenjual     = $produk['nama_penjual'];
 $alamatPenjual   = $produk['alamat_penjual'] ?? '';
+$penjualVerified = (int)($produk['penjual_verified'] ?? 0) === 1;
+$isOwnProduct    = ($currentUser['id'] === (int)$produk['id_penjual']); // BR-01
+
+$totalUlasan = count($reviews);
+$avgRating   = $totalUlasan > 0 ? array_sum(array_column($reviews, 'rating')) / $totalUlasan : 0.0;
+$ratingCounts = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+$puasCount    = 0;
+foreach ($reviews as $rev) {
+    $star = (int)$rev['rating'];
+    if (isset($ratingCounts[$star])) {
+        $ratingCounts[$star]++;
+    }
+    if ($star >= 4) {
+        $puasCount++;
+    }
+}
+$puasPct = $totalUlasan > 0 ? (int)round(($puasCount / $totalUlasan) * 100) : 0;
 
 $parsedDeskripsi = parseDeskripsiProduk($produk['deskripsi'] ?? '');
 $labelRiwayatMap = [
@@ -216,77 +281,23 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
         <!-- Baris Utama Produk: Galeri (Kiri) + Info & Harga (Tengah) + Info Penjual (Kanan) -->
         <section class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start" aria-label="Informasi Utama Produk">
 
-            <!-- Kolom 1: Galeri Foto Produk -->
+            <!-- Kolom 1: Foto Produk -->
             <div class="md:col-span-12 lg:col-span-5 bg-white border border-gray-200/80 p-4 shadow-2xs">
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <!-- Thumbnails list -->
-                    <div class="flex sm:flex-col gap-2 order-2 sm:order-1 overflow-x-auto sm:overflow-visible shrink-0" role="tablist" aria-label="Daftar Foto Produk">
-                        <button
-                            type="button"
-                            class="thumb-btn w-16 h-16 rounded-lg border-2 border-gray-900 p-1 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-gray-900 focus:outline-none transition"
-                            data-index="1"
-                            data-label="1/3"
-                            aria-label="Tampilkan foto produk 1"
-                            aria-selected="true"
-                            role="tab">
-                            <div class="w-full h-full rounded bg-gray-200 flex flex-col items-center justify-center text-[10px] font-semibold text-gray-600">
-                                <i class="ph ph-graphics-card text-xl text-gray-700" aria-hidden="true"></i>
-                                <span>Unit</span>
-                            </div>
-                        </button>
+                <div class="relative w-full aspect-square bg-[#FAFAFA] border border-gray-200/80 flex items-center justify-center p-6 overflow-hidden">
+                    <!-- Badge Kondisi -->
+                    <span class="absolute top-3 left-3 z-10 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-md tracking-wide">
+                        <?= htmlspecialchars($kondisiProduk) ?>
+                    </span>
 
-                        <button
-                            type="button"
-                            class="thumb-btn w-16 h-16 rounded-lg border border-gray-300 p-1 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-gray-900 focus:outline-none transition"
-                            data-index="2"
-                            data-label="2/3"
-                            aria-label="Tampilkan foto produk 2"
-                            aria-selected="false"
-                            role="tab">
-                            <div class="w-full h-full rounded bg-gray-200 flex flex-col items-center justify-center text-[10px] font-semibold text-gray-600">
-                                <i class="ph ph-package text-xl text-gray-700" aria-hidden="true"></i>
-                                <span>Box</span>
-                            </div>
-                        </button>
-
-                        <button
-                            type="button"
-                            class="thumb-btn w-16 h-16 rounded-lg border border-gray-300 p-1 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-gray-900 focus:outline-none transition"
-                            data-index="3"
-                            data-label="3/3"
-                            aria-label="Tampilkan foto produk 3"
-                            aria-selected="false"
-                            role="tab">
-                            <div class="w-full h-full rounded bg-gray-200 flex flex-col items-center justify-center text-[10px] font-semibold text-gray-600">
-                                <i class="ph ph-plugs text-xl text-gray-700" aria-hidden="true"></i>
-                                <span>Port</span>
-                            </div>
-                        </button>
-                    </div>
-
-                    <!-- Main Image Frame -->
-                    <div class="relative flex-1 aspect-square bg-[#FAFAFA] border border-gray-200/80 flex items-center justify-center p-6 order-1 sm:order-2 overflow-hidden">
-                        <!-- Badge Kondisi -->
-                        <span class="absolute top-3 left-3 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-md tracking-wide">
-                            <?= htmlspecialchars($kondisiProduk) ?>
-                        </span>
-
-                        <!-- Main visual placeholder/render -->
-                        <div id="main-preview-container" class="w-full h-full flex flex-col items-center justify-center text-center p-4">
-                            <i class="ph <?= kategoriIcon($kategoriNama) ?> text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
-                            <p id="main-preview-title" class="text-sm font-bold text-gray-800"><?= htmlspecialchars($namaProduk) ?></p>
-                            <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($kategoriNama) ?> • <?= htmlspecialchars($kondisiProduk) ?></p>
+                    <?php if (!empty($produk['foto'])): ?>
+                        <img src="<?= htmlspecialchars($produk['foto']) ?>" alt="<?= htmlspecialchars($namaProduk) ?>" class="w-full h-full object-contain" />
+                    <?php else: ?>
+                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-4">
+                            <i class="ph <?= htmlspecialchars(kategoriIcon($kategoriNama)) ?> text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
+                            <p class="text-sm font-bold text-gray-800"><?= htmlspecialchars($namaProduk) ?></p>
+                            <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($kategoriNama) ?> &bull; <?= htmlspecialchars($kondisiProduk) ?></p>
                         </div>
-
-                        <!-- Mini indicator bottom left & counter bottom right -->
-                        <div class="absolute bottom-3 left-3 w-7 h-7 rounded border border-gray-300 bg-white/90 flex items-center justify-center text-gray-600 shadow-2xs" title="Rotasi 360 derajat">
-                            <i class="ph ph-arrows-clockwise text-xs" aria-hidden="true"></i>
-                        </div>
-
-                        <span id="gallery-counter" class="absolute bottom-3 right-3 bg-white/95 border border-gray-300 text-xs text-gray-700 px-2.5 py-0.5 rounded-full font-medium shadow-2xs">
-                            1/3
-                        </span>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -294,17 +305,24 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             <div class="md:col-span-12 lg:col-span-4 bg-white border border-gray-200/80 p-5 sm:p-6 space-y-4 shadow-2xs">
                 <!-- Judul Produk -->
                 <div>
-                    <h1 class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                    <h1 id="produk-title" class="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
                         <?= htmlspecialchars($namaProduk) ?>
                     </h1>
 
                     <!-- Rating & Meta -->
                     <div class="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-500">
-                        <div class="flex items-center gap-1 text-gray-900 font-semibold">
-                            <i class="ph-fill ph-star text-amber-500 text-sm" aria-hidden="true"></i>
-                            <span>4.8</span>
-                            <span class="text-gray-500 font-normal">(28 ulasan)</span>
-                        </div>
+                        <?php if ($totalUlasan > 0): ?>
+                            <div class="flex items-center gap-1 text-gray-900 font-semibold">
+                                <i class="ph-fill ph-star text-amber-500 text-sm" aria-hidden="true"></i>
+                                <span><?= number_format($avgRating, 1) ?></span>
+                                <span class="text-gray-500 font-normal">(<?= $totalUlasan ?> ulasan)</span>
+                            </div>
+                        <?php else: ?>
+                            <div class="flex items-center gap-1 text-gray-400 font-medium">
+                                <i class="ph ph-star text-sm" aria-hidden="true"></i>
+                                <span>Belum ada ulasan</span>
+                            </div>
+                        <?php endif; ?>
                         <span aria-hidden="true" class="text-gray-300">•</span>
                         <span>Stok <?= $stokProduk ?></span>
                         <span aria-hidden="true" class="text-gray-300">•</span>
@@ -384,41 +402,58 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     <?php endif; ?>
                 </div>
 
-                <!-- Grid Tombol Aksi 2x2 -->
-                <div class="grid grid-cols-2 gap-2.5 pt-2">
-                    <?php if ($bisaNego): ?>
+                <!-- Grid Tombol Aksi / Guard BR-01 -->
+                <?php if ($isOwnProduct): ?>
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3.5 text-xs text-amber-900 leading-relaxed">
+                        <p class="font-bold flex items-center gap-1.5 mb-1">
+                            <i class="ph-fill ph-storefront text-amber-600 text-sm" aria-hidden="true"></i>
+                            <span>Produk Milik Anda Sendiri</span>
+                        </p>
+                        <p class="text-amber-800">
+                            Anda tidak dapat membeli, menawar, atau mengajukan barter pada produk Anda sendiri.
+                        </p>
+                    </div>
+                <?php elseif ($statusProduk !== 'tersedia' || $stokProduk <= 0): ?>
+                    <div class="bg-gray-100 border border-gray-200 rounded-lg p-3.5 text-xs text-gray-700 leading-relaxed">
+                        <p class="font-bold mb-0.5">Produk Tidak Tersedia</p>
+                        <p>Produk ini sedang terkunci dalam transaksi lain atau stok sudah habis.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="grid grid-cols-2 gap-2.5 pt-2">
+                        <?php if ($bisaNego): ?>
+                            <button
+                                type="button"
+                                id="btn-nego"
+                                class="min-h-[44px] px-3 py-2.5 bg-brand-yellow hover:bg-yellow-400 text-brand-dark font-bold text-xs uppercase tracking-wide transition shadow-2xs cursor-pointer">
+                                Ajukan Harga
+                            </button>
+                        <?php endif; ?>
+
+                        <?php if ($bisaBarter): ?>
+                            <button
+                                type="button"
+                                id="btn-barter"
+                                class="min-h-[44px] px-3 py-2.5 bg-white hover:bg-amber-50 text-amber-800 font-bold text-xs uppercase tracking-wide transition border border-amber-400 cursor-pointer">
+                                Ajukan Barter
+                            </button>
+                        <?php endif; ?>
+
                         <button
                             type="button"
-                            id="btn-nego"
-                            class="min-h-[44px] px-3 py-2.5 bg-brand-yellow hover:bg-yellow-400 text-brand-dark font-bold text-xs uppercase tracking-wide transition shadow-2xs cursor-pointer">
-                            Ajukan Harga
+                            id="btn-cart"
+                            class="min-h-[44px] px-3 py-2.5 bg-white hover:bg-gray-100 text-gray-800 font-bold text-xs uppercase tracking-wide transition border border-gray-300 flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i class="ph ph-shopping-cart text-sm font-bold" aria-hidden="true"></i>
+                            <span>Tambah ke Keranjang</span>
                         </button>
-                    <?php endif; ?>
 
-                    <?php if ($bisaBarter): ?>
                         <button
                             type="button"
-                            id="btn-barter"
-                            class="min-h-[44px] px-3 py-2.5 bg-white hover:bg-amber-50 text-amber-800 font-bold text-xs uppercase tracking-wide transition border border-amber-400 cursor-pointer">
-                            Ajukan Barter
+                            id="btn-buy"
+                            class="min-h-[44px] px-3 py-2.5 bg-[#272727] hover:bg-black text-white font-bold text-xs uppercase tracking-wide transition cursor-pointer">
+                            Beli Sekarang
                         </button>
-                    <?php endif; ?>
-
-                    <button
-                        type="button"
-                        id="btn-cart"
-                        class="min-h-[44px] px-3 py-2.5 bg-white hover:bg-gray-100 text-gray-800 font-bold text-xs uppercase tracking-wide transition border border-gray-300 flex items-center justify-center gap-1.5 cursor-pointer">
-                        <i class="ph ph-shopping-cart text-sm font-bold" aria-hidden="true"></i>
-                        <span>Tambah ke Keranjang</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        id="btn-buy"
-                        class="min-h-[44px] px-3 py-2.5 bg-[#272727] hover:bg-black text-white font-bold text-xs uppercase tracking-wide transition cursor-pointer">
-                        Beli Sekarang
-                    </button>
-                </div>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <!-- Kolom 3: Informasi Penjual -->
@@ -433,10 +468,16 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </div>
                     <div>
                         <h3 class="font-bold text-sm text-gray-900 leading-tight"><?= htmlspecialchars($namaPenjual) ?></h3>
-                        <p class="text-xs text-gray-500 mt-0.5"><?= htmlspecialchars($alamatPenjual ?: 'Indonesia') ?></p>
-                        <span class="inline-block mt-1 text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                            Verified Seller
-                        </span>
+                        <p class="text-xs text-gray-500 mt-0.5"><?= htmlspecialchars($alamatPenjual ?: 'Lokasi belum diisi') ?></p>
+                        <?php if ($penjualVerified): ?>
+                            <span class="inline-block mt-1 text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                                Verified Seller
+                            </span>
+                        <?php else: ?>
+                            <span class="inline-block mt-1 text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                                Belum Verifikasi
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -444,36 +485,28 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     <div>
                         <span class="text-gray-500 block text-[11px]">Rating Toko</span>
                         <span class="font-bold text-gray-900 flex items-center gap-1 mt-0.5">
-                            <i class="ph-fill ph-star text-amber-500" aria-hidden="true"></i> 4.9 / 5.0
+                            <?php if ((int)$sellerStats['total_ulasan_toko'] > 0): ?>
+                                <i class="ph-fill ph-star text-amber-500" aria-hidden="true"></i>
+                                <?= number_format((float)$sellerStats['rating_toko'], 1) ?> / 5.0
+                            <?php else: ?>
+                                <span class="text-gray-500 font-semibold">Belum ada</span>
+                            <?php endif; ?>
                         </span>
                     </div>
                     <div>
-                        <span class="text-gray-500 block text-[11px]">Kecepatan</span>
-                        <span class="font-bold text-gray-900 block mt-0.5">± 2 Jam</span>
+                        <span class="text-gray-500 block text-[11px]">Produk Aktif</span>
+                        <span class="font-bold text-gray-900 block mt-0.5"><?= (int)$sellerStats['produk_aktif'] ?> Listing</span>
                     </div>
                     <div>
                         <span class="text-gray-500 block text-[11px]">Produk Terjual</span>
-                        <span class="font-bold text-gray-900 block mt-0.5">250+ Unit</span>
+                        <span class="font-bold text-gray-900 block mt-0.5"><?= (int)$sellerStats['produk_terjual'] ?> Unit</span>
                     </div>
                     <div>
-                        <span class="text-gray-500 block text-[11px]">Transaksi Sukses</span>
-                        <span class="font-bold text-emerald-700 block mt-0.5">99.2%</span>
+                        <span class="text-gray-500 block text-[11px]">Status Akun</span>
+                        <span class="font-bold <?= $penjualVerified ? 'text-emerald-700' : 'text-gray-600' ?> block mt-0.5">
+                            <?= $penjualVerified ? 'Terverifikasi' : 'Standar' ?>
+                        </span>
                     </div>
-                </div>
-
-                <div class="space-y-2 pt-1">
-                    <a
-                        href="#"
-                        class="w-full min-h-[44px] bg-brand-yellow hover:bg-yellow-400 text-brand-dark font-bold text-xs uppercase tracking-wide py-2.5 transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs">
-                        <i class="ph ph-chat-circle-dots text-base font-bold" aria-hidden="true"></i>
-                        <span>Chat Penjual</span>
-                    </a>
-                    <a
-                        href="#"
-                        class="w-full min-h-[44px] bg-white hover:bg-gray-100 text-gray-800 font-bold text-xs uppercase tracking-wide border border-gray-300 py-2.5 transition flex items-center justify-center gap-2">
-                        <i class="ph ph-storefront text-base" aria-hidden="true"></i>
-                        <span>Kunjungi Toko</span>
-                    </a>
                 </div>
 
                 <div class="border-t border-gray-100 pt-3 text-[11px] text-gray-500 space-y-1.5">
@@ -526,12 +559,12 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         role="tab"
                         aria-selected="false"
                         aria-controls="panel-ulasan">
-                        Ulasan (28)
+                        Ulasan (<?= $totalUlasan ?>)
                     </button>
                 </nav>
             </div>
 
-            <!-- Konten Tab + Ulasan Rating (Grid 2 Kolom Sesuai detail_produk.png) -->
+            <!-- Konten Tab + Ulasan Rating -->
             <div class="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
                 <!-- Area Kiri: Deskripsi & Spesifikasi Produk -->
@@ -630,159 +663,136 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
 
                     <!-- Panel Ulasan Full -->
                     <div id="panel-ulasan" class="tab-panel hidden space-y-4" role="tabpanel">
-                        <h2 class="text-base font-bold text-gray-900 mb-2">Seluruh Ulasan Pembeli (28)</h2>
-                        <p class="text-xs text-gray-600">
-                            Semua ulasan berasal dari pembeli terverifikasi yang telah menyelesaikan transaksi produk ini.
-                        </p>
+                        <h2 class="text-base font-bold text-gray-900 mb-2">Seluruh Ulasan Pembeli (<?= $totalUlasan ?>)</h2>
+                        <?php if ($totalUlasan > 0): ?>
+                            <div class="space-y-4">
+                                <?php foreach ($reviews as $rev): ?>
+                                    <?php
+                                    $inisialPembeli = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $rev['nama_pembeli']), 0, 1) ?: 'P');
+                                    $bintang = (int)$rev['rating'];
+                                    ?>
+                                    <article class="border-t border-gray-100 pt-3.5 space-y-1.5">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                                    <?= htmlspecialchars($inisialPembeli) ?>
+                                                </div>
+                                                <div>
+                                                    <span class="font-bold text-xs text-gray-900 block leading-tight"><?= htmlspecialchars($rev['nama_pembeli']) ?></span>
+                                                    <time datetime="<?= htmlspecialchars(date('Y-m-d', strtotime($rev['created_at']))) ?>" class="text-[10px] text-gray-400 block">
+                                                        <?= htmlspecialchars(date('d M Y', strtotime($rev['created_at']))) ?>
+                                                    </time>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-0.5 text-amber-500 text-xs" aria-label="Bintang <?= $bintang ?>">
+                                                <?php for ($s = 1; $s <= 5; $s++): ?>
+                                                    <i class="<?= $s <= $bintang ? 'ph-fill ph-star' : 'ph ph-star text-gray-300' ?>" aria-hidden="true"></i>
+                                                <?php endfor; ?>
+                                            </div>
+                                        </div>
+                                        <?php if (!empty($rev['komentar'])): ?>
+                                            <p class="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                                                <?= nl2br(htmlspecialchars($rev['komentar'])) ?>
+                                            </p>
+                                        <?php endif; ?>
+                                    </article>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-xs sm:text-sm text-gray-500">
+                                Belum ada ulasan untuk produk ini. Ulasan hanya dapat ditulis oleh pembeli setelah pesanan berstatus selesai.
+                            </p>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Area Kanan: Ringkasan Rating & Kartu Ulasan Singkat -->
                 <div class="lg:col-span-5 bg-white border border-gray-200/80 p-5 space-y-5 shadow-2xs">
                     <div class="flex items-center justify-between border-b border-gray-100 pb-2.5">
-                        <h2 class="font-bold text-sm text-gray-900">Ulasan (28)</h2>
-                        <a href="#panel-ulasan" class="text-xs text-amber-700 hover:text-amber-900 font-semibold transition">
-                            Lihat semua &gt;
-                        </a>
+                        <h2 class="font-bold text-sm text-gray-900">Ulasan (<?= $totalUlasan ?>)</h2>
+                        <?php if ($totalUlasan > 0): ?>
+                            <button type="button" id="btn-lihat-ulasan" class="text-xs text-amber-700 hover:text-amber-900 font-semibold transition cursor-pointer">
+                                Lihat semua &gt;
+                            </button>
+                        <?php endif; ?>
                     </div>
 
-                    <!-- 5 Bintang Emas -->
-                    <div class="flex items-center gap-1 text-amber-500 text-base" aria-label="Rating 5 dari 5 bintang">
-                        <i class="ph-fill ph-star" aria-hidden="true"></i>
-                        <i class="ph-fill ph-star" aria-hidden="true"></i>
-                        <i class="ph-fill ph-star" aria-hidden="true"></i>
-                        <i class="ph-fill ph-star" aria-hidden="true"></i>
-                        <i class="ph-fill ph-star" aria-hidden="true"></i>
+                    <!-- Bintang Ringkasan -->
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1 <?= $totalUlasan > 0 ? 'text-amber-500' : 'text-gray-300' ?> text-base" aria-label="Rating <?= $totalUlasan > 0 ? number_format($avgRating, 1) : '0' ?> dari 5 bintang">
+                            <?php $roundedStar = (int)round($avgRating); ?>
+                            <?php for ($s = 1; $s <= 5; $s++): ?>
+                                <i class="<?= ($totalUlasan > 0 && $s <= $roundedStar) ? 'ph-fill ph-star' : 'ph ph-star' ?>" aria-hidden="true"></i>
+                            <?php endfor; ?>
+                        </div>
+                        <span class="text-xs font-bold text-gray-800">
+                            <?= $totalUlasan > 0 ? number_format($avgRating, 1) . ' / 5.0' : 'Belum ada rating' ?>
+                        </span>
                     </div>
 
                     <!-- Distribusi Rating 5 Bintang s/d 1 Bintang -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-xs">
-                        <div class="flex items-center gap-2">
-                            <span class="w-7 font-semibold text-gray-700 flex items-center gap-0.5 shrink-0">
-                                5 <i class="ph-fill ph-star text-amber-500 text-[11px]" aria-hidden="true"></i>
-                            </span>
-                            <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                                <div class="h-full bg-amber-400 rounded-full" style="width: 86%;"></div>
+                        <?php foreach ([5, 2, 4, 1, 3] as $star): ?>
+                            <?php $pct = $totalUlasan > 0 ? (int)round(($ratingCounts[$star] / $totalUlasan) * 100) : 0; ?>
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 font-semibold text-gray-700 flex items-center gap-0.5 shrink-0">
+                                    <?= $star ?> <i class="ph-fill ph-star text-amber-500 text-[11px]" aria-hidden="true"></i>
+                                </span>
+                                <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                                    <div class="h-full bg-amber-400 rounded-full" style="width: <?= $pct ?>%;"></div>
+                                </div>
+                                <span class="w-8 text-right text-[11px] font-medium <?= $pct > 0 ? 'text-gray-500' : 'text-gray-400' ?> shrink-0"><?= $pct ?>%</span>
                             </div>
-                            <span class="w-8 text-right text-[11px] font-medium text-gray-500 shrink-0">86%</span>
-                        </div>
+                        <?php endforeach; ?>
 
-                        <div class="flex items-center gap-2">
-                            <span class="w-7 font-semibold text-gray-700 flex items-center gap-0.5 shrink-0">
-                                2 <i class="ph-fill ph-star text-amber-500 text-[11px]" aria-hidden="true"></i>
-                            </span>
-                            <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                                <div class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
-                            </div>
-                            <span class="w-8 text-right text-[11px] font-medium text-gray-400 shrink-0">0%</span>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <span class="w-7 font-semibold text-gray-700 flex items-center gap-0.5 shrink-0">
-                                4 <i class="ph-fill ph-star text-amber-500 text-[11px]" aria-hidden="true"></i>
-                            </span>
-                            <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                                <div class="h-full bg-amber-400 rounded-full" style="width: 11%;"></div>
-                            </div>
-                            <span class="w-8 text-right text-[11px] font-medium text-gray-500 shrink-0">11%</span>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <span class="w-7 font-semibold text-gray-700 flex items-center gap-0.5 shrink-0">
-                                1 <i class="ph-fill ph-star text-amber-500 text-[11px]" aria-hidden="true"></i>
-                            </span>
-                            <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                                <div class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
-                            </div>
-                            <span class="w-8 text-right text-[11px] font-medium text-gray-400 shrink-0">0%</span>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <span class="w-7 font-semibold text-gray-700 flex items-center gap-0.5 shrink-0">
-                                3 <i class="ph-fill ph-star text-amber-500 text-[11px]" aria-hidden="true"></i>
-                            </span>
-                            <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                                <div class="h-full bg-amber-400 rounded-full" style="width: 3%;"></div>
-                            </div>
-                            <span class="w-8 text-right text-[11px] font-medium text-gray-500 shrink-0">3%</span>
-                        </div>
-
-                        <div class="flex items-center justify-between text-[11px] text-emerald-800 bg-emerald-50/80 px-2.5 py-1 rounded-md font-medium">
+                        <div class="flex items-center justify-between text-[11px] <?= $totalUlasan > 0 ? 'text-emerald-800 bg-emerald-50/80' : 'text-gray-500 bg-gray-50' ?> px-2.5 py-1 rounded-md font-medium">
                             <span class="flex items-center gap-1">
-                                <i class="ph ph-check-circle text-emerald-600 text-xs" aria-hidden="true"></i>
-                                <span>97% Pembeli Puas</span>
+                                <i class="ph ph-check-circle <?= $totalUlasan > 0 ? 'text-emerald-600' : 'text-gray-400' ?> text-xs" aria-hidden="true"></i>
+                                <span><?= $totalUlasan > 0 ? $puasPct . '% Pembeli Puas' : 'Belum ada ulasan' ?></span>
                             </span>
-                            <span class="text-emerald-700 font-bold">4.8/5.0</span>
+                            <?php if ($totalUlasan > 0): ?>
+                                <span class="text-emerald-700 font-bold"><?= number_format($avgRating, 1) ?>/5.0</span>
+                            <?php endif; ?>
                         </div>
                     </div>
 
-                    <!-- Ulasan Pembeli Item 1 -->
-                    <article class="border-t border-gray-100 pt-3.5 space-y-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center font-bold text-xs shrink-0">
-                                B
-                            </div>
-                            <div>
-                                <span class="font-bold text-xs text-gray-900 block leading-tight">BudiSantoso</span>
-                                <time datetime="2026-11-05" class="text-[10px] text-gray-400 block">2 minggu lalu</time>
-                            </div>
-                        </div>
+                    <?php if ($totalUlasan > 0): ?>
+                        <?php foreach (array_slice($reviews, 0, 2) as $rev): ?>
+                            <?php
+                            $inisialPembeli = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $rev['nama_pembeli']), 0, 1) ?: 'P');
+                            $bintang = (int)$rev['rating'];
+                            ?>
+                            <article class="border-t border-gray-100 pt-3.5 space-y-2">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                        <?= htmlspecialchars($inisialPembeli) ?>
+                                    </div>
+                                    <div>
+                                        <span class="font-bold text-xs text-gray-900 block leading-tight"><?= htmlspecialchars($rev['nama_pembeli']) ?></span>
+                                        <time datetime="<?= htmlspecialchars(date('Y-m-d', strtotime($rev['created_at']))) ?>" class="text-[10px] text-gray-400 block">
+                                            <?= htmlspecialchars(date('d M Y', strtotime($rev['created_at']))) ?>
+                                        </time>
+                                    </div>
+                                </div>
 
-                        <div class="flex items-center gap-0.5 text-amber-500 text-xs" aria-label="Bintang 5">
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                        </div>
+                                <div class="flex items-center gap-0.5 text-amber-500 text-xs" aria-label="Bintang <?= $bintang ?>">
+                                    <?php for ($s = 1; $s <= 5; $s++): ?>
+                                        <i class="<?= $s <= $bintang ? 'ph-fill ph-star' : 'ph ph-star text-gray-300' ?>" aria-hidden="true"></i>
+                                    <?php endfor; ?>
+                                </div>
 
-                        <p class="text-xs text-gray-700 leading-normal">
-                            Barang sesuai deskripsi, masih bagus. Pengiriman cepat
+                                <?php if (!empty($rev['komentar'])): ?>
+                                    <p class="text-xs text-gray-700 leading-normal">
+                                        <?= nl2br(htmlspecialchars($rev['komentar'])) ?>
+                                    </p>
+                                <?php endif; ?>
+                            </article>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="border-t border-gray-100 pt-3.5 text-xs text-gray-500">
+                            Belum ada ulasan pembeli untuk produk ini.
                         </p>
-
-                        <div class="flex justify-end pt-1">
-                            <button
-                                type="button"
-                                class="helpful-btn text-[11px] bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] hover:bg-amber-200 px-3 py-1 rounded-full font-medium transition cursor-pointer"
-                                data-count="12">
-                                Membantu (<span>12</span>)
-                            </button>
-                        </div>
-                    </article>
-
-                    <!-- Ulasan Pembeli Item 2 -->
-                    <article class="border-t border-gray-100 pt-3.5 space-y-2">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center font-bold text-xs shrink-0">
-                                B
-                            </div>
-                            <div>
-                                <span class="font-bold text-xs text-gray-900 block leading-tight">BudiSantoso</span>
-                                <time datetime="2026-11-05" class="text-[10px] text-gray-400 block">2 minggu lalu</time>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-0.5 text-amber-500 text-xs" aria-label="Bintang 5">
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                            <i class="ph-fill ph-star" aria-hidden="true"></i>
-                        </div>
-
-                        <p class="text-xs text-gray-700 leading-normal">
-                            Barang sesuai deskripsi, masih bagus. Pengiriman cepat
-                        </p>
-
-                        <div class="flex justify-end pt-1">
-                            <button
-                                type="button"
-                                class="helpful-btn text-[11px] bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] hover:bg-amber-200 px-3 py-1 rounded-full font-medium transition cursor-pointer"
-                                data-count="12">
-                                Membantu (<span>12</span>)
-                            </button>
-                        </div>
-                    </article>
+                    <?php endif; ?>
                 </div>
             </div>
         </section>
@@ -803,13 +813,17 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         <a href="detail_produk.php?id=<?= (int)$rel['id'] ?>" class="bg-white border border-gray-200/80 p-4 space-y-3 hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between shadow-2xs">
                             <div class="space-y-3">
                                 <div class="relative w-full aspect-video bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
-                                    <span class="absolute top-2 left-2 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
+                                    <span class="absolute top-2 left-2 z-10 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
                                         <?= htmlspecialchars($rel['kondisi']) ?>
                                     </span>
-                                    <div class="text-center text-gray-400">
-                                        <i class="ph <?= htmlspecialchars(kategoriIcon($rel['nama_kategori'])) ?> text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
-                                        <span class="block text-[11px]"><?= htmlspecialchars($rel['nama_kategori']) ?></span>
-                                    </div>
+                                    <?php if (!empty($rel['foto'])): ?>
+                                        <img src="<?= htmlspecialchars($rel['foto']) ?>" alt="<?= htmlspecialchars($rel['nama_produk']) ?>" class="w-full h-full object-contain p-2" />
+                                    <?php else: ?>
+                                        <div class="text-center text-gray-400">
+                                            <i class="ph <?= htmlspecialchars(kategoriIcon($rel['nama_kategori'])) ?> text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
+                                            <span class="block text-[11px]"><?= htmlspecialchars($rel['nama_kategori']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                                 <div>
                                     <h3 class="font-bold text-sm text-gray-900 leading-snug line-clamp-2">
@@ -847,18 +861,21 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 </button>
             </div>
             <p class="text-xs text-gray-600">
-                Masukkan harga penawaranmu untuk unit <strong>ASUS GTX 750 Ti 2GB</strong>. Harga asli: Rp 680.000.
+                Masukkan harga penawaranmu untuk unit <strong><?= htmlspecialchars($namaProduk) ?></strong>. Harga asli: <?= formatRupiah($hargaProduk) ?>.
             </p>
             <div>
                 <label for="input-tawaran" class="block text-xs font-semibold text-gray-700 mb-1">Nominal Tawaran (Rp)</label>
                 <input
                     type="number"
                     id="input-tawaran"
-                    placeholder="Contoh: 620000"
-                    min="500000"
-                    max="680000"
+                    placeholder="Contoh: <?= max(1000, (int)(round(($hargaProduk * 0.9) / 1000) * 1000)) ?>"
+                    min="1000"
+                    max="<?= $hargaProduk ?>"
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow" />
             </div>
+            <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
+                <strong>Catatan Priority Queue:</strong> Pengajuan negosiasi tidak mengunci stok barang. Pembeli lain tetap dapat melakukan Beli Langsung selama transaksi belum masuk tahap pembayaran.
+            </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
                     Batal
@@ -880,7 +897,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 </button>
             </div>
             <p class="text-xs text-gray-600">
-                Tuliskan deskripsi komponen atau barang elektronik yang ingin kamu tukar tambah dengan produk ini.
+                Tuliskan deskripsi barang elektronik milikmu yang ingin ditukar tambah dengan <strong><?= htmlspecialchars($namaProduk) ?></strong>.
             </p>
             <div>
                 <label for="input-barter-item" class="block text-xs font-semibold text-gray-700 mb-1">Barang yang Ditawarkan</label>
@@ -890,6 +907,9 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     placeholder="Contoh: RAM Corsair Vengeance 2x8GB DDR4 + Tambah dana Rp 200rb"
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow"></textarea>
             </div>
+            <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
+                <strong>Catatan Priority Queue:</strong> Pengajuan barter tidak mengunci stok barang hingga tawaran disetujui dan masuk tahap pesanan.
+            </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
                     Batal
@@ -915,75 +935,44 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
     <!-- Skrip Interaktivitas Halaman -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const produkTitleEl = document.getElementById('produk-title');
+            const namaProduk = produkTitleEl ? produkTitleEl.textContent.trim() : 'Produk';
+
             // Logika Tab Navigasi
             const tabLinks = document.querySelectorAll('.tab-link');
             const tabPanels = document.querySelectorAll('.tab-panel');
 
+            function activateTab(targetId) {
+                tabLinks.forEach(function(t) {
+                    const isActive = t.getAttribute('data-target') === targetId;
+                    t.classList.toggle('border-brand-yellow', isActive);
+                    t.classList.toggle('text-gray-900', isActive);
+                    t.classList.toggle('border-transparent', !isActive);
+                    t.classList.toggle('text-gray-500', !isActive);
+                    t.setAttribute('aria-selected', String(isActive));
+                });
+
+                tabPanels.forEach(function(panel) {
+                    panel.classList.toggle('hidden', panel.id !== targetId);
+                });
+            }
+
             tabLinks.forEach(function(tab) {
                 tab.addEventListener('click', function() {
-                    const targetId = this.getAttribute('data-target');
-
-                    tabLinks.forEach(function(t) {
-                        t.classList.remove('border-brand-yellow', 'text-gray-900');
-                        t.classList.add('border-transparent', 'text-gray-500');
-                        t.setAttribute('aria-selected', 'false');
-                    });
-
-                    this.classList.remove('border-transparent', 'text-gray-500');
-                    this.classList.add('border-brand-yellow', 'text-gray-900');
-                    this.setAttribute('aria-selected', 'true');
-
-                    tabPanels.forEach(function(panel) {
-                        panel.classList.add('hidden');
-                    });
-
-                    const targetPanel = document.getElementById(targetId);
-                    if (targetPanel) {
-                        targetPanel.classList.remove('hidden');
-                    }
+                    activateTab(this.getAttribute('data-target'));
                 });
             });
 
-            // Logika Galeri Thumbnail
-            const thumbButtons = document.querySelectorAll('.thumb-btn');
-            const galleryCounter = document.getElementById('gallery-counter');
-            const mainTitle = document.getElementById('main-preview-title');
-
-            const galleryData = {
-                '1': {
-                    title: 'ASUS GeForce GTX 750 Ti 2GB GDDR5',
-                    label: '1/3'
-                },
-                '2': {
-                    title: 'Box & Kartu Garansi Resmi ASUS',
-                    label: '2/3'
-                },
-                '3': {
-                    title: 'Tampak Belakang & Port I/O HDMI/DVI/DP',
-                    label: '3/3'
-                }
-            };
-
-            thumbButtons.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const idx = this.getAttribute('data-index');
-
-                    thumbButtons.forEach(function(b) {
-                        b.classList.remove('border-2', 'border-gray-900');
-                        b.classList.add('border', 'border-gray-300');
-                        b.setAttribute('aria-selected', 'false');
-                    });
-
-                    this.classList.remove('border', 'border-gray-300');
-                    this.classList.add('border-2', 'border-gray-900');
-                    this.setAttribute('aria-selected', 'true');
-
-                    if (galleryData[idx]) {
-                        if (galleryCounter) galleryCounter.textContent = galleryData[idx].label;
-                        if (mainTitle) mainTitle.textContent = galleryData[idx].title;
+            const btnLihatUlasan = document.getElementById('btn-lihat-ulasan');
+            if (btnLihatUlasan) {
+                btnLihatUlasan.addEventListener('click', function() {
+                    activateTab('panel-ulasan');
+                    const panelUlasan = document.getElementById('panel-ulasan');
+                    if (panelUlasan) {
+                        panelUlasan.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 });
-            });
+            }
 
             // Logika Slider Interaktif Harga Pasar
             const priceSlider = document.getElementById('price-range-slider');
@@ -1059,6 +1048,13 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 });
             }
 
+            // Auto-open modal bila diakses melalui hash #nego atau #barter dari search.php
+            if (window.location.hash === '#nego' && btnNego && modalNego) {
+                modalNego.showModal();
+            } else if (window.location.hash === '#barter' && btnBarter && modalBarter) {
+                modalBarter.showModal();
+            }
+
             closeDialogButtons.forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     if (modalNego && modalNego.open) modalNego.close();
@@ -1069,14 +1065,16 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             const submitTawaran = document.getElementById('submit-tawaran');
             if (submitTawaran) {
                 submitTawaran.addEventListener('click', function() {
-                    const inputTawaran = document.getElementById('input-tawaran');
-                    if (inputTawaran && inputTawaran.value) {
-                        modalNego.close();
-                        showToast('Tawaran harga Rp ' + Number(inputTawaran.value).toLocaleString('id-ID') + ' terkirim ke penjual.');
-                        inputTawaran.value = '';
-                    } else {
-                        alert('Silakan masukkan nominal tawaran.');
+                    if (!inputTawaran) return;
+                    const nominal = parseInt(inputTawaran.value, 10);
+                    const maxHarga = parseInt(inputTawaran.getAttribute('max'), 10);
+                    if (!nominal || nominal < 1000 || (maxHarga && nominal > maxHarga)) {
+                        alert('Masukkan nominal tawaran yang valid (maksimal Rp ' + maxHarga.toLocaleString('id-ID') + ').');
+                        return;
                     }
+                    modalNego.close();
+                    showToast('Tawaran harga Rp ' + nominal.toLocaleString('id-ID') + ' untuk ' + namaProduk + ' siap diproses.');
+                    inputTawaran.value = '';
                 });
             }
 
@@ -1086,7 +1084,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     const inputBarter = document.getElementById('input-barter-item');
                     if (inputBarter && inputBarter.value.trim()) {
                         modalBarter.close();
-                        showToast('Pengajuan barter berhasil dikirimkan ke penjual.');
+                        showToast('Pengajuan barter untuk ' + namaProduk + ' siap diproses.');
                         inputBarter.value = '';
                     } else {
                         alert('Silakan jelaskan barang yang kamu tawarkan.');
@@ -1098,31 +1096,16 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             const btnCart = document.getElementById('btn-cart');
             if (btnCart) {
                 btnCart.addEventListener('click', function() {
-                    showToast('ASUS GTX 750 Ti berhasil dimasukkan ke keranjang!');
+                    showToast(namaProduk + ' ditambahkan ke keranjang!');
                 });
             }
 
             const btnBuy = document.getElementById('btn-buy');
             if (btnBuy) {
                 btnBuy.addEventListener('click', function() {
-                    showToast('Mengarahkan ke halaman checkout transaksi...');
+                    showToast('Memproses checkout untuk ' + namaProduk + '...');
                 });
             }
-
-            // Tombol Membantu Ulasan
-            const helpfulButtons = document.querySelectorAll('.helpful-btn');
-            helpfulButtons.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const countSpan = this.querySelector('span');
-                    let count = parseInt(this.getAttribute('data-count'), 10) || 0;
-                    if (!this.classList.contains('voted')) {
-                        count += 1;
-                        this.classList.add('voted', 'bg-amber-300');
-                        this.setAttribute('data-count', count);
-                        if (countSpan) countSpan.textContent = count;
-                    }
-                });
-            });
         });
     </script>
 </body>

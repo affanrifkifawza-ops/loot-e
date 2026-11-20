@@ -5,7 +5,7 @@ $navActivePage = 'landing';
 
 // Etalase untuk pengunjung: hanya tampilan, klik produk diarahkan ke login jika belum masuk
 $produkTampil = getDbConnection()->query("
-  SELECT p.id, p.nama_produk, p.harga, k.nama_kategori
+  SELECT p.id, p.nama_produk, p.foto, p.harga, k.nama_kategori
   FROM produk p
   JOIN kategori k ON k.id = p.id_kategori
   WHERE p.status_produk = 'tersedia'
@@ -55,26 +55,6 @@ $produkTampil = getDbConnection()->query("
       box-sizing: border-box;
       padding-top: env(safe-area-inset-top, 0px);
       padding-bottom: env(safe-area-inset-bottom, 0px)
-    }
-
-    @media(prefers-color-scheme:dark) {
-      :root:not([data-theme="light"]) {
-        --lt: #272727;
-        --card: #262626;
-        --ink: #f1f1f1;
-        --mute: #a0a0a0;
-        --line: #3d3d3d;
-        color-scheme: dark
-      }
-    }
-
-    :root[data-theme="dark"] {
-      --lt: #272727;
-      --card: #262626;
-      --ink: #f1f1f1;
-      --mute: #a0a0a0;
-      --line: #3d3d3d;
-      color-scheme: dark
     }
 
     html {
@@ -140,7 +120,7 @@ $produkTampil = getDbConnection()->query("
         transparan.
       </p>
       <div class="mt-7 flex flex-wrap gap-3">
-        <a href="#produk"
+        <a href="#products"
           class="bg-ye px-6 py-3 text-xs font-bold text-[#272727] shadow-lg hover:brightness-95 transition">
           Jelajahi Marketplace
         </a>
@@ -216,8 +196,7 @@ $produkTampil = getDbConnection()->query("
   </section>
 
   <!-- PRODUK -->
-  <div id="products"></div>
-  <section id="produk" class="bg-[var(--card)] px-6 pb-12 pt-12 lg:px-10">
+  <section id="products" class="bg-[var(--card)] px-6 pb-12 pt-12 lg:px-10">
     <div class="mx-auto max-w-[1100px] text-center">
       <p class="text-[10px] font-semibold tracking-wider text-[var(--mute)]">BERDAGANG SECARA FLEKSIBEL</p>
       <h2 class="mt-1 text-3xl font-semibold">Jelajahi Produk</h2>
@@ -229,8 +208,12 @@ $produkTampil = getDbConnection()->query("
         ?>
           <a href="<?= htmlspecialchars($href) ?>" class="flex flex-col justify-between bg-[var(--lt)] p-4 hover:shadow-md transition">
             <div class="relative flex h-28 w-full flex-col items-center justify-center gap-1 overflow-hidden bg-[var(--card)] border border-[var(--line)] text-[var(--mute)] text-[10px]">
-              <i class="ph <?= htmlspecialchars(kategoriIcon($p['nama_kategori'])) ?> text-2xl" aria-hidden="true"></i>
-              <span><?= htmlspecialchars($p['nama_kategori']) ?></span>
+              <?php if (!empty($p['foto'])): ?>
+                <img src="<?= htmlspecialchars($p['foto']) ?>" alt="<?= htmlspecialchars($p['nama_produk']) ?>" class="h-full w-full object-contain p-2" />
+              <?php else: ?>
+                <i class="ph <?= htmlspecialchars(kategoriIcon($p['nama_kategori'])) ?> text-2xl" aria-hidden="true"></i>
+                <span><?= htmlspecialchars($p['nama_kategori']) ?></span>
+              <?php endif; ?>
             </div>
             <h3 class="mt-4 truncate text-sm font-semibold"><?= htmlspecialchars($p['nama_produk']) ?></h3>
             <p class="text-xs text-[var(--mute)]"><?= htmlspecialchars($p['nama_kategori']) ?></p>
@@ -264,8 +247,6 @@ $produkTampil = getDbConnection()->query("
           <div class="mt-4 bg-[var(--card)] p-3">
             <div
               class="relative flex h-40 w-full items-center justify-center overflow-hidden rounded bg-[var(--lt)] border border-[var(--line)]">
-              <img src="" alt="Produk Beli & Jual" class="h-full w-full object-contain p-2"
-                onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
               <div class="flex flex-col items-center justify-center gap-1 text-[var(--mute)] text-[11px]">
                 <i data-i="image" class="h-6 w-6"></i>
                 <span>Foto Produk</span>
@@ -316,8 +297,6 @@ $produkTampil = getDbConnection()->query("
               <div class="border border-[var(--line)] p-2 text-center text-[10px] font-semibold">
                 <div
                   class="relative flex h-20 w-full items-center justify-center overflow-hidden rounded bg-[var(--lt)] border border-[var(--line)]">
-                  <img src="" alt="Kingston 8GB RAM" class="h-full w-full object-contain p-1"
-                    onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
                   <div class="flex flex-col items-center justify-center gap-0.5 text-[var(--mute)] text-[9px]">
                     <i data-i="image" class="h-4 w-4"></i>
                     <span>RAM</span>
@@ -329,8 +308,6 @@ $produkTampil = getDbConnection()->query("
               <div class="border border-[var(--line)] p-2 text-center text-[10px] font-semibold">
                 <div
                   class="relative flex h-20 w-full items-center justify-center overflow-hidden rounded bg-[var(--lt)] border border-[var(--line)]">
-                  <img src="" alt="Kingston 240GB SSD" class="h-full w-full object-contain p-1"
-                    onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
                   <div class="flex flex-col items-center justify-center gap-0.5 text-[var(--mute)] text-[9px]">
                     <i data-i="image" class="h-4 w-4"></i>
                     <span>SSD</span>
@@ -506,10 +483,8 @@ $produkTampil = getDbConnection()->query("
   <script>
     (function() {
       var ICON = {
-        menu: 'M4 7h16M4 12h16M4 17h16',
         arrow: 'M5 12h14M13 6l6 6-6 6',
         shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
-        cshield: 'F:M12 2l9 3v7c0 5-4 8.5-9 10-5-1.5-9-5-9-10V5zM8.5 12l2.5 2.5 4.5-5',
         swap: 'M7 7h12l-3-3M17 17H5l3 3',
         sliders: 'M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4',
         chart: 'M3 17l6-6 4 4 8-8M15 7h6v6',
@@ -520,13 +495,7 @@ $produkTampil = getDbConnection()->query("
         truck: 'M3 6h11v10H3zM14 9h4l3 3v4h-7M7 19.5h.01M17 19.5h.01',
         star: 'F:M12 2l3 6.5 7 .8-5.2 4.8 1.5 7-6.3-3.6L5.7 21l1.5-7L2 9.3l7-.8z',
         user: 'F:M12 12a4.5 4.5 0 100-9 4.5 4.5 0 000 9zM4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5z',
-        bolt: 'F:M13 2L4 14h7l-1 8 9-12h-7z',
-        bars: 'F:M3 21V11h4v10zM10 21V3h4v18zM17 21v-7h4v7z',
-        image: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M9 9h.01',
-        yt: 'M3 7a3 3 0 013-3h12a3 3 0 013 3v10a3 3 0 01-3 3H6a3 3 0 01-3-3zM10 9l5 3-5 3z',
-        fb: 'F:M14 8h3V4h-3a4 4 0 00-4 4v2H7v4h3v6h4v-6h3l1-4h-4V8z',
-        ig: 'M4 8a4 4 0 014-4h8a4 4 0 014 4v8a4 4 0 01-4 4H8a4 4 0 01-4-4zM12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zM17 7h.01',
-        dc: 'M7 6c3-1.5 7-1.5 10 0l2 10c-2 1.8-4 2.5-7 2.5S7 17.8 5 16zM9 12h.01M15 12h.01'
+        image: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M9 9h.01'
       };
 
       function icons(root) {

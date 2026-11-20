@@ -3,9 +3,9 @@
 require_once "auth.php";
 
 $redirect = $_GET["redirect"] ?? $_POST["redirect"] ?? "index.php";
-$allowedRedirects = ["index.php", "categories.php", "search.php"];
+$allowedRedirects = ["index.php", "categories.php", "search.php", "detail_produk.php"];
 $redirectBase = parse_url($redirect, PHP_URL_PATH);
-if (!in_array($redirectBase, $allowedRedirects) && !in_array($redirect, $allowedRedirects)) {
+if (!in_array($redirectBase, $allowedRedirects, true)) {
   $redirect = "index.php";
 }
 
@@ -148,10 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <!-- Input Kata Sandi -->
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label for="password" class="block text-sm font-semibold text-gray-700">Kata Sandi</label>
-              <a href="#" class="text-xs font-semibold text-brand-yellow hover:text-yellow-600 transition">Lupa Kata Sandi?</a>
-            </div>
+            <label for="password" class="block text-sm font-semibold text-gray-700 mb-1.5">Kata Sandi</label>
             <div class="relative">
               <i class="ph ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
               <input type="password" id="password" name="password" placeholder="Masukkan kata sandi" required
@@ -161,15 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="ph ph-eye text-lg"></i>
               </button>
             </div>
-          </div>
-
-          <!-- Opsi Ingat Saya -->
-          <div>
-            <label class="flex items-center gap-2.5 cursor-pointer text-sm text-gray-600 select-none">
-              <input type="checkbox" name="remember"
-                class="w-4 h-4 rounded border-gray-300 text-brand-yellow focus:ring-brand-yellow/40" />
-              <span>Ingat saya</span>
-            </label>
           </div>
 
           <!-- Tombol Masuk -->
