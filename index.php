@@ -113,21 +113,6 @@ $sections = [
     <!-- Navbar Utama -->
     <?php require_once 'components/navbar.php'; ?>
 
-    <!-- Sub-Navbar: Breadcrumb & Search Bar -->
-    <header class="bg-white border-b border-gray-200/80 px-6 md:px-12 py-2.5">
-        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <span class="text-xs font-semibold text-gray-800 shrink-0">Home</span>
-            <form action="search.php" method="GET" onsubmit="if(!this.q.value.trim()){ this.q.focus(); return false; }" class="relative max-w-sm sm:max-w-md w-full mx-auto">
-                <input type="text" name="q" required placeholder="Cari barang atau kategori..."
-                    class="w-full bg-white border border-gray-300 rounded-full pl-4 pr-9 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
-                <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-brand-yellow text-white flex items-center justify-center hover:brightness-95 transition shadow-xs" aria-label="Cari produk">
-                    <i class="ph ph-arrow-right text-[11px] font-bold text-white"></i>
-                </button>
-            </form>
-            <div class="w-8 hidden sm:block shrink-0"></div>
-        </div>
-    </header>
-
     <main class="flex-1">
         <!-- Hero Banner: Upgrade Your Setup -->
         <section class="relative bg-brand-yellow overflow-hidden">

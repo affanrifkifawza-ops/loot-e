@@ -1,6 +1,12 @@
 <?php
 require_once "auth.php";
-$currentUser = getCurrentUser();
+
+if (isLoggedIn()) {
+  header("Location: index.php");
+  exit;
+}
+
+$currentUser = null;
 $navActivePage = 'landing';
 
 // Etalase untuk pengunjung: hanya tampilan, klik produk diarahkan ke login jika belum masuk
@@ -89,7 +95,7 @@ $produkTampil = getDbConnection()->query("
 <body class="font-sans bg-[var(--lt)] text-[var(--ink)] antialiased">
 
   <!-- NAVBAR -->
-  <?php require_once 'components/navbar.php'; ?>
+  <?php require_once 'components/navbar_landing.php'; ?>
 
   <!-- HERO -->
   <section

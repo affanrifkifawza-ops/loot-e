@@ -242,41 +242,16 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
     <!-- Header & Navigasi Utama dari components/navbar.php -->
     <?php require_once 'components/navbar.php'; ?>
 
-    <!-- Sub-Navbar: Breadcrumb & Search Bar -->
-    <header class="bg-white border-b border-gray-200/80 px-4 sm:px-6 md:px-12 py-2.5">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-            <nav aria-label="Breadcrumb" class="w-full sm:w-auto shrink-0">
-                <ol class="flex items-center gap-1.5 text-xs text-gray-500">
-                    <li>
-                        <a href="categories.php" class="hover:text-gray-900 transition font-medium">Kategori</a>
-                    </li>
-                    <li aria-hidden="true" class="text-gray-400">/</li>
-                    <li class="font-semibold text-gray-900" aria-current="page">Detail Produk</li>
-                </ol>
-            </nav>
-
-            <form action="search.php" method="GET" onsubmit="if(!this.q.value.trim()){ this.q.focus(); return false; }" class="relative max-w-sm sm:max-w-md w-full mx-auto">
-                <label for="search-input" class="sr-only">Cari barang atau kategori</label>
-                <input
-                    id="search-input"
-                    type="text"
-                    name="q"
-                    required
-                    placeholder="Cari barang atau kategori..."
-                    class="w-full bg-white border border-gray-300 rounded-full pl-4 pr-9 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
-                <button
-                    type="submit"
-                    class="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-brand-yellow text-white flex items-center justify-center hover:brightness-95 transition shadow-xs"
-                    aria-label="Cari produk">
-                    <i class="ph ph-arrow-right text-[11px] font-bold text-white"></i>
-                </button>
-            </form>
-
-            <div class="hidden sm:block shrink-0 w-[140px]"></div>
-        </div>
-    </header>
-
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <nav aria-label="Breadcrumb">
+            <ol class="flex items-center gap-1.5 text-xs text-gray-500">
+                <li>
+                    <a href="categories.php" class="hover:text-gray-900 transition font-medium">Kategori</a>
+                </li>
+                <li aria-hidden="true" class="text-gray-400">/</li>
+                <li class="font-semibold text-gray-900" aria-current="page">Detail Produk</li>
+            </ol>
+        </nav>
 
         <!-- Baris Utama Produk: Galeri (Kiri) + Info & Harga (Tengah) + Info Penjual (Kanan) -->
         <section class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start" aria-label="Informasi Utama Produk">
