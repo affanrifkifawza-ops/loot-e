@@ -186,11 +186,12 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             outline-offset: 2px;
         }
 
-        /* Custom Styling Range Slider Harga Pasar */
+        /* Custom Styling Range Slider Harga Pasar (Indikator Statis) */
         #price-range-slider {
             -webkit-appearance: none;
             appearance: none;
             background: transparent;
+            pointer-events: none;
         }
 
         #price-range-slider::-webkit-slider-thumb {
@@ -202,13 +203,8 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             background-color: #FFC914;
             border: 2px solid #ffffff;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-            cursor: pointer;
-            transition: transform 0.15s ease;
-        }
-
-        #price-range-slider::-webkit-slider-thumb:hover,
-        #price-range-slider::-webkit-slider-thumb:active {
-            transform: scale(1.25);
+            cursor: default;
+            pointer-events: none;
         }
 
         #price-range-slider::-moz-range-thumb {
@@ -218,13 +214,8 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             background-color: #FFC914;
             border: 2px solid #ffffff;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-            cursor: pointer;
-            transition: transform 0.15s ease;
-        }
-
-        #price-range-slider::-moz-range-thumb:hover,
-        #price-range-slider::-moz-range-thumb:active {
-            transform: scale(1.25);
+            cursor: default;
+            pointer-events: none;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -334,13 +325,13 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         </span>
                     </div>
 
-                    <!-- Slider / Gauge Bar Representatif (Bisa Digeser) -->
+                    <!-- Slider / Gauge Bar Representatif (Indikator Statis) -->
                     <div class="pt-1">
                         <div class="relative w-full flex items-center py-1">
                             <!-- Track Bar Gradient -->
                             <div class="absolute inset-x-0 h-2 rounded-full bg-gradient-to-r from-emerald-200 via-amber-200 to-rose-200 border border-gray-200 pointer-events-none"></div>
 
-                            <!-- Native Accessible Range Input -->
+                            <!-- Native Accessible Range Input (Statis / Tidak Dapat Digeser) -->
                             <input
                                 type="range"
                                 id="price-range-slider"
@@ -348,8 +339,11 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                                 max="850000"
                                 step="5000"
                                 value="680000"
-                                aria-label="Slider simulasi harga pasar"
-                                class="relative w-full h-2 z-10 cursor-pointer focus:outline-none" />
+                                disabled
+                                readonly
+                                tabindex="-1"
+                                aria-label="Indikator posisi harga pasar"
+                                class="relative w-full h-2 z-10 cursor-default pointer-events-none focus:outline-none" />
                         </div>
                         <div class="flex justify-between text-[11px] text-gray-500 mt-1 font-medium select-none">
                             <span>Rp 600K</span>
@@ -944,53 +938,21 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     activateTab('panel-ulasan');
                     const panelUlasan = document.getElementById('panel-ulasan');
                     if (panelUlasan) {
-                        panelUlasan.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        panelUlasan.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
                     }
                 });
             }
 
-            // Logika Slider Interaktif Harga Pasar
-            const priceSlider = document.getElementById('price-range-slider');
-            const sliderCurrentLabel = document.getElementById('slider-current-label');
-            const marketStatusBadge = document.getElementById('market-status-badge');
+            // Indikator Statis Rentang Harga Pasar
             const inputTawaran = document.getElementById('input-tawaran');
-
-            function updatePriceSlider(val) {
-                const numericVal = parseInt(val, 10);
-
-                // Format angka ringkas untuk teks indikator (contoh: Rp 680K)
-                const inK = Math.round(numericVal / 1000);
-                if (sliderCurrentLabel) {
-                    sliderCurrentLabel.textContent = 'Rp ' + inK + 'K';
-                }
-
-                // Perbarui status pasar: 600K s/d 750K wajar pasar, > 750K di atas pasar
-                if (marketStatusBadge) {
-                    if (numericVal <= 750000) {
-                        marketStatusBadge.className = 'bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-semibold px-2 py-0.5 rounded-full transition';
-                        marketStatusBadge.textContent = 'Dalam kisaran harga pasar';
-                    } else {
-                        marketStatusBadge.className = 'bg-rose-100 text-rose-800 border border-rose-300 text-[11px] font-semibold px-2 py-0.5 rounded-full transition';
-                        marketStatusBadge.textContent = 'Di atas harga pasar';
-                    }
-                }
-
-                // Sinkronkan nilai ke input dialog tawar harga jika belum diubah manual
-                if (inputTawaran && !inputTawaran.dataset.userEdited) {
-                    inputTawaran.value = numericVal;
-                }
-            }
-
-            if (priceSlider) {
-                priceSlider.addEventListener('input', function() {
-                    updatePriceSlider(this.value);
+            if (inputTawaran && !inputTawaran.dataset.userEdited) {
+                inputTawaran.value = 680000;
+                inputTawaran.addEventListener('input', function() {
+                    this.dataset.userEdited = 'true';
                 });
-
-                if (inputTawaran) {
-                    inputTawaran.addEventListener('input', function() {
-                        this.dataset.userEdited = 'true';
-                    });
-                }
             }
 
             // Logika Dialog Modal dan Tombol Nego / Barter
