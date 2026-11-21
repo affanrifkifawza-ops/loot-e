@@ -286,7 +286,7 @@ function formatHargaCart(int $nominal): string
                             </button>
                         </div>
 
-                        Daftar Item Produk
+                        <!-- Daftar Item Produk -->
                         <div class="divide-y divide-gray-100" id="cart-items-container">
                             <?php foreach ($cartItems as $index => $item):
                                 $kondisiText = $item['kondisi'] ?? 'Bekas (Normal)';
