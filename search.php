@@ -413,7 +413,6 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                             <span class="text-gray-400 text-[11px]">Belum ada ulasan</span>
                                         <?php endif; ?>
                                         <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="text-[11px] font-semibold text-gray-500 group-hover:text-[#272727] inline-flex items-center gap-0.5 transition shrink-0">
-                                            Lihat Detail <i class="ph-bold ph-arrow-right text-[10px]"></i>
                                         </a>
                                     </div>
 
