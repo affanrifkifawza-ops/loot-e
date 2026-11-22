@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo Referensi Upload Produk | Loot-E</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ye: '#FFC914',
+                        ch: '#272727',
+                        brand: {
+                            yellow: '#FFC914',
+                            dark: '#272727',
+                            footer: '#272727',
+                            bg: '#F4F5F7'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        :root {
+            --brand-yellow: #FFC914;
+            --brand-dark: #272727;
+        }
+
+        a[href],
+        button:not(:disabled),
+        select:not(:disabled),
+        label[for],
+        input[type="checkbox"]:not(:disabled),
+        input[type="radio"]:not(:disabled),
+        summary {
+            cursor: pointer;
+        }
+
+        button:disabled,
+        input:disabled,
+        select:disabled,
+        textarea:disabled {
+            cursor: not-allowed;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        [tabindex]:focus-visible {
+            outline: 2px solid var(--brand-yellow);
+            outline-offset: 2px;
+        }
+
+        dialog::backdrop {
+            background: rgba(39, 39, 39, 0.65);
+        }
+
+        .field-error {
+            border-color: #DC2626 !important;
+            background-color: #FEF2F2;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-[#F4F5F7] font-sans text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Demo Bar: Standalone Header (tidak terhubung ke backend/file lain) -->
+    <header class="bg-brand-dark text-white sticky top-0 z-40 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="text-lg font-extrabold tracking-tight text-white select-none">
+                    Loot-<span class="text-brand-yellow">E</span>
+                </span>
+                <span class="h-4 w-px bg-gray-600" aria-hidden="true"></span>
+                <span class="text-xs font-semibold text-gray-300">
+                    Demo Referensi Upload Produk (Standalone, Tanpa Backend)
+                </span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Toggle Simulasi Guard BR-04 -->
+                <div class="flex items-center bg-neutral-800 border border-gray-700 rounded-md p-0.5 text-xs" role="group" aria-label="Simulasi status verifikasi seller">
+                    <button type="button" id="btn-mode-verified" aria-pressed="true"
+                        class="min-h-[36px] px-2.5 py-1 rounded font-semibold transition bg-brand-yellow text-brand-dark">
+                        Verified (is_verified=1)
+                    </button>
+                    <button type="button" id="btn-mode-unverified" aria-pressed="false"
+                        class="min-h-[36px] px-2.5 py-1 rounded font-semibold transition text-gray-300 hover:text-white">
+                        Unverified (BR-04)
+                    </button>
+                </div>
+
+                <button type="button" id="btn-fill-sample"
+                    class="min-h-[38px] px-3 py-1.5 rounded-md border border-gray-600 text-xs font-semibold text-gray-200 hover:bg-neutral-800 transition inline-flex items-center gap-1.5">
+                    <i class="ph ph-magic-wand text-sm" aria-hidden="true"></i>
+                    <span>Isi Contoh Data</span>
+                </button>
+
+                <button type="button" id="btn-reset-form"
+                    class="min-h-[38px] px-3 py-1.5 rounded-md border border-gray-600 text-xs font-semibold text-gray-200 hover:bg-neutral-800 transition inline-flex items-center gap-1.5">
+                    <i class="ph ph-arrow-counter-clockwise text-sm" aria-hidden="true"></i>
+                    <span>Reset</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- Page Heading -->
+        <div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 border-b border-gray-200 pb-5">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+                    Form Jual Barang (Referensi Upload)
+                </h1>
+                <p class="mt-1.5 text-sm text-gray-600 max-w-2xl">
+                    Halaman demo ini memetakan seluruh kolom tabel <code class="px-1.5 py-0.5 bg-gray-200/80 text-gray-900 rounded text-xs font-semibold">produk</code>, aturan validasi upload, guard <code class="px-1.5 py-0.5 bg-gray-200/80 text-gray-900 rounded text-xs font-semibold">BR-04</code>, dan kontrak JSON <code class="px-1.5 py-0.5 bg-gray-200/80 text-gray-900 rounded text-xs font-semibold">ADR-0001</code> secara langsung di browser.
+                </p>
+            </div>
+            <div class="text-xs text-gray-600 shrink-0">
+                <span class="text-red-600 font-bold">*</span> Wajib diisi sebelum submit
+            </div>
+        </div>
+
+        <!-- Simulasi Guard BR-04: Muncul saat mode Unverified aktif -->
+        <section id="br04-gate-panel" class="hidden mb-6 bg-white border border-amber-300 p-6 sm:p-8" aria-live="polite">
+            <div class="max-w-2xl">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-amber-100 text-amber-800 rounded-md flex items-center justify-center shrink-0">
+                        <i class="ph-fill ph-shield-warning text-xl" aria-hidden="true"></i>
+                    </div>
+                    <div class="space-y-2">
+                        <h2 class="text-lg font-bold text-gray-900">
+                            Akses Diblokir oleh Aturan BR-04 (Verified Seller Only)
+                        </h2>
+                        <p class="text-sm text-gray-700 leading-relaxed">
+                            Pengguna dengan <code class="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-semibold">is_verified = 0</code> tidak boleh langsung membuka form upload produk. Pengecekan ini wajib dilakukan di sisi backend PHP (cek ke database dan sinkronkan ke <code class="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-semibold">$_SESSION['is_verified']</code>), bukan hanya menyembunyikan tombol di frontend.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-5 bg-amber-50 border border-amber-200 p-4 rounded-md">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-900 mb-2">
+                        Data Wajib di Halaman Verifikasi Seller (sebelum is_verified = 1)
+                    </h3>
+                    <ul class="space-y-1.5 text-sm text-amber-950">
+                        <li class="flex items-center gap-2">
+                            <i class="ph ph-phone text-amber-700" aria-hidden="true"></i>
+                            <span><strong>no_hp</strong> (VARCHAR 20): Nomor HP aktif penjual</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="ph ph-map-pin text-amber-700" aria-hidden="true"></i>
+                            <span><strong>alamat</strong> (TEXT): Alamat lengkap pengiriman barang</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="ph ph-bank text-amber-700" aria-hidden="true"></i>
+                            <span><strong>info_rekening</strong> (VARCHAR 100): Bank/E-Wallet untuk pencairan dana Escrow</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="mt-5 flex flex-wrap items-center gap-3">
+                    <button type="button" id="btn-switch-to-verified"
+                        class="min-h-[44px] px-5 py-2.5 bg-brand-yellow text-brand-dark font-bold text-sm rounded-md hover:brightness-95 transition">
+                        Simulasikan Sudah Verifikasi (Buka Form Upload)
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Error Summary Banner -->
+        <div id="error-summary" class="hidden mb-6 bg-red-50 border border-red-200 text-red-800 p-4 rounded-md" role="alert" aria-live="assertive">
+            <div class="flex items-start gap-2.5">
+                <i class="ph-fill ph-warning-circle text-lg text-red-600 mt-0.5 shrink-0" aria-hidden="true"></i>
+                <div class="flex-1">
+                    <h2 class="text-sm font-bold text-red-900">Masih ada data yang belum memenuhi aturan upload:</h2>
+                    <ul id="error-summary-list" class="mt-1.5 list-disc list-inside text-xs space-y-1 text-red-800"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace Grid: Form (7 cols) + Sticky Inspector (5 cols) -->
+        <div id="upload-workspace" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- KOLOM KIRI: FORM UPLOAD PRODUK -->
+            <form id="product-upload-form" class="lg:col-span-7 space-y-6" novalidate>
+
+                <!-- SECTION 1: Informasi Dasar -->
+                <section class="bg-white border border-gray-200/80 p-5 sm:p-6 shadow-2xs" aria-labelledby="sec-basic-title">
+                    <div class="flex items-baseline justify-between gap-2 pb-4 mb-5 border-b border-gray-100">
+                        <div>
+                            <h2 id="sec-basic-title" class="text-base font-bold text-gray-900">
+                                1. Informasi Dasar Produk
+                            </h2>
+                            <p class="text-xs text-gray-600 mt-0.5">
+                                Disimpan ke kolom <code class="text-gray-800 font-semibold">nama_produk</code>, <code class="text-gray-800 font-semibold">id_kategori</code>, dan <code class="text-gray-800 font-semibold">kondisi</code>.
+                            </p>
+                        </div>
+                        <span class="text-[11px] font-semibold text-gray-500">Tabel: produk</span>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- nama_produk -->
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label for="nama_produk" class="block text-sm font-semibold text-gray-800">
+                                    Nama Produk <span class="text-red-600">*</span>
+                                </label>
+                                <span id="nama-counter" class="text-xs text-gray-500">0 / 255</span>
+                            </div>
+                            <input type="text" id="nama_produk" name="nama_produk" maxlength="255" required
+                                placeholder="Contoh: RTX 3060 12GB GDDR6 Dual Fan"
+                                class="w-full min-h-[44px] px-3.5 py-2.5 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                            <p id="err-nama_produk" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            <p class="mt-1 text-xs text-gray-500">
+                                Pencarian di <code class="font-semibold text-gray-700">search.php</code> mencocokkan kata kunci pada nama produk dan kategori (ADR-0001). Sertakan merek, seri, dan kapasitas utama.
+                            </p>
+                        </div>
+
+                        <!-- id_kategori + kondisi -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="id_kategori" class="block text-sm font-semibold text-gray-800 mb-1.5">
+                                    Kategori <span class="text-red-600">*</span>
+                                </label>
+                                <select id="id_kategori" name="id_kategori" required
+                                    class="w-full min-h-[44px] px-3.5 py-2.5 text-sm bg-white border border-gray-300 rounded-md text-gray-900 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition">
+                                    <option value="">Pilih kategori...</option>
+                                    <option value="1" data-name="GPU" data-icon="ph-graphics-card">GPU</option>
+                                    <option value="2" data-name="CPU" data-icon="ph-cpu">CPU</option>
+                                    <option value="3" data-name="RAM" data-icon="ph-memory">RAM</option>
+                                    <option value="4" data-name="Laptop" data-icon="ph-laptop">Laptop</option>
+                                    <option value="5" data-name="Phone" data-icon="ph-device-mobile">Phone</option>
+                                    <option value="6" data-name="Monitor" data-icon="ph-monitor">Monitor</option>
+                                    <option value="7" data-name="Headphones" data-icon="ph-headphones">Headphones</option>
+                                    <option value="8" data-name="Aksesoris" data-icon="ph-bag-simple">Aksesoris</option>
+                                </select>
+                                <p id="err-id_kategori" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Backend wajib validasi <code class="font-semibold text-gray-700">id_kategori</code> eksis di tabel kategori.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label for="kondisi" class="block text-sm font-semibold text-gray-800 mb-1.5">
+                                    Kondisi Barang <span class="text-red-600">*</span>
+                                </label>
+                                <select id="kondisi" name="kondisi" required
+                                    class="w-full min-h-[44px] px-3.5 py-2.5 text-sm bg-white border border-gray-300 rounded-md text-gray-900 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition">
+                                    <option value="">Pilih kondisi baku...</option>
+                                    <option value="Baru">Baru</option>
+                                    <option value="Bekas - Seperti Baru">Bekas - Seperti Baru</option>
+                                    <option value="Bekas - Mulus">Bekas - Mulus</option>
+                                    <option value="Bekas - Ada Minus">Bekas - Ada Minus</option>
+                                </select>
+                                <p id="err-kondisi" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Wajib dropdown whitelist agar cocok dengan filter <code class="font-semibold text-gray-700">Baru</code> dan <code class="font-semibold text-gray-700">Bekas%</code> di pencarian.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 2: Foto Utama Produk -->
+                <section class="bg-white border border-gray-200/80 p-5 sm:p-6 shadow-2xs" aria-labelledby="sec-photo-title">
+                    <div class="flex items-baseline justify-between gap-2 pb-4 mb-5 border-b border-gray-100">
+                        <div>
+                            <h2 id="sec-photo-title" class="text-base font-bold text-gray-900">
+                                2. Foto Utama Produk
+                            </h2>
+                            <p class="text-xs text-gray-600 mt-0.5">
+                                Disimpan ke kolom <code class="text-gray-800 font-semibold">foto</code> (VARCHAR 255, 1 foto utama, opsional namun sangat disarankan).
+                            </p>
+                        </div>
+                        <span class="text-[11px] font-semibold text-gray-500">Maks 2 MB</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+                        <!-- Preview Box (aspect-square sesuai detail_produk.php) -->
+                        <div class="sm:col-span-5">
+                            <div id="photo-preview-box" class="relative w-full aspect-square bg-[#FAFAFA] border border-gray-200 flex items-center justify-center p-4 overflow-hidden">
+                                <img id="photo-preview-img" src="" alt="Pratinjau foto produk" width="320" height="320" class="hidden w-full h-full object-contain" />
+                                <div id="photo-empty-state" class="text-center space-y-1.5">
+                                    <i id="photo-fallback-icon" class="ph ph-image text-4xl text-gray-400" aria-hidden="true"></i>
+                                    <p class="text-xs font-semibold text-gray-700">Belum ada foto dipilih</p>
+                                    <p class="text-[11px] text-gray-500">
+                                        Jika kosong, etalase otomatis menampilkan ikon kategori.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dropzone & Rules -->
+                        <div class="sm:col-span-7 space-y-3">
+                            <label for="foto" id="photo-dropzone"
+                                class="block border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-brand-dark hover:bg-gray-50 transition">
+                                <i class="ph ph-upload-simple text-2xl text-gray-700" aria-hidden="true"></i>
+                                <span class="block mt-1.5 text-sm font-semibold text-gray-900">
+                                    Pilih file foto atau seret ke sini
+                                </span>
+                                <span class="block mt-0.5 text-xs text-gray-500">
+                                    Format: JPG, PNG, atau WEBP. Ukuran maksimal 2 MB.
+                                </span>
+                                <input type="file" id="foto" name="foto" accept="image/jpeg,image/png,image/webp" class="sr-only" />
+                            </label>
+
+                            <div id="photo-file-meta" class="hidden flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 px-3 py-2 rounded-md text-xs">
+                                <div class="min-w-0">
+                                    <p id="photo-file-name" class="font-semibold text-gray-900 truncate"></p>
+                                    <p id="photo-file-size" class="text-gray-500"></p>
+                                </div>
+                                <button type="button" id="btn-remove-photo"
+                                    class="min-h-[36px] px-2.5 py-1 text-red-700 hover:bg-red-50 rounded font-semibold shrink-0 transition">
+                                    Hapus
+                                </button>
+                            </div>
+
+                            <p id="err-foto" class="hidden text-xs font-medium text-red-600"></p>
+
+                            <div class="bg-gray-50 border border-gray-200/80 p-3 rounded-md text-xs text-gray-600 space-y-1">
+                                <p class="font-semibold text-gray-800">Catatan Implementasi Backend:</p>
+                                <p>1. Buat folder <code class="font-semibold text-gray-800">uploads/produk/</code> otomatis jika belum ada.</p>
+                                <p>2. Validasi MIME asli via <code class="font-semibold text-gray-800">finfo_file()</code> atau <code class="font-semibold text-gray-800">getimagesize()</code>.</p>
+                                <p>3. Rename file unik: <code class="font-semibold text-gray-800">uniqid('prod_', true) . '.' . $ext</code>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 3: Harga, Stok & Opsi Transaksi -->
+                <section class="bg-white border border-gray-200/80 p-5 sm:p-6 shadow-2xs" aria-labelledby="sec-pricing-title">
+                    <div class="flex items-baseline justify-between gap-2 pb-4 mb-5 border-b border-gray-100">
+                        <div>
+                            <h2 id="sec-pricing-title" class="text-base font-bold text-gray-900">
+                                3. Harga, Stok &amp; Opsi Transaksi
+                            </h2>
+                            <p class="text-xs text-gray-600 mt-0.5">
+                                Disimpan ke <code class="text-gray-800 font-semibold">harga</code>, <code class="text-gray-800 font-semibold">stok</code>, <code class="text-gray-800 font-semibold">bisa_nego</code>, dan <code class="text-gray-800 font-semibold">bisa_barter</code>.
+                            </p>
+                        </div>
+                        <span class="text-[11px] font-semibold text-gray-500">Default status: tersedia</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                        <!-- harga -->
+                        <div class="sm:col-span-8">
+                            <label for="harga" class="block text-sm font-semibold text-gray-800 mb-1.5">
+                                Harga Satuan (IDR) <span class="text-red-600">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm font-bold text-gray-500 pointer-events-none">Rp</span>
+                                <input type="number" id="harga" name="harga" min="1" max="2000000000" step="1000" required
+                                    placeholder="0"
+                                    class="w-full min-h-[44px] pl-11 pr-3.5 py-2.5 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                            </div>
+                            <p id="harga-formatted" class="mt-1 text-xs font-semibold text-gray-700">Format tampil: Rp 0</p>
+                            <p id="err-harga" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            <p class="mt-0.5 text-xs text-gray-500">
+                                Wajib &gt; 0 dan &le; Rp 2.000.000.000 (batas aman tipe INT signed MySQL).
+                            </p>
+                        </div>
+
+                        <!-- stok -->
+                        <div class="sm:col-span-4">
+                            <label for="stok" class="block text-sm font-semibold text-gray-800 mb-1.5">
+                                Stok <span class="text-red-600">*</span>
+                            </label>
+                            <input type="number" id="stok" name="stok" min="1" step="1" value="1" required
+                                class="w-full min-h-[44px] px-3.5 py-2.5 text-sm bg-white border border-gray-300 rounded-md text-gray-900 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                            <p id="err-stok" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            <p class="mt-1 text-xs text-gray-500">Minimal 1 unit.</p>
+                        </div>
+                    </div>
+
+                    <!-- Opsi Transaksi Fleksibel -->
+                    <fieldset class="mt-5 pt-5 border-t border-gray-100">
+                        <legend class="text-sm font-semibold text-gray-800 mb-2">
+                            Opsi Transaksi Tambahan (Opsional)
+                        </legend>
+                        <p class="text-xs text-gray-600 mb-3">
+                            Beli Langsung (Buy Now) selalu aktif. Centang opsi di bawah jika ingin membuka jalur negosiasi atau tukar tambah.
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label for="bisa_nego" class="flex items-start gap-3 p-3.5 border border-gray-200 rounded-md hover:border-gray-400 transition bg-white">
+                                <input type="checkbox" id="bisa_nego" name="bisa_nego" value="1"
+                                    class="mt-0.5 w-4 h-4 accent-[#272727] rounded" />
+                                <span class="text-xs leading-relaxed">
+                                    <span class="block text-sm font-bold text-gray-900">Bisa Nego (bisa_nego=1)</span>
+                                    <span class="text-gray-600">Pembeli dapat mengajukan tawar harga dengan timer 30 menit.</span>
+                                </span>
+                            </label>
+
+                            <label for="bisa_barter" class="flex items-start gap-3 p-3.5 border border-gray-200 rounded-md hover:border-gray-400 transition bg-white">
+                                <input type="checkbox" id="bisa_barter" name="bisa_barter" value="1"
+                                    class="mt-0.5 w-4 h-4 accent-[#272727] rounded" />
+                                <span class="text-xs leading-relaxed">
+                                    <span class="block text-sm font-bold text-gray-900">Bisa Barter (bisa_barter=1)</span>
+                                    <span class="text-gray-600">Membuka tukar tambah dan membuat barang ini bisa ditawarkan saat barter.</span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <p id="transaksi-summary-note" class="mt-2.5 text-xs text-gray-600">
+                            Mode aktif saat ini: <strong class="text-gray-900">Harga Pas (Beli Langsung saja)</strong>.
+                        </p>
+                    </fieldset>
+                </section>
+
+                <!-- SECTION 4: Transparansi Kondisi & Deskripsi Terstruktur (ADR-0001) -->
+                <section class="bg-white border border-gray-200/80 p-5 sm:p-6 shadow-2xs" aria-labelledby="sec-desc-title">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2 pb-4 mb-5 border-b border-gray-100">
+                        <div>
+                            <h2 id="sec-desc-title" class="text-base font-bold text-gray-900">
+                                4. Deskripsi, Riwayat Kondisi &amp; Spesifikasi
+                            </h2>
+                            <p class="text-xs text-gray-600 mt-0.5">
+                                Digabung menjadi 1 payload JSON pada kolom <code class="text-gray-800 font-semibold">produk.deskripsi</code> sesuai <code class="text-gray-800 font-semibold">ADR-0001</code>.
+                            </p>
+                        </div>
+                        <button type="button" id="btn-prefill-new"
+                            class="min-h-[36px] px-2.5 py-1 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition">
+                            Isi Cepat Kondisi Baru
+                        </button>
+                    </div>
+
+                    <!-- 4A: Ringkasan -->
+                    <div class="mb-6">
+                        <label for="ringkasan" class="block text-sm font-semibold text-gray-800 mb-1.5">
+                            Ringkasan Produk (<code class="text-xs font-semibold text-gray-600">ringkasan</code>) <span class="text-red-600">*</span>
+                        </label>
+                        <textarea id="ringkasan" name="ringkasan" rows="3" required
+                            placeholder="Jelaskan gambaran umum barang, alasan jual, atau catatan penting untuk pembeli..."
+                            class="w-full px-3.5 py-2.5 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition"></textarea>
+                        <p id="err-ringkasan" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                    </div>
+
+                    <!-- 4B: 6 Field Riwayat & Kondisi (PRD 4.2 + helpers.php) -->
+                    <div class="mb-6 pt-5 border-t border-gray-100">
+                        <h3 class="text-sm font-bold text-gray-900 mb-1">
+                            Rincian Riwayat &amp; Kondisi (<code class="text-xs font-semibold text-gray-600">riwayat</code>)
+                        </h3>
+                        <p class="text-xs text-gray-600 mb-4">
+                            Keenam field ini wajib diisi agar tab <strong>Riwayat &amp; Kondisi</strong> dan ringkasan unit di halaman detail produk tampil lengkap.
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="riwayat_fisik" class="block text-xs font-semibold text-gray-700 mb-1">
+                                    Kondisi Fisik (<code class="text-gray-500">fisik</code>) <span class="text-red-600">*</span>
+                                </label>
+                                <input type="text" id="riwayat_fisik" name="riwayat[fisik]" required
+                                    placeholder="Contoh: Mulus 95%, lecet halus di bezel"
+                                    class="w-full min-h-[44px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                                <p id="err-riwayat_fisik" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            </div>
+
+                            <div>
+                                <label for="riwayat_fungsi" class="block text-xs font-semibold text-gray-700 mb-1">
+                                    Fungsi (<code class="text-gray-500">fungsi</code>) <span class="text-red-600">*</span>
+                                </label>
+                                <input type="text" id="riwayat_fungsi" name="riwayat[fungsi]" required
+                                    placeholder="Contoh: Normal 100%, suhu full load 68C"
+                                    class="w-full min-h-[44px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                                <p id="err-riwayat_fungsi" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            </div>
+
+                            <div>
+                                <label for="riwayat_lama_pakai" class="block text-xs font-semibold text-gray-700 mb-1">
+                                    Lama Pemakaian (<code class="text-gray-500">lama_pakai</code>) <span class="text-red-600">*</span>
+                                </label>
+                                <input type="text" id="riwayat_lama_pakai" name="riwayat[lama_pakai]" required
+                                    placeholder="Contoh: 1 tahun pemakaian harian"
+                                    class="w-full min-h-[44px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                                <p id="err-riwayat_lama_pakai" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            </div>
+
+                            <div>
+                                <label for="riwayat_servis" class="block text-xs font-semibold text-gray-700 mb-1">
+                                    Riwayat Servis (<code class="text-gray-500">servis</code>) <span class="text-red-600">*</span>
+                                </label>
+                                <input type="text" id="riwayat_servis" name="riwayat[servis]" required
+                                    placeholder="Contoh: Belum pernah servis / ganti thermal paste"
+                                    class="w-full min-h-[44px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                                <p id="err-riwayat_servis" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            </div>
+
+                            <div>
+                                <label for="riwayat_minus" class="block text-xs font-semibold text-gray-700 mb-1">
+                                    Minus / Defect (<code class="text-gray-500">minus</code>) <span class="text-red-600">*</span>
+                                </label>
+                                <input type="text" id="riwayat_minus" name="riwayat[minus]" required
+                                    placeholder="Contoh: Tidak ada / karet kaki belakang lepas"
+                                    class="w-full min-h-[44px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                                <p id="err-riwayat_minus" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            </div>
+
+                            <div>
+                                <label for="riwayat_kelengkapan" class="block text-xs font-semibold text-gray-700 mb-1">
+                                    Kelengkapan (<code class="text-gray-500">kelengkapan</code>) <span class="text-red-600">*</span>
+                                </label>
+                                <input type="text" id="riwayat_kelengkapan" name="riwayat[kelengkapan]" required
+                                    placeholder="Contoh: Fullset box original + buku manual"
+                                    class="w-full min-h-[44px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none transition" />
+                                <p id="err-riwayat_kelengkapan" class="hidden mt-1 text-xs font-medium text-red-600"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4C: Spesifikasi Dinamis (Label - Nilai) -->
+                    <div class="pt-5 border-t border-gray-100">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900">
+                                    Spesifikasi Teknis Dinamis (<code class="text-xs font-semibold text-gray-600">spesifikasi</code>)
+                                </h3>
+                                <p class="text-xs text-gray-600">
+                                    Opsional, isi pasangan label dan nilai sesuai kategori barang. Baris kosong otomatis diabaikan.
+                                </p>
+                            </div>
+                            <button type="button" id="btn-add-spec"
+                                class="min-h-[38px] px-3 py-1.5 bg-brand-dark text-white text-xs font-bold rounded-md hover:bg-black transition inline-flex items-center gap-1.5">
+                                <i class="ph ph-plus text-sm" aria-hidden="true"></i>
+                                <span>Tambah Baris</span>
+                            </button>
+                        </div>
+
+                        <div id="spec-rows-container" class="space-y-2.5"></div>
+
+                        <!-- Empty state spesifikasi (R-27) -->
+                        <div id="spec-empty-state" class="border border-dashed border-gray-300 rounded-md p-4 text-center bg-gray-50">
+                            <p class="text-xs font-semibold text-gray-700">Belum ada baris spesifikasi ditambahkan.</p>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                Tambahkan detail teknis seperti VRAM, Socket, Kapasitas, atau Garansi agar tab Spesifikasi terisi.
+                            </p>
+                            <button type="button" id="btn-add-spec-empty"
+                                class="mt-3 min-h-[38px] px-3.5 py-1.5 bg-white border border-gray-300 text-xs font-bold text-gray-800 rounded-md hover:border-gray-500 transition">
+                                Tambah Spesifikasi Pertama
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Submit Bar -->
+                <div class="bg-white border border-gray-200/80 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+                    <p class="text-xs text-gray-600">
+                        Simulasi submit tidak menyimpan data ke database. Hasil validasi dan payload JSON akan ditampilkan di modal.
+                    </p>
+                    <button type="submit" id="btn-submit"
+                        class="min-h-[44px] px-6 py-2.5 bg-brand-yellow text-brand-dark font-extrabold text-sm rounded-md hover:brightness-95 active:scale-[0.99] transition inline-flex items-center justify-center gap-2 shrink-0">
+                        <i id="submit-icon" class="ph ph-paper-plane-tilt text-base" aria-hidden="true"></i>
+                        <span id="submit-label">Simulasi Submit Produk</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- KOLOM KANAN: LIVE INSPECTOR & REFERENSI -->
+            <aside class="lg:col-span-5 lg:sticky lg:top-20 space-y-5" aria-label="Inspektor Referensi Upload">
+
+                <!-- 1. Checklist Kesiapan Submit -->
+                <section class="bg-white border border-gray-200/80 p-5 shadow-2xs" aria-labelledby="checklist-title">
+                    <div class="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-100">
+                        <h2 id="checklist-title" class="text-sm font-bold text-gray-900">
+                            Checklist Aturan Upload
+                        </h2>
+                        <span id="checklist-progress" class="text-xs font-bold text-gray-700">0 / 7 Terpenuhi</span>
+                    </div>
+                    <ul id="checklist-items" class="space-y-2 text-xs"></ul>
+                </section>
+
+                <!-- 2. Live Preview Kartu Produk (Etalase search.php) -->
+                <section class="bg-white border border-gray-200/80 p-5 shadow-2xs" aria-labelledby="preview-card-title">
+                    <div class="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-gray-100">
+                        <h2 id="preview-card-title" class="text-sm font-bold text-gray-900">
+                            Pratinjau Kartu Etalase
+                        </h2>
+                        <span class="text-[11px] text-gray-500">Pola search.php</span>
+                    </div>
+
+                    <article class="border border-gray-200 p-4 bg-white">
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <span id="card-badge-kondisi" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                                Kondisi belum dipilih
+                            </span>
+                            <span id="card-stok" class="text-[11px] font-medium text-gray-500">Stok: 1</span>
+                        </div>
+
+                        <div class="h-36 bg-[#FAFAFA] border border-gray-100 flex items-center justify-center p-3 mb-3 overflow-hidden">
+                            <img id="card-preview-img" src="" alt="Pratinjau kartu produk" width="240" height="144" class="hidden w-full h-full object-contain" />
+                            <div id="card-preview-fallback" class="text-center">
+                                <i id="card-preview-icon" class="ph ph-tag text-4xl text-gray-400" aria-hidden="true"></i>
+                                <p id="card-preview-cat-label" class="text-[11px] text-gray-500 mt-1">Pilih kategori</p>
+                            </div>
+                        </div>
+
+                        <p id="card-kategori" class="text-xs font-bold text-[#9A7400] mb-0.5">Kategori</p>
+                        <h3 id="card-nama" class="text-sm font-bold text-[#272727] leading-snug line-clamp-2 min-h-[38px]">
+                            Nama produk akan tampil di sini
+                        </h3>
+                        <p id="card-harga" class="mt-2 text-base font-extrabold text-[#272727]">Rp 0</p>
+
+                        <div id="card-opsi-badges" class="mt-2.5 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+                            <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded">Beli Langsung</span>
+                        </div>
+                    </article>
+                </section>
+
+                <!-- 3. Live Payload Inspector (Kolom DB vs JSON ADR-0001) -->
+                <section class="bg-brand-dark text-gray-100 border border-gray-800 p-5" aria-labelledby="payload-title">
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-700">
+                        <h2 id="payload-title" class="text-sm font-bold text-white">
+                            Live Output Payload
+                        </h2>
+                        <button type="button" id="btn-copy-payload"
+                            class="min-h-[32px] px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 border border-gray-600 rounded text-[11px] font-semibold text-gray-200 transition inline-flex items-center gap-1">
+                            <i class="ph ph-copy text-xs" aria-hidden="true"></i>
+                            <span id="copy-label">Salin</span>
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2 mb-3" role="tablist" aria-label="Pilih tampilan payload">
+                        <button type="button" role="tab" id="tab-btn-json" aria-selected="true" aria-controls="panel-json"
+                            class="min-h-[36px] px-3 py-1 text-xs font-bold rounded bg-brand-yellow text-brand-dark transition">
+                            JSON produk.deskripsi
+                        </button>
+                        <button type="button" role="tab" id="tab-btn-db" aria-selected="false" aria-controls="panel-db"
+                            class="min-h-[36px] px-3 py-1 text-xs font-semibold rounded bg-neutral-800 text-gray-300 hover:text-white transition">
+                            Kolom INSERT produk
+                        </button>
+                    </div>
+
+                    <pre id="panel-json" role="tabpanel" aria-labelledby="tab-btn-json"
+                        class="text-[11px] leading-relaxed bg-neutral-900 border border-gray-700 p-3.5 rounded overflow-x-auto max-h-72 text-gray-200 font-mono"></pre>
+
+                    <pre id="panel-db" role="tabpanel" aria-labelledby="tab-btn-db"
+                        class="hidden text-[11px] leading-relaxed bg-neutral-900 border border-gray-700 p-3.5 rounded overflow-x-auto max-h-72 text-gray-200 font-mono"></pre>
+                </section>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Footer Ringkas -->
+    <footer class="bg-brand-dark text-gray-400 border-t border-gray-800 mt-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+            <p>
+                <strong class="text-white">Loot-E</strong> Demo Referensi Upload Produk. Tidak terhubung ke database atau file backend.
+            </p>
+            <p>
+                Acuan: PRD.md, db_loote.sql, ADR-0001, dan loote-upload-produk-handoff.md
+            </p>
+        </div>
+    </footer>
+
+    <!-- Native Modal Dialog Hasil Simulasi Submit (closable with Escape) -->
+    <dialog id="result-dialog" class="w-full max-w-2xl bg-white border border-gray-200 p-0 rounded-md shadow-xl">
+        <div class="bg-brand-dark text-white px-5 py-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <i class="ph-fill ph-check-circle text-xl text-brand-yellow" aria-hidden="true"></i>
+                <h2 class="text-base font-bold">Simulasi Validasi Lolos</h2>
+            </div>
+            <button type="button" id="btn-close-dialog-x" aria-label="Tutup dialog"
+                class="min-w-[36px] min-h-[36px] flex items-center justify-center rounded hover:bg-neutral-700 text-gray-300 hover:text-white transition">
+                <i class="ph ph-x text-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4">
+            <p class="text-sm text-gray-700">
+                Seluruh aturan frontend dan kontrak data terpenuhi. Berikut ringkasan payload yang akan dikirim ke backend PHP (<code class="px-1 py-0.5 bg-gray-100 rounded text-xs font-semibold">tambah_produk.php</code>):
+            </p>
+
+            <pre id="dialog-payload-output"
+                class="text-xs leading-relaxed bg-neutral-900 text-gray-100 p-4 rounded-md overflow-x-auto max-h-80 font-mono"></pre>
+
+            <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" id="btn-dialog-copy"
+                    class="min-h-[44px] px-4 py-2 border border-gray-300 text-gray-800 font-bold text-xs rounded-md hover:bg-gray-50 transition">
+                    Salin Payload JSON
+                </button>
+                <button type="button" id="btn-close-dialog"
+                    class="min-h-[44px] px-5 py-2 bg-brand-yellow text-brand-dark font-bold text-xs rounded-md hover:brightness-95 transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Toast Notification -->
+    <div id="toast-msg" role="status" aria-live="polite"
+        class="hidden fixed bottom-5 left-5 z-50 bg-brand-dark text-white border-l-4 border-brand-yellow px-4 py-3 rounded-md text-xs font-semibold shadow-lg">
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const MAX_PRICE = 2000000000;
+            const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+            const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+            const ALLOWED_KONDISI = [
+                'Baru',
+                'Bekas - Seperti Baru',
+                'Bekas - Mulus',
+                'Bekas - Ada Minus'
+            ];
+
+            const state = {
+                isVerified: true,
+                photoFile: null,
+                photoObjectUrl: null,
+                activePayloadTab: 'json',
+                specs: []
+            };
+
+            const els = {
+                form: document.getElementById('product-upload-form'),
+                workspace: document.getElementById('upload-workspace'),
+                br04Gate: document.getElementById('br04-gate-panel'),
+                btnModeVerified: document.getElementById('btn-mode-verified'),
+                btnModeUnverified: document.getElementById('btn-mode-unverified'),
+                btnSwitchVerified: document.getElementById('btn-switch-to-verified'),
+                btnFillSample: document.getElementById('btn-fill-sample'),
+                btnResetForm: document.getElementById('btn-reset-form'),
+                btnPrefillNew: document.getElementById('btn-prefill-new'),
+
+                nama: document.getElementById('nama_produk'),
+                namaCounter: document.getElementById('nama-counter'),
+                kategori: document.getElementById('id_kategori'),
+                kondisi: document.getElementById('kondisi'),
+                foto: document.getElementById('foto'),
+                photoDropzone: document.getElementById('photo-dropzone'),
+                photoPreviewImg: document.getElementById('photo-preview-img'),
+                photoEmptyState: document.getElementById('photo-empty-state'),
+                photoFallbackIcon: document.getElementById('photo-fallback-icon'),
+                photoFileMeta: document.getElementById('photo-file-meta'),
+                photoFileName: document.getElementById('photo-file-name'),
+                photoFileSize: document.getElementById('photo-file-size'),
+                btnRemovePhoto: document.getElementById('btn-remove-photo'),
+
+                harga: document.getElementById('harga'),
+                hargaFormatted: document.getElementById('harga-formatted'),
+                stok: document.getElementById('stok'),
+                bisaNego: document.getElementById('bisa_nego'),
+                bisaBarter: document.getElementById('bisa_barter'),
+                transaksiNote: document.getElementById('transaksi-summary-note'),
+
+                ringkasan: document.getElementById('ringkasan'),
+                riwayat: {
+                    fisik: document.getElementById('riwayat_fisik'),
+                    fungsi: document.getElementById('riwayat_fungsi'),
+                    lama_pakai: document.getElementById('riwayat_lama_pakai'),
+                    servis: document.getElementById('riwayat_servis'),
+                    minus: document.getElementById('riwayat_minus'),
+                    kelengkapan: document.getElementById('riwayat_kelengkapan')
+                },
+
+                specContainer: document.getElementById('spec-rows-container'),
+                specEmptyState: document.getElementById('spec-empty-state'),
+                btnAddSpec: document.getElementById('btn-add-spec'),
+                btnAddSpecEmpty: document.getElementById('btn-add-spec-empty'),
+
+                errorSummary: document.getElementById('error-summary'),
+                errorSummaryList: document.getElementById('error-summary-list'),
+
+                checklistItems: document.getElementById('checklist-items'),
+                checklistProgress: document.getElementById('checklist-progress'),
+
+                cardBadgeKondisi: document.getElementById('card-badge-kondisi'),
+                cardStok: document.getElementById('card-stok'),
+                cardPreviewImg: document.getElementById('card-preview-img'),
+                cardPreviewFallback: document.getElementById('card-preview-fallback'),
+                cardPreviewIcon: document.getElementById('card-preview-icon'),
+                cardPreviewCatLabel: document.getElementById('card-preview-cat-label'),
+                cardKategori: document.getElementById('card-kategori'),
+                cardNama: document.getElementById('card-nama'),
+                cardHarga: document.getElementById('card-harga'),
+                cardOpsiBadges: document.getElementById('card-opsi-badges'),
+
+                tabBtnJson: document.getElementById('tab-btn-json'),
+                tabBtnDb: document.getElementById('tab-btn-db'),
+                panelJson: document.getElementById('panel-json'),
+                panelDb: document.getElementById('panel-db'),
+                btnCopyPayload: document.getElementById('btn-copy-payload'),
+                copyLabel: document.getElementById('copy-label'),
+
+                btnSubmit: document.getElementById('btn-submit'),
+                submitIcon: document.getElementById('submit-icon'),
+                submitLabel: document.getElementById('submit-label'),
+
+                dialog: document.getElementById('result-dialog'),
+                dialogOutput: document.getElementById('dialog-payload-output'),
+                btnCloseDialog: document.getElementById('btn-close-dialog'),
+                btnCloseDialogX: document.getElementById('btn-close-dialog-x'),
+                btnDialogCopy: document.getElementById('btn-dialog-copy'),
+                toast: document.getElementById('toast-msg')
+            };
+
+            let toastTimer = null;
+            function showToast(message) {
+                els.toast.textContent = message;
+                els.toast.classList.remove('hidden');
+                if (toastTimer) clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    els.toast.classList.add('hidden');
+                }, 2800);
+            }
+
+            function formatRupiah(num) {
+                const n = Number(num);
+                if (!Number.isFinite(n) || n <= 0) return 'Rp 0';
+                return 'Rp ' + Math.floor(n).toLocaleString('id-ID');
+            }
+
+            function formatBytes(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            }
+
+            function setVerificationMode(verified) {
+                state.isVerified = verified;
+                els.btnModeVerified.setAttribute('aria-pressed', String(verified));
+                els.btnModeUnverified.setAttribute('aria-pressed', String(!verified));
+
+                if (verified) {
+                    els.btnModeVerified.className = 'min-h-[36px] px-2.5 py-1 rounded font-semibold transition bg-brand-yellow text-brand-dark';
+                    els.btnModeUnverified.className = 'min-h-[36px] px-2.5 py-1 rounded font-semibold transition text-gray-300 hover:text-white';
+                    els.br04Gate.classList.add('hidden');
+                    els.workspace.classList.remove('hidden');
+                } else {
+                    els.btnModeVerified.className = 'min-h-[36px] px-2.5 py-1 rounded font-semibold transition text-gray-300 hover:text-white';
+                    els.btnModeUnverified.className = 'min-h-[36px] px-2.5 py-1 rounded font-semibold transition bg-brand-yellow text-brand-dark';
+                    els.br04Gate.classList.remove('hidden');
+                    els.workspace.classList.add('hidden');
+                    els.errorSummary.classList.add('hidden');
+                }
+                updateAllViews();
+            }
+
+            function setFieldError(fieldId, message) {
+                const inputEl = document.getElementById(fieldId);
+                const errEl = document.getElementById('err-' + fieldId);
+                if (inputEl) {
+                    if (message) inputEl.classList.add('field-error');
+                    else inputEl.classList.remove('field-error');
+                }
+                if (errEl) {
+                    if (message) {
+                        errEl.textContent = message;
+                        errEl.classList.remove('hidden');
+                    } else {
+                        errEl.textContent = '';
+                        errEl.classList.add('hidden');
+                    }
+                }
+            }
+
+            function clearAllFieldErrors() {
+                [
+                    'nama_produk', 'id_kategori', 'kondisi', 'foto', 'harga', 'stok', 'ringkasan',
+                    'riwayat_fisik', 'riwayat_fungsi', 'riwayat_lama_pakai',
+                    'riwayat_servis', 'riwayat_minus', 'riwayat_kelengkapan'
+                ].forEach((id) => setFieldError(id, ''));
+                els.errorSummary.classList.add('hidden');
+                els.errorSummaryList.innerHTML = '';
+            }
+
+            function handlePhotoSelection(file) {
+                setFieldError('foto', '');
+                if (!file) return;
+
+                if (!ALLOWED_TYPES.includes(file.type)) {
+                    setFieldError('foto', 'Format file tidak didukung. Gunakan JPG, PNG, atau WEBP.');
+                    els.foto.value = '';
+                    return;
+                }
+                if (file.size > MAX_PHOTO_BYTES) {
+                    setFieldError('foto', 'Ukuran file melebihi 2 MB (' + formatBytes(file.size) + '). Kompres foto terlebih dahulu.');
+                    els.foto.value = '';
+                    return;
+                }
+
+                if (state.photoObjectUrl) {
+                    URL.revokeObjectURL(state.photoObjectUrl);
+                }
+                state.photoFile = file;
+                state.photoObjectUrl = URL.createObjectURL(file);
+
+                els.photoPreviewImg.src = state.photoObjectUrl;
+                els.photoPreviewImg.classList.remove('hidden');
+                els.photoEmptyState.classList.add('hidden');
+                els.photoFileName.textContent = file.name;
+                els.photoFileSize.textContent = formatBytes(file.size) + ' (' + file.type.replace('image/', '').toUpperCase() + ')';
+                els.photoFileMeta.classList.remove('hidden');
+
+                updateAllViews();
+            }
+
+            function removePhoto() {
+                if (state.photoObjectUrl) {
+                    URL.revokeObjectURL(state.photoObjectUrl);
+                }
+                state.photoFile = null;
+                state.photoObjectUrl = null;
+                els.foto.value = '';
+                els.photoPreviewImg.src = '';
+                els.photoPreviewImg.classList.add('hidden');
+                els.photoEmptyState.classList.remove('hidden');
+                els.photoFileMeta.classList.add('hidden');
+                setFieldError('foto', '');
+                updateAllViews();
+            }
+
+            function renderSpecRows() {
+                els.specContainer.innerHTML = '';
+                if (state.specs.length === 0) {
+                    els.specEmptyState.classList.remove('hidden');
+                    return;
+                }
+                els.specEmptyState.classList.add('hidden');
+
+                state.specs.forEach((row, index) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'grid grid-cols-1 sm:grid-cols-12 gap-2 items-center';
+
+                    const labelWrap = document.createElement('div');
+                    labelWrap.className = 'sm:col-span-5';
+                    const labelInput = document.createElement('input');
+                    labelInput.type = 'text';
+                    labelInput.value = row.label;
+                    labelInput.placeholder = 'Label (mis. Video Memory)';
+                    labelInput.setAttribute('aria-label', 'Label spesifikasi baris ' + (index + 1));
+                    labelInput.className = 'w-full min-h-[42px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none';
+                    labelInput.addEventListener('input', (e) => {
+                        state.specs[index].label = e.target.value;
+                        updatePayloadAndPreview();
+                    });
+                    labelWrap.appendChild(labelInput);
+
+                    const valWrap = document.createElement('div');
+                    valWrap.className = 'sm:col-span-6';
+                    const valInput = document.createElement('input');
+                    valInput.type = 'text';
+                    valInput.value = row.nilai;
+                    valInput.placeholder = 'Nilai (mis. 12GB GDDR6)';
+                    valInput.setAttribute('aria-label', 'Nilai spesifikasi baris ' + (index + 1));
+                    valInput.className = 'w-full min-h-[42px] px-3 py-2 text-sm bg-white border border-gray-300 rounded-md text-gray-900 placeholder:text-gray-400 focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 focus:outline-none';
+                    valInput.addEventListener('input', (e) => {
+                        state.specs[index].nilai = e.target.value;
+                        updatePayloadAndPreview();
+                    });
+                    valWrap.appendChild(valInput);
+
+                    const delWrap = document.createElement('div');
+                    delWrap.className = 'sm:col-span-1 flex justify-end';
+                    const delBtn = document.createElement('button');
+                    delBtn.type = 'button';
+                    delBtn.setAttribute('aria-label', 'Hapus baris spesifikasi ' + (index + 1));
+                    delBtn.className = 'min-w-[42px] min-h-[42px] flex items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition';
+                    delBtn.innerHTML = '<i class="ph ph-trash text-base" aria-hidden="true"></i>';
+                    delBtn.addEventListener('click', () => {
+                        state.specs.splice(index, 1);
+                        renderSpecRows();
+                        updatePayloadAndPreview();
+                    });
+                    delWrap.appendChild(delBtn);
+
+                    wrapper.appendChild(labelWrap);
+                    wrapper.appendChild(valWrap);
+                    wrapper.appendChild(delWrap);
+                    els.specContainer.appendChild(wrapper);
+                });
+            }
+
+            function addSpecRow(label = '', nilai = '') {
+                state.specs.push({ label, nilai });
+                renderSpecRows();
+                updatePayloadAndPreview();
+            }
+
+            function buildDeskripsiPayload() {
+                const cleanedSpecs = state.specs
+                    .map((s) => ({ label: s.label.trim(), nilai: s.nilai.trim() }))
+                    .filter((s) => s.label !== '' && s.nilai !== '');
+
+                const riwayatObj = {};
+                Object.keys(els.riwayat).forEach((key) => {
+                    riwayatObj[key] = els.riwayat[key].value.trim();
+                });
+
+                return {
+                    ringkasan: els.ringkasan.value.trim(),
+                    spesifikasi: cleanedSpecs,
+                    riwayat: riwayatObj
+                };
+            }
+
+            function buildDbRecordPreview() {
+                const deskripsiJson = buildDeskripsiPayload();
+                const ext = state.photoFile ? (state.photoFile.name.split('.').pop() || 'jpg').toLowerCase() : null;
+                return {
+                    id_penjual: '$_SESSION["user_id"] (Verified Seller)',
+                    id_kategori: els.kategori.value ? Number(els.kategori.value) : null,
+                    nama_produk: els.nama.value.trim(),
+                    foto: state.photoFile ? ('uploads/produk/prod_demo.' + ext) : null,
+                    harga: els.harga.value !== '' ? Number(els.harga.value) : null,
+                    stok: els.stok.value !== '' ? Number(els.stok.value) : null,
+                    kondisi: els.kondisi.value || null,
+                    deskripsi: JSON.stringify(deskripsiJson),
+                    bisa_nego: els.bisaNego.checked ? 1 : 0,
+                    bisa_barter: els.bisaBarter.checked ? 1 : 0,
+                    status_produk: 'tersedia'
+                };
+            }
+
+            function updatePayloadAndPreview() {
+                // Counter nama
+                const namaVal = els.nama.value.trim();
+                els.namaCounter.textContent = els.nama.value.length + ' / 255';
+
+                // Format harga
+                const hargaNum = Number(els.harga.value);
+                els.hargaFormatted.textContent = 'Format tampil: ' + formatRupiah(hargaNum);
+
+                // Ringkasan mode transaksi
+                const modes = ['Beli Langsung'];
+                if (els.bisaNego.checked) modes.push('Bisa Nego');
+                if (els.bisaBarter.checked) modes.push('Bisa Barter');
+                els.transaksiNote.innerHTML = 'Mode aktif saat ini: <strong class="text-gray-900">' +
+                    (modes.length === 1 ? 'Harga Pas (Beli Langsung saja)' : modes.join(' + ')) + '</strong>.';
+
+                // Kategori selected metadata
+                const selectedOpt = els.kategori.options[els.kategori.selectedIndex];
+                const catName = selectedOpt && selectedOpt.dataset.name ? selectedOpt.dataset.name : '';
+                const catIcon = selectedOpt && selectedOpt.dataset.icon ? selectedOpt.dataset.icon : 'ph-tag';
+
+                els.photoFallbackIcon.className = 'ph ' + (catName ? catIcon : 'ph-image') + ' text-4xl text-gray-400';
+
+                // Card preview update
+                const kondisiVal = els.kondisi.value;
+                if (kondisiVal === 'Baru') {
+                    els.cardBadgeKondisi.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+                    els.cardBadgeKondisi.textContent = 'Baru';
+                } else if (kondisiVal) {
+                    els.cardBadgeKondisi.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-[#FEF3C7] text-[#92400E]';
+                    els.cardBadgeKondisi.textContent = kondisiVal;
+                } else {
+                    els.cardBadgeKondisi.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600';
+                    els.cardBadgeKondisi.textContent = 'Kondisi belum dipilih';
+                }
+
+                const stokNum = Number(els.stok.value);
+                els.cardStok.textContent = 'Stok: ' + (Number.isInteger(stokNum) && stokNum > 0 ? stokNum : 0);
+                els.cardKategori.textContent = catName || 'Kategori';
+                els.cardNama.textContent = namaVal || 'Nama produk akan tampil di sini';
+                els.cardHarga.textContent = formatRupiah(hargaNum);
+
+                if (state.photoObjectUrl) {
+                    els.cardPreviewImg.src = state.photoObjectUrl;
+                    els.cardPreviewImg.classList.remove('hidden');
+                    els.cardPreviewFallback.classList.add('hidden');
+                } else {
+                    els.cardPreviewImg.src = '';
+                    els.cardPreviewImg.classList.add('hidden');
+                    els.cardPreviewFallback.classList.remove('hidden');
+                    els.cardPreviewIcon.className = 'ph ' + catIcon + ' text-4xl text-gray-500';
+                    els.cardPreviewCatLabel.textContent = catName || 'Pilih kategori';
+                }
+
+                els.cardOpsiBadges.innerHTML = '';
+                modes.forEach((m) => {
+                    const span = document.createElement('span');
+                    span.className = m === 'Beli Langsung'
+                        ? 'px-2 py-0.5 bg-gray-100 text-gray-700 rounded'
+                        : 'px-2 py-0.5 bg-[#FFF8E1] text-[#92400E] rounded';
+                    span.textContent = m;
+                    els.cardOpsiBadges.appendChild(span);
+                });
+
+                // Payload JSON & DB
+                const deskripsiPayload = buildDeskripsiPayload();
+                const dbRecord = buildDbRecordPreview();
+                els.panelJson.textContent = JSON.stringify(deskripsiPayload, null, 2);
+                els.panelDb.textContent = JSON.stringify(dbRecord, null, 2);
+
+                // Update checklist
+                const allRiwayatFilled = Object.values(els.riwayat).every((input) => input.value.trim() !== '');
+                const checks = [
+                    { ok: state.isVerified, label: 'Akun Verified Seller (is_verified = 1, BR-04)' },
+                    { ok: namaVal.length > 0 && namaVal.length <= 255, label: 'Nama produk terisi (maks 255 karakter)' },
+                    { ok: els.kategori.value !== '', label: 'Kategori dipilih dari daftar tabel kategori' },
+                    { ok: ALLOWED_KONDISI.includes(kondisiVal), label: 'Kondisi menggunakan opsi baku whitelist' },
+                    { ok: Number.isFinite(hargaNum) && hargaNum > 0 && hargaNum <= MAX_PRICE, label: 'Harga valid (Rp 1 s.d. Rp 2.000.000.000)' },
+                    { ok: Number.isInteger(stokNum) && stokNum >= 1, label: 'Stok minimal 1 unit' },
+                    { ok: els.ringkasan.value.trim() !== '' && allRiwayatFilled, label: 'Ringkasan + 6 field Riwayat Kondisi (ADR-0001)' }
+                ];
+
+                const passedCount = checks.filter((c) => c.ok).length;
+                els.checklistProgress.textContent = passedCount + ' / ' + checks.length + ' Terpenuhi';
+                els.checklistItems.innerHTML = '';
+                checks.forEach((item) => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-start gap-2 ' + (item.ok ? 'text-gray-900' : 'text-gray-500');
+                    li.innerHTML = item.ok
+                        ? '<i class="ph-fill ph-check-circle text-emerald-600 text-base shrink-0 mt-0.5" aria-hidden="true"></i><span>' + item.label + '</span>'
+                        : '<i class="ph ph-circle text-gray-400 text-base shrink-0 mt-0.5" aria-hidden="true"></i><span>' + item.label + '</span>';
+                    els.checklistItems.appendChild(li);
+                });
+            }
+
+            function updateAllViews() {
+                updatePayloadAndPreview();
+            }
+
+            function validateForm() {
+                clearAllFieldErrors();
+                const errors = [];
+
+                const namaVal = els.nama.value.trim();
+                if (!namaVal) {
+                    setFieldError('nama_produk', 'Nama produk wajib diisi.');
+                    errors.push({ id: 'nama_produk', msg: 'Nama produk wajib diisi.' });
+                } else if (namaVal.length > 255) {
+                    setFieldError('nama_produk', 'Nama produk maksimal 255 karakter.');
+                    errors.push({ id: 'nama_produk', msg: 'Nama produk maksimal 255 karakter.' });
+                }
+
+                if (!els.kategori.value) {
+                    setFieldError('id_kategori', 'Pilih salah satu kategori produk.');
+                    errors.push({ id: 'id_kategori', msg: 'Kategori produk wajib dipilih.' });
+                }
+
+                if (!ALLOWED_KONDISI.includes(els.kondisi.value)) {
+                    setFieldError('kondisi', 'Pilih kondisi barang dari opsi baku yang tersedia.');
+                    errors.push({ id: 'kondisi', msg: 'Kondisi barang wajib dipilih dari opsi baku.' });
+                }
+
+                const hargaNum = Number(els.harga.value);
+                if (!els.harga.value || !Number.isFinite(hargaNum) || hargaNum <= 0) {
+                    setFieldError('harga', 'Harga wajib diisi dan lebih besar dari 0.');
+                    errors.push({ id: 'harga', msg: 'Harga produk wajib lebih besar dari Rp 0.' });
+                } else if (hargaNum > MAX_PRICE) {
+                    setFieldError('harga', 'Harga melebihi batas maksimal Rp 2.000.000.000.');
+                    errors.push({ id: 'harga', msg: 'Harga melebihi batas INT signed MySQL (Rp 2.000.000.000).' });
+                }
+
+                const stokNum = Number(els.stok.value);
+                if (!els.stok.value || !Number.isInteger(stokNum) || stokNum < 1) {
+                    setFieldError('stok', 'Stok minimal 1 unit dan berupa bilangan bulat.');
+                    errors.push({ id: 'stok', msg: 'Stok minimal 1 unit.' });
+                }
+
+                if (!els.ringkasan.value.trim()) {
+                    setFieldError('ringkasan', 'Ringkasan produk wajib diisi.');
+                    errors.push({ id: 'ringkasan', msg: 'Ringkasan produk (ringkasan) wajib diisi.' });
+                }
+
+                const riwayatLabels = {
+                    fisik: 'Kondisi Fisik',
+                    fungsi: 'Fungsi',
+                    lama_pakai: 'Lama Pemakaian',
+                    servis: 'Riwayat Servis',
+                    minus: 'Minus / Defect',
+                    kelengkapan: 'Kelengkapan'
+                };
+                Object.keys(els.riwayat).forEach((key) => {
+                    if (!els.riwayat[key].value.trim()) {
+                        const fieldId = 'riwayat_' + key;
+                        setFieldError(fieldId, riwayatLabels[key] + ' wajib diisi.');
+                        errors.push({ id: fieldId, msg: riwayatLabels[key] + ' (riwayat.' + key + ') wajib diisi.' });
+                    }
+                });
+
+                if (errors.length > 0) {
+                    els.errorSummaryList.innerHTML = '';
+                    errors.forEach((err) => {
+                        const li = document.createElement('li');
+                        li.textContent = err.msg;
+                        els.errorSummaryList.appendChild(li);
+                    });
+                    els.errorSummary.classList.remove('hidden');
+                    const firstEl = document.getElementById(errors[0].id);
+                    if (firstEl) {
+                        firstEl.focus();
+                        firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Event Listeners
+            els.btnModeVerified.addEventListener('click', () => setVerificationMode(true));
+            els.btnModeUnverified.addEventListener('click', () => setVerificationMode(false));
+            els.btnSwitchVerified.addEventListener('click', () => {
+                setVerificationMode(true);
+                showToast('Status berubah ke Verified Seller (is_verified = 1).');
+            });
+
+            els.btnFillSample.addEventListener('click', () => {
+                setVerificationMode(true);
+                clearAllFieldErrors();
+                els.nama.value = 'ASUS Dual GeForce RTX 3060 OC 12GB GDDR6';
+                els.kategori.value = '1';
+                els.kondisi.value = 'Bekas - Seperti Baru';
+                els.harga.value = '3450000';
+                els.stok.value = '1';
+                els.bisaNego.checked = true;
+                els.bisaBarter.checked = true;
+                els.ringkasan.value = 'Pemakaian pribadi untuk gaming ringan 1080p dan editing. Tidak pernah dipakai mining, segel baut utuh.';
+                els.riwayat.fisik.value = 'Mulus 98%, bebas debu tebal dan korosi';
+                els.riwayat.fungsi.value = 'Normal 100%, suhu full load stabil 67C';
+                els.riwayat.lama_pakai.value = '11 bulan sejak pembelian baru';
+                els.riwayat.servis.value = 'Belum pernah servis atau bongkar';
+                els.riwayat.minus.value = 'Tidak ada';
+                els.riwayat.kelengkapan.value = 'Fullset box original, invoice pembelian, penutup port';
+                state.specs = [
+                    { label: 'Graphics Engine', nilai: 'NVIDIA GeForce RTX 3060' },
+                    { label: 'Video Memory', nilai: '12GB GDDR6 192-bit' },
+                    { label: 'Interface', nilai: 'PCI Express 4.0' },
+                    { label: 'Min. PSU', nilai: '650 W' }
+                ];
+                renderSpecRows();
+                updateAllViews();
+                showToast('Contoh data produk siap diuji.');
+            });
+
+            els.btnResetForm.addEventListener('click', () => {
+                els.form.reset();
+                els.stok.value = '1';
+                removePhoto();
+                state.specs = [];
+                renderSpecRows();
+                clearAllFieldErrors();
+                updateAllViews();
+                showToast('Form dikosongkan kembali.');
+            });
+
+            els.btnPrefillNew.addEventListener('click', () => {
+                els.kondisi.value = 'Baru';
+                els.riwayat.fisik.value = 'Baru segel pabrik';
+                els.riwayat.fungsi.value = 'Normal 100%';
+                els.riwayat.lama_pakai.value = 'Baru';
+                els.riwayat.servis.value = 'Tidak pernah';
+                els.riwayat.minus.value = 'Tidak ada';
+                els.riwayat.kelengkapan.value = 'Fullset original + kartu garansi resmi';
+                updateAllViews();
+                showToast('Field riwayat diisi dengan standar barang baru.');
+            });
+
+            // Input live sync
+            [
+                els.nama, els.kategori, els.kondisi, els.harga, els.stok,
+                els.bisaNego, els.bisaBarter, els.ringkasan,
+                ...Object.values(els.riwayat)
+            ].forEach((el) => {
+                el.addEventListener('input', updateAllViews);
+                el.addEventListener('change', updateAllViews);
+            });
+
+            // Photo input & drag-drop
+            els.foto.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    handlePhotoSelection(e.target.files[0]);
+                }
+            });
+
+            els.photoDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                els.photoDropzone.classList.add('border-brand-yellow', 'bg-amber-50/40');
+            });
+
+            els.photoDropzone.addEventListener('dragleave', () => {
+                els.photoDropzone.classList.remove('border-brand-yellow', 'bg-amber-50/40');
+            });
+
+            els.photoDropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                els.photoDropzone.classList.remove('border-brand-yellow', 'bg-amber-50/40');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handlePhotoSelection(e.dataTransfer.files[0]);
+                }
+            });
+
+            els.btnRemovePhoto.addEventListener('click', removePhoto);
+
+            // Spec repeater buttons
+            els.btnAddSpec.addEventListener('click', () => addSpecRow('', ''));
+            els.btnAddSpecEmpty.addEventListener('click', () => addSpecRow('', ''));
+
+            // Payload tabs
+            function switchPayloadTab(tab) {
+                state.activePayloadTab = tab;
+                const isJson = tab === 'json';
+                els.tabBtnJson.setAttribute('aria-selected', String(isJson));
+                els.tabBtnDb.setAttribute('aria-selected', String(!isJson));
+                els.tabBtnJson.className = isJson
+                    ? 'min-h-[36px] px-3 py-1 text-xs font-bold rounded bg-brand-yellow text-brand-dark transition'
+                    : 'min-h-[36px] px-3 py-1 text-xs font-semibold rounded bg-neutral-800 text-gray-300 hover:text-white transition';
+                els.tabBtnDb.className = !isJson
+                    ? 'min-h-[36px] px-3 py-1 text-xs font-bold rounded bg-brand-yellow text-brand-dark transition'
+                    : 'min-h-[36px] px-3 py-1 text-xs font-semibold rounded bg-neutral-800 text-gray-300 hover:text-white transition';
+                els.panelJson.classList.toggle('hidden', !isJson);
+                els.panelDb.classList.toggle('hidden', isJson);
+            }
+
+            els.tabBtnJson.addEventListener('click', () => switchPayloadTab('json'));
+            els.tabBtnDb.addEventListener('click', () => switchPayloadTab('db'));
+
+            async function copyText(text, successMsg) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showToast(successMsg);
+                } catch (_) {
+                    showToast('Gagal menyalin otomatis. Silakan salin manual dari kotak kode.');
+                }
+            }
+
+            els.btnCopyPayload.addEventListener('click', () => {
+                const text = state.activePayloadTab === 'json' ? els.panelJson.textContent : els.panelDb.textContent;
+                copyText(text, 'Payload berhasil disalin ke clipboard.');
+            });
+
+            // Form Submit Simulation (Loading -> Result Dialog)
+            els.form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!state.isVerified) {
+                    showToast('Diblokir oleh BR-04: Seller belum terverifikasi.');
+                    return;
+                }
+                if (!validateForm()) return;
+
+                els.btnSubmit.disabled = true;
+                els.submitIcon.className = 'ph ph-spinner-gap animate-spin text-base';
+                els.submitLabel.textContent = 'Memvalidasi payload...';
+
+                setTimeout(() => {
+                    els.btnSubmit.disabled = false;
+                    els.submitIcon.className = 'ph ph-paper-plane-tilt text-base';
+                    els.submitLabel.textContent = 'Simulasi Submit Produk';
+
+                    const finalPayload = {
+                        table: 'produk',
+                        record: buildDbRecordPreview(),
+                        deskripsi_parsed_adr0001: buildDeskripsiPayload()
+                    };
+                    els.dialogOutput.textContent = JSON.stringify(finalPayload, null, 2);
+                    els.dialog.showModal();
+                }, 400);
+            });
+
+            els.btnCloseDialog.addEventListener('click', () => els.dialog.close());
+            els.btnCloseDialogX.addEventListener('click', () => els.dialog.close());
+            els.btnDialogCopy.addEventListener('click', () => {
+                copyText(els.dialogOutput.textContent, 'Payload simulasi disalin ke clipboard.');
+            });
+
+            // Init
+            renderSpecRows();
+            updateAllViews();
+        })();
+    </script>
+</body>
+
+</html>
