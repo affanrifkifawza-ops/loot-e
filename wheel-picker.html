@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Wheel Picker Nego Harga | Loot-E</title>
+
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet">
+
+     <!-- Tailwind CSS CDN -->
+     <script src="https://cdn.tailwindcss.com"></script>
+     <script>
+          tailwind.config = {
+               theme: {
+                    extend: {
+                         colors: {
+                              ye: '#FFC914',
+                              ch: '#272727',
+                              brand: {
+                                   yellow: '#FFC914',
+                                   dark: '#272727'
+                              }
+                         },
+                         fontFamily: {
+                              sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif']
+                         }
+                    }
+               }
+          };
+     </script>
+
+     <style>
+          .nego-picker {
+               --nego-row-height: 66px;
+               --nego-visible-rows: 5;
+          }
+
+          @media (min-width: 640px) {
+               .nego-picker {
+                    --nego-row-height: 76px;
+               }
+          }
+
+          .nego-picker__wheel {
+               height: calc(var(--nego-row-height) * var(--nego-visible-rows));
+               mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+               -webkit-mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+          }
+
+          .nego-picker__wheel.is-dragging {
+               cursor: grabbing !important;
+               user-select: none;
+               scroll-snap-type: none !important;
+          }
+
+          .nego-picker__spacer {
+               height: calc((var(--nego-row-height) * (var(--nego-visible-rows) - 1)) / 2);
+          }
+
+          .nego-picker__option {
+               height: var(--nego-row-height);
+               flex: 0 0 var(--nego-row-height);
+          }
+     </style>
+</head>
+
+<body class="text-gray-100 min-h-screen flex flex-col items-center p-4 font-sans antialiased">
+
+     <div class="w-full max-w-[540px] mx-auto space-y-4">
+          <!-- Komponen Wheel Picker -->
+          <div class="nego-picker relative w-full bg-[#373a43] text-[#f4f4f6] rounded-[22px] shadow-2xl p-3 sm:p-4 grid grid-cols-[44px_minmax(0,0.85fr)_10px_minmax(0,1.2fr)_10px_minmax(0,1.2fr)] sm:grid-cols-[54px_minmax(0,0.85fr)_12px_minmax(0,1.2fr)_12px_minmax(0,1.2fr)] items-center gap-1 sm:gap-1.5 select-none border border-white/5"
+               data-nego-picker>
+
+               <!-- Simbol Mata Uang Rupiah -->
+               <div class="text-center font-bold text-lg sm:text-2xl text-brand-yellow select-none" aria-hidden="true">
+                    Rp
+               </div>
+
+               <!-- Roda Digit Jutaan (0 - 9) -->
+               <div class="nego-picker__wheel min-w-0 overflow-y-auto overscroll-y-contain snap-y snap-mandatory cursor-grab active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow/60 rounded-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-y"
+                    data-wheel="millions" role="listbox" aria-label="Digit jutaan" tabindex="0">
+               </div>
+
+               <!-- Pemisah Titik Ribuan -->
+               <span class="text-center text-xl sm:text-2xl font-bold text-gray-400 pointer-events-none select-none"
+                    aria-hidden="true">.</span>
+
+               <!-- Roda Kelompok Ribuan (000 - 900) -->
+               <div class="nego-picker__wheel min-w-0 overflow-y-auto overscroll-y-contain snap-y snap-mandatory cursor-grab active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow/60 rounded-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-y"
+                    data-wheel="thousands" role="listbox" aria-label="Kelompok ribuan" tabindex="0">
+               </div>
+
+               <!-- Pemisah Titik Ratusan -->
+               <span class="text-center text-xl sm:text-2xl font-bold text-gray-400 pointer-events-none select-none"
+                    aria-hidden="true">.</span>
+
+               <!-- Roda Tiga Digit Terakhir (000 - 900) -->
+               <div class="nego-picker__wheel min-w-0 overflow-y-auto overscroll-y-contain snap-y snap-mandatory cursor-grab active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow/60 rounded-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-y"
+                    data-wheel="units" role="listbox" aria-label="Tiga digit terakhir" tabindex="0">
+               </div>
+
+               <!-- Tampilan Hasil Akhir Rupiah -->
+               <output
+                    class="col-span-full block mt-3 pt-3.5 border-t border-white/10 text-center text-2xl sm:text-3xl font-extrabold tabular-nums text-brand-yellow tracking-tight"
+                    data-amount aria-live="polite">
+                    Rp 0
+               </output>
+          </div>
+     </div>
+
+     <script>
+          (() => {
+               const root = document.querySelector('[data-nego-picker]');
+               if (!root || root.dataset.initialized === 'true') return;
+               root.dataset.initialized = 'true';
+
+               // Konfigurasi roda dimulai dari 0, 000, 000
+               const configs = [
+                    { key: 'millions', initial: '0', values: Array.from({ length: 10 }, (_, i) => String(i)) },
+                    { key: 'thousands', initial: '000', values: Array.from({ length: 10 }, (_, i) => String(i * 100).padStart(3, '0')) },
+                    { key: 'units', initial: '000', values: Array.from({ length: 10 }, (_, i) => String(i * 100).padStart(3, '0')) }
+               ];
+
+               const state = {};
+               const wheels = {};
+               const timers = {};
+               const rowHeight = () => parseFloat(getComputedStyle(root).getPropertyValue('--nego-row-height')) || 66;
+
+               function render(config) {
+                    const wheel = root.querySelector(`[data-wheel="${config.key}"]`);
+                    if (!wheel) return;
+                    wheels[config.key] = wheel;
+
+                    const spacerTop = document.createElement('div');
+                    spacerTop.className = 'nego-picker__spacer shrink-0 pointer-events-none';
+                    spacerTop.setAttribute('aria-hidden', 'true');
+                    wheel.appendChild(spacerTop);
+
+                    config.values.forEach(value => {
+                         const option = document.createElement('div');
+                         option.className = 'nego-picker__option flex items-center justify-center shrink-0 text-[#969aa6] text-xl sm:text-3xl font-medium tabular-nums select-none snap-center snap-always rounded-xl sm:rounded-2xl transition-all duration-150 cursor-pointer';
+                         option.textContent = value;
+                         option.dataset.value = value;
+                         option.setAttribute('role', 'option');
+                         option.setAttribute('aria-selected', 'false');
+                         wheel.appendChild(option);
+                    });
+
+                    const spacerBottom = spacerTop.cloneNode(true);
+                    wheel.appendChild(spacerBottom);
+
+                    let isDragging = false;
+                    let hasDragged = false;
+                    let startY = 0;
+                    let startScrollTop = 0;
+                    let lastY = 0;
+                    let lastTime = 0;
+                    let velocityY = 0;
+                    let preventedClickUntil = 0;
+
+                    wheel.addEventListener('scroll', () => {
+                         highlightNearest(config);
+                         if (isDragging) return;
+                         clearTimeout(timers[config.key]);
+                         timers[config.key] = setTimeout(() => snap(config, true), 110);
+                    }, { passive: true });
+
+                    wheel.addEventListener('dragstart', event => event.preventDefault());
+
+                    wheel.addEventListener('pointerdown', event => {
+                         if (event.pointerType !== 'mouse' || event.button !== 0) return;
+                         isDragging = true;
+                         hasDragged = false;
+                         startY = event.clientY;
+                         lastY = event.clientY;
+                         lastTime = performance.now();
+                         velocityY = 0;
+                         startScrollTop = wheel.scrollTop;
+
+                         wheel.focus();
+                         wheel.classList.add('is-dragging');
+                         wheel.style.scrollBehavior = 'auto';
+                         wheel.style.scrollSnapType = 'none';
+                         wheel.setPointerCapture(event.pointerId);
+                    });
+
+                    wheel.addEventListener('pointermove', event => {
+                         if (!isDragging) return;
+                         const deltaY = event.clientY - startY;
+                         if (!hasDragged && Math.abs(deltaY) > 3) {
+                              hasDragged = true;
+                         }
+
+                         const now = performance.now();
+                         const dt = now - lastTime;
+                         if (dt > 0) {
+                              const currentVelocity = (event.clientY - lastY) / dt;
+                              velocityY = currentVelocity * 0.6 + velocityY * 0.4;
+                              lastY = event.clientY;
+                              lastTime = now;
+                         }
+
+                         wheel.scrollTop = startScrollTop - deltaY;
+                    });
+
+                    const endDrag = event => {
+                         if (!isDragging) return;
+                         isDragging = false;
+                         wheel.classList.remove('is-dragging');
+                         if (wheel.hasPointerCapture(event.pointerId)) {
+                              wheel.releasePointerCapture(event.pointerId);
+                         }
+
+                         wheel.style.removeProperty('scroll-snap-type');
+                         wheel.style.removeProperty('scroll-behavior');
+
+                         if (hasDragged) {
+                              preventedClickUntil = performance.now() + 100;
+                              if (performance.now() - lastTime > 80) {
+                                   velocityY = 0;
+                              }
+                              const momentum = velocityY * 120;
+                              const projectedScroll = wheel.scrollTop - momentum;
+                              const targetIndex = Math.max(0, Math.min(config.values.length - 1, Math.round(projectedScroll / rowHeight())));
+                              wheel.scrollTo({ top: targetIndex * rowHeight(), behavior: 'smooth' });
+                              state[config.key] = config.values[targetIndex];
+                              updateAmount();
+                              highlightNearest(config);
+                         } else {
+                              const clickedOption = event.target.closest('.nego-picker__option');
+                              if (clickedOption && wheel.contains(clickedOption)) {
+                                   const options = Array.from(wheel.querySelectorAll('.nego-picker__option'));
+                                   const clickedIndex = options.indexOf(clickedOption);
+                                   if (clickedIndex !== -1) {
+                                        wheel.scrollTo({ top: clickedIndex * rowHeight(), behavior: 'smooth' });
+                                        state[config.key] = config.values[clickedIndex];
+                                        updateAmount();
+                                        highlightNearest(config);
+                                        return;
+                                   }
+                              }
+                              snap(config, true);
+                         }
+                    };
+
+                    wheel.addEventListener('pointerup', endDrag);
+                    wheel.addEventListener('pointercancel', endDrag);
+
+                    wheel.addEventListener('click', event => {
+                         if (performance.now() < preventedClickUntil) {
+                              event.preventDefault();
+                              event.stopPropagation();
+                         }
+                    }, true);
+
+                    wheel.addEventListener('keydown', event => {
+                         if (!['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key)) return;
+                         event.preventDefault();
+                         const current = config.values.indexOf(state[config.key]);
+                         let next = current;
+                         if (event.key === 'ArrowUp') next--;
+                         if (event.key === 'ArrowDown') next++;
+                         if (event.key === 'PageUp') next -= 1;
+                         if (event.key === 'PageDown') next += 1;
+                         if (event.key === 'Home') next = 0;
+                         if (event.key === 'End') next = config.values.length - 1;
+                         next = Math.max(0, Math.min(config.values.length - 1, next));
+                         wheel.scrollTo({ top: next * rowHeight(), behavior: 'smooth' });
+                    });
+               }
+
+               function nearestIndex(config) {
+                    const wheel = wheels[config.key];
+                    return Math.max(0, Math.min(config.values.length - 1, Math.round(wheel.scrollTop / rowHeight())));
+               }
+
+               function highlightNearest(config) {
+                    const wheel = wheels[config.key];
+                    if (!wheel) return;
+                    const index = nearestIndex(config);
+                    wheel.querySelectorAll('.nego-picker__option').forEach((option, i) => {
+                         const active = i === index;
+                         option.classList.toggle('text-white', active);
+                         option.classList.toggle('bg-[#41444d]', active);
+                         option.classList.toggle('font-bold', active);
+                         option.classList.toggle('shadow-sm', active);
+                         option.classList.toggle('text-[#969aa6]', !active);
+                         option.setAttribute('aria-selected', String(active));
+                    });
+               }
+
+               function snap(config, update) {
+                    const wheel = wheels[config.key];
+                    const index = nearestIndex(config);
+                    wheel.scrollTo({ top: index * rowHeight(), behavior: 'smooth' });
+                    if (update) {
+                         state[config.key] = config.values[index];
+                         updateAmount();
+                    }
+                    highlightNearest(config);
+               }
+
+               function updateAmount() {
+                    const total =
+                         Number(state.millions) * 1_000_000 +
+                         Number(state.thousands) * 1_000 +
+                         Number(state.units);
+                    const output = root.querySelector('[data-amount]');
+                    if (output) {
+                         output.textContent = 'Rp ' + total.toLocaleString('id-ID');
+                    }
+                    root.dispatchEvent(new CustomEvent('negoamountchange', { detail: { amount: total } }));
+               }
+
+               configs.forEach(config => {
+                    state[config.key] = config.initial;
+                    render(config);
+               });
+
+               function alignInitial() {
+                    configs.forEach(config => {
+                         const index = config.values.indexOf(state[config.key]);
+                         wheels[config.key].scrollTop = index * rowHeight();
+                         highlightNearest(config);
+                    });
+                    updateAmount();
+               }
+
+               requestAnimationFrame(() => requestAnimationFrame(alignInitial));
+
+               let resizeTimer;
+               window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(alignInitial, 100);
+               });
+          })();
+     </script>
+</body>
+
+</html>
