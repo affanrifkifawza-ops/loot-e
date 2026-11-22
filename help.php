@@ -521,7 +521,7 @@ $navActivePage = 'help';
                         Ceritakan kendalamu
                     </h2>
                 </div>
-                <button id="close-support-dialog" type="button" class="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900" aria-label="Tutup formulir bantuan">
+                <button id="close-support-dialog" type="button" class="grid h-9 w-9 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-900" aria-label="Tutup formulir bantuan">
                     <i class="ph ph-x text-lg" aria-hidden="true"></i>
                 </button>
             </div>
@@ -540,10 +540,10 @@ $navActivePage = 'help';
             </div>
             <p id="support-feedback" class="mt-3 hidden text-sm font-medium" role="status" aria-live="polite"></p>
             <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end border-t border-gray-100 pt-4">
-                <button type="button" id="cancel-support-dialog" class="min-h-[42px] rounded-xl border border-gray-300 px-5 text-sm font-bold text-gray-600 transition hover:bg-gray-100">
+                <button type="button" id="cancel-support-dialog" class="min-h-[42px] border border-gray-300 px-5 text-sm font-bold text-gray-600 transition hover:bg-gray-100">
                     Batal
                 </button>
-                <button type="submit" class="min-h-[42px] rounded-xl bg-brand-yellow px-5 text-sm font-bold text-brand-dark transition hover:bg-yellow-500 active:translate-y-px shadow-sm">
+                <button type="submit" class="min-h-[42px] bg-brand-yellow px-5 text-sm font-bold text-brand-dark transition hover:bg-yellow-500 active:translate-y-px shadow-sm">
                     Kirim Pesan Bantuan
                 </button>
             </div>
