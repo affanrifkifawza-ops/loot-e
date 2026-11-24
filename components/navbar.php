@@ -60,8 +60,8 @@ $_navName        = $_navUser ? htmlspecialchars($_navUser['nama']) : '';
                     <div id="navbar-profile-menu"
                         class="hidden absolute right-0 mt-2 w-56 bg-white text-gray-800 rounded-xl shadow-xl border border-gray-100 p-1.5 z-50"
                         role="menu" aria-labelledby="navbar-profile-toggle">
-                        <!-- Header Profil (Placeholder menuju halaman profil) -->
-                        <button type="button" role="menuitem"
+                        <!-- Header Profil (Menuju halaman profil) -->
+                        <a href="profile.php" role="menuitem"
                             class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-gray-50 transition text-left group">
                             <div class="w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-bold text-xs uppercase shrink-0">
                                 <?= $_navInitials ?>
@@ -71,7 +71,7 @@ $_navName        = $_navUser ? htmlspecialchars($_navUser['nama']) : '';
                                 <p class="text-[11px] text-gray-500 group-hover:text-gray-700 transition">Lihat profil</p>
                             </div>
                             <i class="ph ph-caret-right text-xs text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition shrink-0"></i>
-                        </button>
+                        </a>
 
                         <div class="border-t border-gray-100 my-1.5"></div>
 
