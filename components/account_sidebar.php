@@ -11,7 +11,7 @@ $_sidebarMenuItems = [
     ['id' => 'profil',     'label' => 'Profil Saya',     'icon' => 'ph-user',              'href' => 'profile.php'],
     ['id' => 'pesanan',    'label' => 'Pesanan Saya',    'icon' => 'ph-package',           'href' => 'pesanan.php'],
     ['id' => 'negosiasi',  'label' => 'Negosiasi Saya',  'icon' => 'ph-chat-circle-text',  'href' => 'nego_buyer.php'],
-    ['id' => 'barter',     'label' => 'Barter Saya',     'icon' => 'ph-arrows-left-right', 'href' => 'nego_buyer.php'],
+    ['id' => 'barter',     'label' => 'Barter Saya',     'icon' => 'ph-arrows-left-right', 'href' => 'barter_buyer.php'],
     ['id' => 'toko',       'label' => 'Toko Saya',       'icon' => 'ph-storefront',        'href' => null],
     ['id' => 'notifikasi', 'label' => 'Notifikasi',      'icon' => 'ph-bell',              'href' => null],
     ['id' => 'alamat',     'label' => 'Alamat',          'icon' => 'ph-map-pin',           'href' => null],
