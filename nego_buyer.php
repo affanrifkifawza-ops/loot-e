@@ -467,17 +467,13 @@ $filterTabs = [
         </div>
     </main>
 
+    <!-- Toast Notifikasi (Standar Loot-E: fixed bottom-6 left-6 dengan aksen border-l-4) -->
+    <div id="nego-toast" role="status" aria-live="polite"
+        class="fixed bottom-6 left-6 z-50 hidden bg-brand-dark text-white border-l-4 border-brand-yellow px-4 py-3 rounded-md text-xs font-medium shadow-lg">
+    </div>
+
     <!-- Footer Standar Loot-E -->
     <?php require_once 'components/footer.php'; ?>
-
-    <!-- Toast Notifikasi Ringkas -->
-    <div id="toast-nego"
-        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden bg-[#272727] text-white px-4 py-2.5 rounded-[2px] text-xs font-semibold shadow-lg transition-all flex items-center gap-2"
-        role="status"
-        aria-live="polite">
-        <i class="ph-bold ph-check text-brand-yellow text-sm" aria-hidden="true"></i>
-        <span id="toast-nego-text">ID Negosiasi berhasil disalin!</span>
-    </div>
 
     <!-- Script Interaktivitas UI Filter, Search, Sort & Copy -->
     <script>
@@ -487,22 +483,22 @@ $filterTabs = [
             const sortSelect = document.getElementById('sort-negotiation');
             const cards = Array.from(document.querySelectorAll('.negotiation-card'));
             const emptyState = document.getElementById('empty-state');
-            const toast = document.getElementById('toast-nego');
-            const toastText = document.getElementById('toast-nego-text');
+            const toast = document.getElementById('nego-toast');
             const copyButtons = document.querySelectorAll('.copy-code-btn');
 
             let activeFilter = 'semua';
             let searchQuery = '';
             let toastTimer = null;
 
-            function showToast(message) {
-                if (!toast) return;
-                if (toastText) toastText.textContent = message;
-                toast.classList.remove('hidden');
-                clearTimeout(toastTimer);
-                toastTimer = setTimeout(() => {
+            function showToast(message, type) {
+                if (!toast || !message) return;
+                toast.textContent = message;
+                toast.classList.remove('hidden', 'border-brand-yellow', 'border-red-500');
+                toast.classList.add(type === 'error' ? 'border-red-500' : 'border-brand-yellow');
+                if (toastTimer) clearTimeout(toastTimer);
+                toastTimer = setTimeout(function() {
                     toast.classList.add('hidden');
-                }, 2500);
+                }, 3500);
             }
 
             // Fitur Salin ID Negosiasi
@@ -514,7 +510,7 @@ $filterTabs = [
 
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(code).then(() => {
-                            showToast('ID Negosiasi ' + code + ' disalin ke clipboard!');
+                            showToast('ID Negosiasi ' + code + ' berhasil disalin.', 'info');
                         }).catch(() => {
                             fallbackCopy(code);
                         });
@@ -531,9 +527,9 @@ $filterTabs = [
                 tempInput.select();
                 try {
                     document.execCommand('copy');
-                    showToast('ID Negosiasi ' + text + ' disalin ke clipboard!');
+                    showToast('ID Negosiasi ' + text + ' berhasil disalin.', 'info');
                 } catch (err) {
-                    showToast('Gagal menyalin ID.');
+                    showToast('Gagal menyalin ID.', 'error');
                 }
                 document.body.removeChild(tempInput);
             }
