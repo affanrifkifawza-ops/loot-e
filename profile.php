@@ -29,25 +29,6 @@ $_SESSION['email']       = $userRow['email'];
 $_SESSION['peran']       = $userRow['peran'];
 $_SESSION['is_verified'] = (int)$userRow['is_verified'];
 
-$lokasiOptions = [
-    'Bandung, Jawa Barat',
-    'Jakarta Selatan, DKI Jakarta',
-    'Jakarta Pusat, DKI Jakarta',
-    'Surabaya, Jawa Timur',
-    'Yogyakarta, DI Yogyakarta',
-    'Semarang, Jawa Tengah',
-    'Tangerang, Banten',
-    'Bekasi, Jawa Barat',
-    'Depok, Jawa Barat',
-    'Medan, Sumatera Utara',
-    'Denpasar, Bali',
-];
-
-$existingAlamat = trim((string)($userRow['alamat'] ?? ''));
-if ($existingAlamat !== '' && !in_array($existingAlamat, $lokasiOptions, true)) {
-    array_unshift($lokasiOptions, $existingAlamat);
-}
-
 // CSRF token untuk form edit profil
 if (empty($_SESSION['csrf_profile'])) {
     $_SESSION['csrf_profile'] = bin2hex(random_bytes(32));
@@ -63,18 +44,15 @@ if (!empty($_SESSION['profile_flash']) && is_array($_SESSION['profile_flash'])) 
 // Nilai form default dari database
 $formNama   = (string)$userRow['nama'];
 $formEmail  = (string)$userRow['email'];
-$formLokasi = $existingAlamat;
 
 // Proses update profil (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedToken = (string)($_POST['csrf_token'] ?? '');
     $namaBaru    = trim((string)($_POST['nama_lengkap'] ?? ''));
     $emailRaw    = trim((string)($_POST['email'] ?? ''));
-    $lokasiBaru  = trim((string)($_POST['lokasi'] ?? ''));
 
     $formNama   = $namaBaru;
     $formEmail  = $emailRaw;
-    $formLokasi = $lokasiBaru;
 
     if (!hash_equals($csrfToken, $postedToken)) {
         $flash = ['type' => 'error', 'message' => 'Sesi formulir tidak valid. Silakan muat ulang halaman dan coba lagi.'];
@@ -86,8 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = ['type' => 'error', 'message' => 'Format alamat email tidak valid.'];
     } elseif (mb_strlen($emailRaw) > 100) {
         $flash = ['type' => 'error', 'message' => 'Email maksimal 100 karakter.'];
-    } elseif ($lokasiBaru !== '' && !in_array($lokasiBaru, $lokasiOptions, true)) {
-        $flash = ['type' => 'error', 'message' => 'Pilihan lokasi tidak valid.'];
     } else {
         try {
             $stmtCekEmail = $db->prepare("SELECT id FROM pengguna WHERE email = ? AND id != ? LIMIT 1");
@@ -96,14 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmtCekEmail->fetch()) {
                 $flash = ['type' => 'error', 'message' => 'Email tersebut sudah digunakan oleh akun lain.'];
             } else {
-                $alamatSimpan = $lokasiBaru !== '' ? $lokasiBaru : null;
-
                 $stmtUpdate = $db->prepare("
                     UPDATE pengguna
-                    SET nama = ?, email = ?, alamat = ?
+                    SET nama = ?, email = ?
                     WHERE id = ?
                 ");
-                $stmtUpdate->execute([$namaBaru, $emailRaw, $alamatSimpan, $userId]);
+                $stmtUpdate->execute([$namaBaru, $emailRaw, $userId]);
 
                 $_SESSION['nama']  = $namaBaru;
                 $_SESSION['email'] = $emailRaw;
@@ -310,26 +284,6 @@ $accountSidebarUser = [
                                             Nomor HP belum diisi atau belum diverifikasi. Lengkapi melalui <a href="#banner-verifikasi" data-demo-toast="Halaman Verifikasi Akun belum tersedia saat ini (mode demo)." class="font-semibold text-[#854D0E] hover:underline">Verifikasi Akun</a>.
                                         </p>
                                     <?php endif; ?>
-                                </div>
-                            </div>
-
-                            <!-- Lokasi -->
-                            <div class="grid grid-cols-1 sm:grid-cols-[135px_1fr] items-center gap-1.5 sm:gap-4">
-                                <label for="lokasi" class="text-xs sm:text-[13px] font-medium text-[#272727]">
-                                    Lokasi
-                                </label>
-                                <div class="relative">
-                                    <select id="lokasi" name="lokasi"
-                                        class="w-full h-10 pl-3.5 pr-10 bg-white border border-gray-300 rounded-md text-sm text-[#272727] appearance-none cursor-pointer focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition">
-                                        <option value="" <?= $formLokasi === '' ? 'selected' : '' ?>>Pilih lokasi...</option>
-                                        <?php foreach ($lokasiOptions as $kota): ?>
-                                            <option value="<?= htmlspecialchars($kota, ENT_QUOTES, 'UTF-8') ?>"
-                                                <?= $kota === $formLokasi ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($kota, ENT_QUOTES, 'UTF-8') ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <i class="ph ph-caret-down text-sm text-[#272727] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" aria-hidden="true"></i>
                                 </div>
                             </div>
 
