@@ -32,12 +32,12 @@ $_navName        = $_navUser ? htmlspecialchars($_navUser['nama']) : '';
         <div class="flex items-center gap-1.5 sm:gap-3 shrink-0 justify-self-end">
             <?php if ($_navUser): ?>
                 <button type="button"
-                    class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/10 text-gray-300 hover:text-brand-yellow transition"
+                    class="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-white/10 text-gray-300 hover:text-brand-yellow transition"
                     title="Notifikasi" aria-label="Notifikasi">
                     <i class="ph ph-bell text-xl"></i>
                 </button>
                 <a href="cart.php"
-                    class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/10 <?= ($navActivePage ?? '') === 'cart' ? 'text-brand-yellow' : 'text-gray-300 hover:text-brand-yellow' ?> transition"
+                    class="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-white/10 <?= ($navActivePage ?? '') === 'cart' ? 'text-brand-yellow' : 'text-gray-300 hover:text-brand-yellow' ?> transition"
                     title="Keranjang" aria-label="Keranjang belanja">
                     <i class="ph ph-shopping-cart text-xl"></i>
                 </a>
@@ -101,7 +101,7 @@ $_navName        = $_navUser ? htmlspecialchars($_navUser['nama']) : '';
                     Login
                 </a>
                 <a href="register.php"
-                    class="text-xs border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow px-3.5 py-2 rounded-lg font-medium transition">
+                          class="text-xs border border-gray-500 text-gray-300 hover:border-brand-yellow hover:text-brand-yellow px-3.5 py-2 rounded-lg font-medium transition">
                     Register
                 </a>
             <?php endif; ?>
@@ -115,11 +115,11 @@ $_navName        = $_navUser ? htmlspecialchars($_navUser['nama']) : '';
             class="relative w-full">
             <input type="text" name="q" required value="<?= $_navSearchValue ?>"
                 placeholder="Cari barang atau kategori..."
-                class="w-full bg-white border border-gray-300 rounded-full pl-4 pr-11 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/40 transition" />
+                class="w-full bg-white border border-gray-300 rounded-full pl-4 pr-12 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/40 transition" />
             <button type="submit"
-                class="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-brand-yellow text-white flex items-center justify-center hover:brightness-95 transition shadow-xs"
+                class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-brand-yellow text-white flex items-center justify-center hover:brightness-95 transition shadow-xs"
                 aria-label="Cari produk">
-                <i class="ph ph-arrow-right text-xs font-bold text-white"></i>
+                <i class="ph ph-arrow-right text-sm font-bold text-white"></i>
             </button>
         </form>
     </div>

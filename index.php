@@ -138,47 +138,48 @@ $sections = [
         </section>
 
         <!-- Kategori & Spotlight Container -->
-        <div class="max-w-7xl mx-auto px-6 md:px-12 -mt-6 sm:-mt-8 relative z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 -mt-6 sm:-mt-8 relative z-20">
             <!-- 8 Kategori Berjajar -->
-            <section aria-label="Kategori Produk" class="bg-white shadow-sm border border-gray-100 p-4 sm:p-6">
-                <div class="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4 text-center">
+            <section aria-label="Kategori Produk" class="bg-white shadow-sm border border-gray-100 p-3 sm:p-6">
+                <div class="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-4 text-center">
                     <?php foreach ($categories as $cat): ?>
-                        <a href="search.php?kategori=<?= (int)$cat['id'] ?>" class="flex flex-col items-center gap-2 group cursor-pointer">
-                            <div class="w-13 h-13 sm:w-20 sm:h-16 rounded-xl bg-[#F4F4F4] group-hover:bg-brand-yellow/20 flex items-center justify-center transition shadow-2xs">
-                                <i class="ph <?= htmlspecialchars(kategoriIcon($cat['nama_kategori'])) ?> text-2xl sm:text-3xl text-gray-800 group-hover:text-brand-dark transition"></i>
+                        <a href="search.php?kategori=<?= (int)$cat['id'] ?>" class="flex flex-col items-center gap-1.5 sm:gap-2 group min-h-[44px]">
+                            <div class="w-12 h-12 sm:w-20 sm:h-16 rounded-xl bg-[#F4F4F4] group-hover:bg-brand-yellow/20 flex items-center justify-center transition shadow-2xs">
+                                <i class="ph <?= htmlspecialchars(kategoriIcon($cat['nama_kategori'])) ?> text-xl sm:text-3xl text-gray-800 group-hover:text-brand-dark transition"></i>
                             </div>
-                            <span class="text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition"><?= htmlspecialchars($cat['nama_kategori']) ?></span>
+                            <span class="text-[10px] sm:text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition leading-tight"><?= htmlspecialchars($cat['nama_kategori']) ?></span>
                         </a>
                     <?php endforeach; ?>
-                    <a href="categories.php" class="flex flex-col items-center gap-2 group cursor-pointer">
-                        <div class="w-13 h-13 sm:w-20 sm:h-16 rounded-xl bg-[#F4F4F4] group-hover:bg-brand-yellow/20 flex items-center justify-center transition shadow-2xs">
-                            <i class="ph ph-dots-three text-2xl sm:text-3xl text-gray-800 group-hover:text-brand-dark transition"></i>
+                    <a href="categories.php" class="flex flex-col items-center gap-1.5 sm:gap-2 group min-h-[44px]">
+                        <div class="w-12 h-12 sm:w-20 sm:h-16 rounded-xl bg-[#F4F4F4] group-hover:bg-brand-yellow/20 flex items-center justify-center transition shadow-2xs">
+                            <i class="ph ph-dots-three text-xl sm:text-3xl text-gray-800 group-hover:text-brand-dark transition"></i>
                         </div>
-                        <span class="text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition">Lainnya</span>
+                        <span class="text-[10px] sm:text-xs font-semibold text-gray-700 group-hover:text-gray-900 transition leading-tight">Lainnya</span>
                     </a>
                 </div>
             </section>
 
             <!-- Spotlight Card & Verifikasi Card -->
-            <section aria-label="Spotlight dan Verifikasi" class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-6">
+            <section aria-label="Spotlight dan Verifikasi" class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 mt-4 sm:mt-6">
                 <!-- Card Hot Spotlight -->
-                <article class="lg:col-span-2 bg-[#272727] text-white p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm border border-gray-700">
-                    <div class="flex-1">
+                <article class="lg:col-span-2 bg-[#272727] text-white p-5 sm:p-8 flex flex-row items-center justify-between gap-4 sm:gap-6 shadow-sm border border-gray-700 overflow-hidden">
+                    <div class="flex-1 min-w-0">
                         <span class="text-[10px] font-bold tracking-widest text-brand-dark uppercase bg-brand-yellow py-0.5 px-2 inline-block mb-3">
                             HOT SPOTLIGHT
                         </span>
-                        <h2 class="font-hd text-lg sm:text-xl font-bold text-white leading-snug">
+                        <h2 class="font-hd text-base sm:text-xl font-bold text-white leading-snug">
                             Mechanical Keyboards & Studio Audio Gear
                         </h2>
-                        <p class="text-xs text-gray-300 mt-2.5 leading-relaxed max-w-sm">
+                        <p class="text-xs text-gray-300 mt-2 leading-relaxed hidden sm:block max-w-sm">
                             Tunjang produktivitas dan setup desk-mu dengan ribuan switch mekanikal kustom, keycaps PBT, DAC amp, serta headphone studio teruji.
                         </p>
-                        <a href="#trending" class="mt-5 inline-flex items-center gap-1.5 bg-brand-yellow text-brand-dark px-4 py-2.5 text-xs font-bold hover:brightness-95 transition shadow-sm">
+                        <a href="#trending" class="mt-4 inline-flex items-center gap-1.5 bg-brand-yellow text-brand-dark px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-bold hover:brightness-95 transition shadow-sm min-h-[44px]">
                             Koleksi Terlengkap <i class="ph ph-arrow-right font-bold text-xs"></i>
                         </a>
                     </div>
-                    <div class="w-full sm:w-56 h-36 shrink-0 flex items-center justify-center relative">
-                        <img src="assets/keyboard.png" alt="keyboard">
+                    <div class="w-28 h-28 sm:w-56 sm:h-40 shrink-0 flex items-center justify-center">
+                        <img src="assets/keyboard.png" alt="Mechanical Keyboard" width="224" height="160"
+                            class="w-full h-full object-contain" loading="lazy" />
                     </div>
                 </article>
 
@@ -205,21 +206,21 @@ $sections = [
 
         <!-- Section Produk: Pilihan, Trending, New Arrivals (data dari tabel produk) -->
         <?php foreach ($sections as $sec): ?>
-            <section id="<?= $sec['id'] ?>" class="max-w-7xl mx-auto px-6 md:px-12 <?= $sec['class'] ?>">
-                <div class="mb-4">
-                    <h2 class="text-base sm:text-lg font-bold text-gray-900"><?= htmlspecialchars($sec['judul']) ?></h2>
-                    <p class="text-xs text-gray-400 mt-0.5"><?= htmlspecialchars($sec['sub']) ?></p>
+            <section id="<?= $sec['id'] ?>" class="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 <?= $sec['class'] ?>">
+                <div class="mb-3 sm:mb-4">
+                    <h2 class="text-sm sm:text-lg font-bold text-gray-900"><?= htmlspecialchars($sec['judul']) ?></h2>
+                    <p class="text-[11px] sm:text-xs text-gray-400 mt-0.5"><?= htmlspecialchars($sec['sub']) ?></p>
                 </div>
                 <?php if (empty($sec['items'])): ?>
                     <p class="text-xs text-gray-500 bg-white border border-gray-200/70 p-6 text-center">Belum ada produk tersedia.</p>
                 <?php else: ?>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
                         <?php foreach ($sec['items'] as $item): ?>
-                            <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="bg-white border border-gray-200/70 p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group cursor-pointer">
+                            <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="bg-white border border-gray-200/70 p-2.5 sm:p-3 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition group">
                                 <div>
-                                    <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-3 mb-2.5 relative">
+                                    <div class="w-full aspect-square bg-[#FBFBFB] border border-gray-100 overflow-hidden flex items-center justify-center p-2 sm:p-3 mb-2 relative">
                                         <?php if (!empty($item['foto'])): ?>
-                                            <img src="<?= htmlspecialchars($item['foto']) ?>" alt="<?= htmlspecialchars($item['nama_produk']) ?>" class="w-full h-full object-contain group-hover:scale-105 transition" />
+                                            <img src="<?= htmlspecialchars($item['foto']) ?>" alt="<?= htmlspecialchars($item['nama_produk']) ?>" class="w-full h-full object-contain group-hover:scale-105 transition" loading="lazy" />
                                         <?php else: ?>
                                             <div class="flex flex-col items-center justify-center text-gray-400 group-hover:scale-105 transition">
                                                 <i class="ph <?= htmlspecialchars(kategoriIcon($item['nama_kategori'])) ?> text-3xl text-gray-400"></i>
@@ -227,15 +228,15 @@ $sections = [
                                             </div>
                                         <?php endif; ?>
                                     </div>
-                                    <h3 class="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-dark transition min-h-[32px]">
+                                    <h3 class="text-[11px] sm:text-xs font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-brand-dark transition min-h-[30px] sm:min-h-[32px]">
                                         <?= htmlspecialchars($item['nama_produk']) ?>
                                     </h3>
-                                    <div class="mt-2">
-                                        <span class="font-bold text-sm text-gray-900 block"><?= formatRupiah((int)$item['harga']) ?></span>
+                                    <div class="mt-1.5 sm:mt-2">
+                                        <span class="font-bold text-xs sm:text-sm text-gray-900 block"><?= formatRupiah((int)$item['harga']) ?></span>
                                         <span class="text-[10px] text-gray-400"><?= htmlspecialchars($item['kondisi']) ?></span>
                                     </div>
                                 </div>
-                                <div class="flex items-center justify-between text-[11px] text-gray-500 mt-2.5 pt-2 border-t border-gray-50">
+                                <div class="flex items-center justify-between text-[10px] sm:text-[11px] text-gray-500 mt-2 pt-2 border-t border-gray-50">
                                     <?php if ((int)$item['total_ulasan'] > 0): ?>
                                         <span class="flex items-center gap-1 font-medium">
                                             <i class="ph-fill ph-star text-amber-400 text-xs"></i>
