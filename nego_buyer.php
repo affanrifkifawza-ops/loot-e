@@ -148,10 +148,13 @@ if ($db instanceof PDO) {
 
                 $hargaAsliNominal = (int)$row['harga_asli'];
                 $lastOfferNominal = (int)($row['tawaran_terakhir_harga'] ?? $row['harga_deal'] ?? $row['harga_asli']);
+                $ts = strtotime((string)$row['created_at']) ?: time();
 
                 $negotiations[] = [
                     'id'                 => (int)$row['id'],
                     'code'               => $code,
+                    'timestamp'          => $ts,
+                    'nominal_harga'      => $lastOfferNominal,
                     'waktu'              => formatTanggalNego((string)$row['created_at']),
                     'toko'               => (string)$row['nama_penjual'],
                     'status_key'         => $statusKey,
@@ -299,42 +302,40 @@ $filterTabs = [
                 <?php endif; ?>
 
                 <!-- Baris Tab Status Filter -->
-                <div class="mt-6">
-                    <div class="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filter Status Negosiasi">
-                        <?php foreach ($filterTabs as $tab): ?>
-                            <?php $isActive = $tab['key'] === 'semua'; ?>
-                            <button type="button"
-                                data-filter="<?= htmlspecialchars($tab['key'], ENT_QUOTES, 'UTF-8') ?>"
-                                role="tab"
-                                aria-selected="<?= $isActive ? 'true' : 'false' ?>"
-                                class="tab-filter-btn px-4 py-2 text-xs sm:text-[13px] font-semibold transition shrink-0 rounded-[2px] border cursor-pointer <?= $isActive ? 'bg-brand-yellow text-[#272727] border-brand-yellow' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200/90 font-medium' ?>">
-                                <?= htmlspecialchars($tab['label'], ENT_QUOTES, 'UTF-8') ?>
-                            </button>
-                        <?php endforeach; ?>
-                    </div>
+                <div role="tablist" aria-label="Filter status negosiasi"
+                    class="mt-5 flex flex-wrap items-center gap-2">
+                    <?php foreach ($filterTabs as $index => $tab): ?>
+                        <?php $isDefaultActive = $index === 0; ?>
+                        <button type="button"
+                            role="tab"
+                            aria-selected="<?= $isDefaultActive ? 'true' : 'false' ?>"
+                            data-filter="<?= htmlspecialchars($tab['key'], ENT_QUOTES, 'UTF-8') ?>"
+                            class="tab-filter-btn px-4 py-2 text-xs sm:text-[13px] rounded-[2px] border transition cursor-pointer <?= $isDefaultActive ? 'bg-brand-yellow border-brand-yellow text-[#272727] font-semibold' : 'bg-white border-gray-200 text-[#374151] hover:border-gray-300 hover:bg-gray-50 font-medium' ?>">
+                            <?= htmlspecialchars($tab['label'], ENT_QUOTES, 'UTF-8') ?>
+                        </button>
+                    <?php endforeach; ?>
                 </div>
 
-                <!-- Baris Pencarian dan Urutkan -->
-                <div class="mt-4 flex items-center gap-3">
+                <!-- Bar Pencarian & Urutkan -->
+                <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                     <div class="relative flex-1">
-                        <i class="ph ph-magnifying-glass text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 text-sm" aria-hidden="true"></i>
-                        <input type="text"
-                            id="search-negotiation"
+                        <i class="ph ph-magnifying-glass text-base text-gray-400 pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true"></i>
+                        <label for="search-negotiation" class="sr-only">Cari produk dalam negosiasi</label>
+                        <input type="search" id="search-negotiation"
                             placeholder="Cari produk dalam negosiasi..."
-                            class="w-full bg-white border border-gray-200/90 pl-9 pr-4 py-2 text-xs text-gray-800 placeholder-gray-400 rounded-[2px] focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
+                            class="w-full h-10 pl-10 pr-4 bg-white border border-gray-200/90 rounded-[2px] text-xs sm:text-[13px] text-[#272727] placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition" />
                     </div>
-                    <div class="shrink-0">
-                        <div class="relative inline-block">
-                            <select id="sort-negotiation"
-                                aria-label="Urutkan Negosiasi"
-                                class="appearance-none bg-white border border-gray-200/90 text-xs text-gray-700 px-3.5 py-2 pr-8 rounded-[2px] focus:outline-none focus:border-brand-yellow cursor-pointer font-medium">
-                                <option value="terbaru">Terbaru</option>
-                                <option value="terlama">Terlama</option>
-                                <option value="harga_tertinggi">Harga Tertinggi</option>
-                                <option value="harga_terendah">Harga Terendah</option>
-                            </select>
-                            <i class="ph ph-caret-down text-gray-500 absolute right-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" aria-hidden="true"></i>
-                        </div>
+
+                    <div class="relative w-full sm:w-[152px] shrink-0">
+                        <label for="sort-negotiation" class="sr-only">Urutkan negosiasi</label>
+                        <select id="sort-negotiation"
+                            class="w-full h-10 pl-3.5 pr-9 bg-white border border-gray-200/90 rounded-[2px] text-xs sm:text-[13px] font-medium text-[#272727] appearance-none cursor-pointer focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition">
+                            <option value="terbaru" selected>Terbaru</option>
+                            <option value="terlama">Terlama</option>
+                            <option value="harga_tertinggi">Harga Tertinggi</option>
+                            <option value="harga_terendah">Harga Terendah</option>
+                        </select>
+                        <i class="ph ph-caret-down text-xs text-gray-600 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true"></i>
                     </div>
                 </div>
 
@@ -351,47 +352,53 @@ $filterTabs = [
                             </p>
                             <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
                                 <a href="search.php"
-                                    class="inline-flex items-center gap-2 bg-brand-yellow hover:brightness-95 active:scale-[0.99] text-[#272727] font-bold text-xs px-5 py-2.5 rounded-[2px] transition shadow-xs">
-                                    <i class="ph ph-magnifying-glass text-sm" aria-hidden="true"></i>
+                                    class="inline-flex items-center gap-2 bg-brand-yellow hover:brightness-95 active:scale-[0.99] text-[#272727] font-bold text-xs sm:text-[13px] px-5 py-2.5 rounded-[2px] transition shadow-xs">
+                                    <i class="ph ph-magnifying-glass text-sm font-bold" aria-hidden="true"></i>
                                     <span>Cari Produk Nego</span>
                                 </a>
                             </div>
                         </div>
                     <?php else: ?>
                         <?php foreach ($negotiations as $item): ?>
-                            <article class="negotiation-card bg-white border border-gray-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition hover:border-gray-300"
+                            <article class="negotiation-card bg-white border border-gray-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
                                 data-status="<?= htmlspecialchars($item['status_key'], ENT_QUOTES, 'UTF-8') ?>"
+                                data-timestamp="<?= (int)$item['timestamp'] ?>"
+                                data-price="<?= (int)$item['nominal_harga'] ?>"
                                 data-title="<?= htmlspecialchars(strtolower($item['nama_produk']), ENT_QUOTES, 'UTF-8') ?>"
                                 data-store="<?= htmlspecialchars(strtolower($item['toko']), ENT_QUOTES, 'UTF-8') ?>"
-                                data-code="<?= htmlspecialchars(strtolower($item['code']), ENT_QUOTES, 'UTF-8') ?>">
+                                data-code="<?= htmlspecialchars(strtolower($item['code']), ENT_QUOTES, 'UTF-8') ?>"
+                                data-search="<?= htmlspecialchars(strtolower($item['nama_produk'] . ' ' . $item['toko'] . ' ' . $item['code']), ENT_QUOTES, 'UTF-8') ?>">
 
                                 <!-- Header Kartu: ID, Tanggal, Toko, Status -->
-                                <div class="px-5 py-3 border-b border-gray-200/80 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 text-xs">
-                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500">
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-gray-900 font-semibold">ID Negosiasi: <span class="font-bold text-[#272727]"><?= htmlspecialchars($item['code'], ENT_QUOTES, 'UTF-8') ?></span></span>
+                                <div class="px-5 py-3.5 border-b border-gray-200/80 flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+                                        <div class="inline-flex items-center gap-1.5">
+                                            <span class="font-bold text-[#272727]">
+                                                ID Negosiasi: <?= htmlspecialchars($item['code'], ENT_QUOTES, 'UTF-8') ?>
+                                            </span>
                                             <button type="button"
-                                                class="copy-code-btn text-gray-400 hover:text-gray-700 transition cursor-pointer p-0.5"
+                                                class="copy-code-btn text-gray-400 hover:text-[#272727] transition cursor-pointer inline-flex items-center"
                                                 data-code="<?= htmlspecialchars($item['code'], ENT_QUOTES, 'UTF-8') ?>"
                                                 title="Salin ID Negosiasi"
                                                 aria-label="Salin ID <?= htmlspecialchars($item['code'], ENT_QUOTES, 'UTF-8') ?>">
-                                                <i class="ph ph-copy text-xs" aria-hidden="true"></i>
+                                                <i class="ph ph-copy text-sm" aria-hidden="true"></i>
                                             </button>
                                         </div>
-                                        <div class="flex items-center gap-1.5 text-gray-500">
-                                            <i class="ph ph-calendar-blank text-gray-400 text-xs" aria-hidden="true"></i>
-                                            <span><?= htmlspecialchars($item['waktu'], ENT_QUOTES, 'UTF-8') ?></span>
-                                        </div>
-                                        <div class="flex items-center gap-1.5 text-gray-600 font-medium">
-                                            <i class="ph ph-storefront text-gray-400 text-xs" aria-hidden="true"></i>
+                                        <span aria-hidden="true" class="text-gray-300">|</span>
+                                        <span class="text-gray-500">
+                                            <?= htmlspecialchars($item['waktu'], ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                        <span aria-hidden="true" class="text-gray-300">|</span>
+                                        <span class="inline-flex items-center gap-1.5 font-semibold text-[#272727]">
+                                            <i class="ph ph-storefront text-sm text-gray-500" aria-hidden="true"></i>
                                             <span><?= htmlspecialchars($item['toko'], ENT_QUOTES, 'UTF-8') ?></span>
-                                        </div>
+                                        </span>
                                     </div>
 
                                     <!-- Status Badge Text -->
-                                    <div class="flex items-center gap-1.5 <?= htmlspecialchars($item['status_color'], ENT_QUOTES, 'UTF-8') ?> font-semibold text-xs">
+                                    <div class="inline-flex items-center gap-1.5 text-xs font-semibold <?= htmlspecialchars($item['status_color'], ENT_QUOTES, 'UTF-8') ?>">
                                         <?php if (!empty($item['status_icon'])): ?>
-                                            <i class="ph <?= htmlspecialchars($item['status_icon'], ENT_QUOTES, 'UTF-8') ?> text-xs" aria-hidden="true"></i>
+                                            <i class="ph <?= htmlspecialchars($item['status_icon'], ENT_QUOTES, 'UTF-8') ?> text-sm" aria-hidden="true"></i>
                                         <?php endif; ?>
                                         <span><?= htmlspecialchars($item['status_label'], ENT_QUOTES, 'UTF-8') ?></span>
                                     </div>
@@ -414,13 +421,13 @@ $filterTabs = [
                                         <!-- Detail Produk & Status Pengajuan -->
                                         <div class="min-w-0 flex-1">
                                             <div>
-                                                <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-[2px] <?= htmlspecialchars($item['kondisi_badge_bg'], ENT_QUOTES, 'UTF-8') ?>">
+                                                <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-[3px] leading-tight <?= htmlspecialchars($item['kondisi_badge_bg'], ENT_QUOTES, 'UTF-8') ?>">
                                                     <?= htmlspecialchars($item['kondisi'], ENT_QUOTES, 'UTF-8') ?>
                                                 </span>
                                             </div>
-                                            <h2 class="text-sm font-bold text-[#272727] leading-snug mt-1 truncate">
+                                            <h3 class="mt-1 text-sm font-bold text-[#272727] leading-snug truncate">
                                                 <?= htmlspecialchars($item['nama_produk'], ENT_QUOTES, 'UTF-8') ?>
-                                            </h2>
+                                            </h3>
                                             <div class="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
                                                 <i class="ph <?= htmlspecialchars($item['subteks_icon'], ENT_QUOTES, 'UTF-8') ?> text-gray-400 text-xs shrink-0" aria-hidden="true"></i>
                                                 <span><?= htmlspecialchars($item['subteks'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -435,13 +442,13 @@ $filterTabs = [
                                     <!-- Kolom Harga Penawaran Terakhir & Tombol Lihat Detail -->
                                     <div class="flex items-center justify-between md:justify-end gap-6 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
                                         <div class="text-left md:text-right">
-                                            <p class="text-[11px] text-gray-400 font-medium">Penawaran Terakhir</p>
-                                            <p class="text-base sm:text-lg font-extrabold text-[#272727] tabular-nums mt-0.5">
+                                            <p class="text-xs text-gray-500">Penawaran Terakhir</p>
+                                            <p class="text-base font-extrabold text-[#272727] tabular-nums mt-0.5">
                                                 <?= htmlspecialchars($item['penawaran_terakhir'], ENT_QUOTES, 'UTF-8') ?>
                                             </p>
                                         </div>
                                         <a href="<?= htmlspecialchars($item['detail_url'], ENT_QUOTES, 'UTF-8') ?>"
-                                            class="inline-flex items-center justify-center gap-1.5 bg-brand-yellow hover:brightness-95 active:scale-[0.99] text-[#272727] text-xs font-bold px-4 py-2.5 rounded-[2px] transition shrink-0 cursor-pointer">
+                                            class="inline-flex items-center justify-center gap-1.5 bg-brand-yellow hover:brightness-95 active:scale-[0.99] text-[#272727] text-xs font-bold px-4 py-2 rounded-[2px] transition shrink-0 cursor-pointer">
                                             <i class="ph ph-file-text text-sm font-bold" aria-hidden="true"></i>
                                             <span>Lihat Detail</span>
                                         </a>
@@ -449,18 +456,18 @@ $filterTabs = [
                                 </div>
                             </article>
                         <?php endforeach; ?>
-                    <?php endif; ?>
 
-                    <!-- Empty State saat pencarian/filter tidak ditemukan -->
-                    <div id="empty-state" class="hidden bg-white border border-gray-200/80 p-10 text-center rounded-[2px]">
-                        <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mb-3">
-                            <i class="ph ph-chat-circle-dots text-2xl" aria-hidden="true"></i>
+                        <!-- Empty State saat pencarian/filter tidak ditemukan -->
+                        <div id="empty-state" class="hidden bg-white border border-gray-200/80 p-10 text-center rounded-[2px]">
+                            <div class="w-14 h-14 mx-auto rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mb-3">
+                                <i class="ph ph-chat-circle-dots text-2xl" aria-hidden="true"></i>
+                            </div>
+                            <h3 id="empty-state-title" class="text-sm font-bold text-[#272727]">Tidak Ada Negosiasi Ditemukan</h3>
+                            <p id="empty-state-desc" class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                                Tidak ada data negosiasi yang sesuai dengan filter atau kata kunci pencarian kamu.
+                            </p>
                         </div>
-                        <h3 class="text-sm font-bold text-[#272727]">Tidak Ada Negosiasi Ditemukan</h3>
-                        <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                            Tidak ada data negosiasi yang sesuai dengan filter atau kata kunci pencarian kamu.
-                        </p>
-                    </div>
+                    <?php endif; ?>
                 </div>
 
             </section>
@@ -481,14 +488,18 @@ $filterTabs = [
             const tabButtons = document.querySelectorAll('.tab-filter-btn');
             const searchInput = document.getElementById('search-negotiation');
             const sortSelect = document.getElementById('sort-negotiation');
-            const cards = Array.from(document.querySelectorAll('.negotiation-card'));
+            const container = document.getElementById('negotiations-container');
             const emptyState = document.getElementById('empty-state');
+            const emptyTitle = document.getElementById('empty-state-title');
+            const emptyDesc = document.getElementById('empty-state-desc');
             const toast = document.getElementById('nego-toast');
             const copyButtons = document.querySelectorAll('.copy-code-btn');
 
             let activeFilter = 'semua';
-            let searchQuery = '';
             let toastTimer = null;
+
+            const ACTIVE_CLASSES = ['bg-brand-yellow', 'border-brand-yellow', 'text-[#272727]', 'font-semibold'];
+            const INACTIVE_CLASSES = ['bg-white', 'border-gray-200', 'text-[#374151]', 'hover:border-gray-300', 'hover:bg-gray-50', 'font-medium'];
 
             function showToast(message, type) {
                 if (!toast || !message) return;
@@ -499,6 +510,100 @@ $filterTabs = [
                 toastTimer = setTimeout(function() {
                     toast.classList.add('hidden');
                 }, 3500);
+            }
+
+            function getCards() {
+                return container ? Array.from(container.querySelectorAll('.negotiation-card')) : [];
+            }
+
+            function sortCards(cards, mode) {
+                if (!container) return;
+                cards.sort(function(a, b) {
+                    const timeA = Number(a.dataset.timestamp || 0);
+                    const timeB = Number(b.dataset.timestamp || 0);
+                    const priceA = Number(a.dataset.price || 0);
+                    const priceB = Number(b.dataset.price || 0);
+
+                    if (mode === 'terlama') return timeA - timeB;
+                    if (mode === 'harga_tertinggi') return priceB - priceA;
+                    if (mode === 'harga_terendah') return priceA - priceB;
+                    return timeB - timeA; // 'terbaru'
+                });
+
+                cards.forEach(function(card) {
+                    container.appendChild(card);
+                });
+            }
+
+            // Filter dan Pencarian
+            function applyFilters() {
+                const cards = getCards();
+                if (cards.length === 0) return;
+
+                const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+                const sortMode = sortSelect ? sortSelect.value : 'terbaru';
+
+                sortCards(cards, sortMode);
+
+                let visibleCount = 0;
+                cards.forEach(card => {
+                    const status = card.getAttribute('data-status') || '';
+                    const searchData = card.getAttribute('data-search') || '';
+
+                    const matchesFilter = (activeFilter === 'semua') || (status === activeFilter);
+                    const matchesSearch = !query || searchData.includes(query);
+
+                    const shouldShow = matchesFilter && matchesSearch;
+                    card.classList.toggle('hidden', !shouldShow);
+                    if (shouldShow) visibleCount++;
+                });
+
+                if (emptyState) {
+                    const isEmpty = visibleCount === 0;
+                    emptyState.classList.toggle('hidden', !isEmpty);
+                    if (isEmpty && emptyTitle && emptyDesc) {
+                        if (query !== '') {
+                            emptyTitle.textContent = 'Negosiasi tidak ditemukan';
+                            emptyDesc.textContent = 'Tidak ada negosiasi yang cocok dengan kata kunci "' + searchInput.value.trim() + '".';
+                        } else {
+                            emptyTitle.textContent = 'Belum ada negosiasi pada status ini';
+                            emptyDesc.textContent = 'Negosiasi yang sesuai dengan status terpilih akan muncul di sini.';
+                        }
+                    }
+                }
+            }
+
+            function setActiveTab(key) {
+                activeFilter = key;
+                tabButtons.forEach(tab => {
+                    const isSelected = tab.getAttribute('data-filter') === key;
+                    tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+                    if (isSelected) {
+                        tab.classList.remove(...INACTIVE_CLASSES);
+                        tab.classList.add(...ACTIVE_CLASSES);
+                    } else {
+                        tab.classList.remove(...ACTIVE_CLASSES);
+                        tab.classList.add(...INACTIVE_CLASSES);
+                    }
+                });
+                applyFilters();
+            }
+
+            // Event Tab Click
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    setActiveTab(this.getAttribute('data-filter') || 'semua');
+                });
+            });
+
+            // Event Pencarian Live
+            if (searchInput) {
+                searchInput.addEventListener('input', applyFilters);
+            }
+
+            // Event Urutkan Change
+            if (sortSelect) {
+                sortSelect.addEventListener('change', applyFilters);
             }
 
             // Fitur Salin ID Negosiasi
@@ -532,66 +637,6 @@ $filterTabs = [
                     showToast('Gagal menyalin ID.', 'error');
                 }
                 document.body.removeChild(tempInput);
-            }
-
-            // Filter dan Pencarian
-            function applyFilters() {
-                let visibleCount = 0;
-
-                cards.forEach(card => {
-                    const status = card.getAttribute('data-status') || '';
-                    const title = card.getAttribute('data-title') || '';
-                    const store = card.getAttribute('data-store') || '';
-                    const code = card.getAttribute('data-code') || '';
-
-                    const matchesFilter = (activeFilter === 'semua') || (status === activeFilter);
-                    const matchesSearch = !searchQuery ||
-                        title.includes(searchQuery) ||
-                        store.includes(searchQuery) ||
-                        code.includes(searchQuery);
-
-                    if (matchesFilter && matchesSearch) {
-                        card.classList.remove('hidden');
-                        visibleCount++;
-                    } else {
-                        card.classList.add('hidden');
-                    }
-                });
-
-                if (emptyState) {
-                    if (visibleCount === 0) {
-                        emptyState.classList.remove('hidden');
-                    } else {
-                        emptyState.classList.add('hidden');
-                    }
-                }
-            }
-
-            // Event Tab Click
-            tabButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    activeFilter = this.getAttribute('data-filter') || 'semua';
-
-                    tabButtons.forEach(b => {
-                        b.setAttribute('aria-selected', 'false');
-                        b.classList.remove('bg-brand-yellow', 'text-[#272727]', 'border-brand-yellow', 'font-semibold');
-                        b.classList.add('bg-white', 'text-gray-700', 'border-gray-200/90', 'font-medium');
-                    });
-
-                    this.setAttribute('aria-selected', 'true');
-                    this.classList.remove('bg-white', 'text-gray-700', 'border-gray-200/90', 'font-medium');
-                    this.classList.add('bg-brand-yellow', 'text-[#272727]', 'border-brand-yellow', 'font-semibold');
-
-                    applyFilters();
-                });
-            });
-
-            // Event Pencarian Live
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    searchQuery = this.value.trim().toLowerCase();
-                    applyFilters();
-                });
             }
 
             // Demo toast untuk verifikasi sekarang
