@@ -12,7 +12,7 @@ $userId = (int)$_SESSION['user_id'];
 
 // Sinkronkan data user terbaru dari database
 $stmtUser = $db->prepare("
-    SELECT id, nama, email, peran, is_verified
+    SELECT id, nama, email, peran, no_hp, alamat, is_verified
     FROM pengguna
     WHERE id = ?
     LIMIT 1
@@ -127,109 +127,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $forcedState = $formMode;
     } else {
         try {
-            if ($formMode === 'edit' && $addressId > 0) {
-                $stmtCheck = $db->prepare("SELECT id FROM alamat WHERE id = ? AND user_id = ? LIMIT 1");
-                $stmtCheck->execute([$addressId, $userId]);
-                if (!$stmtCheck->fetch()) {
-                    $flash = ['type' => 'error', 'message' => 'Data alamat tidak ditemukan.'];
-                    $forcedState = 'empty';
-                } else {
-                    $stmtUpdate = $db->prepare("
-                        UPDATE alamat
-                        SET nama_penerima = ?, telepon = ?, provinsi = ?, kota = ?,
-                            kecamatan = ?, kelurahan = ?, kode_pos = ?,
-                            alamat_lengkap = ?, detail_tambahan = ?
-                        WHERE id = ? AND user_id = ?
-                    ");
-                    $stmtUpdate->execute([
-                        $namaPenerima,
-                        $telepon,
-                        $provinsi,
-                        $kota,
-                        $kecamatan,
-                        $kelurahan,
-                        $kodePos,
-                        $alamatLengkap,
-                        $detailTambahan !== '' ? $detailTambahan : null,
-                        $addressId,
-                        $userId,
-                    ]);
-
-                    $_SESSION['address_flash'] = [
-                        'type'    => 'success',
-                        'message' => 'Perubahan alamat berhasil disimpan.',
-                    ];
-                    header("Location: alamat_buyer.php");
-                    exit;
-                }
-            } else {
-                $db->beginTransaction();
-                $stmtReset = $db->prepare("UPDATE alamat SET is_utama = 0 WHERE user_id = ?");
-                $stmtReset->execute([$userId]);
-
-                $stmtInsert = $db->prepare("
-                    INSERT INTO alamat (
-                        user_id, nama_penerima, telepon, provinsi, kota,
-                        kecamatan, kelurahan, kode_pos, alamat_lengkap, detail_tambahan, is_utama
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                ");
-                $stmtInsert->execute([
-                    $userId,
-                    $namaPenerima,
-                    $telepon,
-                    $provinsi,
-                    $kota,
-                    $kecamatan,
-                    $kelurahan,
-                    $kodePos,
-                    $alamatLengkap,
-                    $detailTambahan !== '' ? $detailTambahan : null,
-                ]);
-                $db->commit();
-
-                $_SESSION['address_flash'] = [
-                    'type'    => 'success',
-                    'message' => 'Alamat baru berhasil ditambahkan.',
-                ];
-                header("Location: alamat_buyer.php");
-                exit;
+            $alamatPayload = [
+                'nama_penerima'   => $namaPenerima,
+                'telepon'         => $telepon,
+                'provinsi'        => $provinsi,
+                'kota'            => $kota,
+                'kecamatan'       => $kecamatan,
+                'kelurahan'       => $kelurahan,
+                'kode_pos'        => $kodePos,
+                'alamat_lengkap'  => $alamatLengkap,
+                'detail_tambahan' => $detailTambahan,
+            ];
+            $alamatJson = json_encode($alamatPayload, JSON_UNESCAPED_UNICODE);
+            if ($alamatJson === false) {
+                throw new RuntimeException('Gagal mengodekan data alamat.');
             }
-        } catch (PDOException $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
+
+            $stmtUpdate = $db->prepare("UPDATE pengguna SET alamat = ? WHERE id = ?");
+            $stmtUpdate->execute([$alamatJson, $userId]);
+
+            $_SESSION['address_flash'] = [
+                'type'    => 'success',
+                'message' => $formMode === 'edit'
+                    ? 'Perubahan alamat berhasil disimpan.'
+                    : 'Alamat baru berhasil ditambahkan.',
+            ];
+            header("Location: alamat_buyer.php");
+            exit;
+        } catch (Throwable $e) {
             $flash = ['type' => 'error', 'message' => 'Gagal menyimpan data alamat. Silakan coba lagi.'];
             $forcedState = $formMode;
         }
     }
 }
 
-// Ambil alamat utama user dari database
-$address = null;
-$stmtAddr = $db->prepare("SELECT * FROM alamat WHERE user_id = ? AND is_utama = 1 ORDER BY id DESC LIMIT 1");
-$stmtAddr->execute([$userId]);
-$address = $stmtAddr->fetch() ?: null;
-
-if (!$address) {
-    $stmtAny = $db->prepare("SELECT * FROM alamat WHERE user_id = ? ORDER BY id DESC LIMIT 1");
-    $stmtAny->execute([$userId]);
-    $address = $stmtAny->fetch() ?: null;
-}
+// Ambil alamat user dari kolom `pengguna.alamat`
+$address = parseAlamatPengguna($userRow['alamat'] ?? null, [
+    'nama'  => $userRow['nama'] ?? '',
+    'no_hp' => $userRow['no_hp'] ?? '',
+]);
 
 $hasAddress = $address !== null;
 
 // Pastikan opsi wilayah yang sudah tersimpan tetap ada di dropdown jika di luar daftar bawaan
 if ($address) {
-    if (!in_array($address['provinsi'], $provinsiOptions, true)) {
+    if ($address['provinsi'] !== '' && !in_array($address['provinsi'], $provinsiOptions, true)) {
         $provinsiOptions[] = $address['provinsi'];
     }
-    if (!in_array($address['kota'], $kotaOptions, true)) {
+    if ($address['kota'] !== '' && !in_array($address['kota'], $kotaOptions, true)) {
         $kotaOptions[] = $address['kota'];
     }
-    if (!in_array($address['kecamatan'], $kecamatanOptions, true)) {
+    if ($address['kecamatan'] !== '' && !in_array($address['kecamatan'], $kecamatanOptions, true)) {
         $kecamatanOptions[] = $address['kecamatan'];
     }
-    if (!in_array($address['kelurahan'], $kelurahanOptions, true)) {
+    if ($address['kelurahan'] !== '' && !in_array($address['kelurahan'], $kelurahanOptions, true)) {
         $kelurahanOptions[] = $address['kelurahan'];
     }
 }
@@ -427,8 +378,12 @@ if ($forcedState !== null) {
                                 </p>
                                 <div id="display-alamat-full" class="text-xs text-gray-600 leading-relaxed mt-2.5 space-y-0.5">
                                     <p><?= htmlspecialchars((string)($address['alamat_lengkap'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
-                                    <p>Kel. <?= htmlspecialchars((string)($address['kelurahan'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, Kec. <?= htmlspecialchars((string)($address['kecamatan'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
-                                    <p><?= htmlspecialchars((string)($address['kota'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars((string)($address['provinsi'] ?? ''), ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars((string)($address['kode_pos'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
+                                    <?php if (!empty($address['kelurahan']) || !empty($address['kecamatan'])): ?>
+                                        <p>Kel. <?= htmlspecialchars((string)($address['kelurahan'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, Kec. <?= htmlspecialchars((string)($address['kecamatan'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
+                                    <?php endif; ?>
+                                    <?php if (!empty($address['kota']) || !empty($address['provinsi']) || !empty($address['kode_pos'])): ?>
+                                        <p><?= htmlspecialchars((string)($address['kota'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars((string)($address['provinsi'] ?? ''), ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars((string)($address['kode_pos'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>

@@ -292,6 +292,7 @@ function formatHargaCart(int $nominal): string
                                 $kondisiText = $item['kondisi'] ?? 'Bekas (Normal)';
                                 $isBaru = (stripos($kondisiText, 'Baru') !== false && stripos($kondisiText, 'Seperti') === false);
                                 $isOwnProduct = ($currentUser['id'] === (int)($item['id_penjual'] ?? 0));
+                                $alamatPenjualRingkas = formatAlamatRingkas($item['alamat_penjual'] ?? '');
                                 $catatanItem = '';
                                 if (!empty($item['deskripsi'])) {
                                     $parsed = parseDeskripsiProduk($item['deskripsi']);
@@ -299,12 +300,12 @@ function formatHargaCart(int $nominal): string
                                     $parts = array_filter([
                                         $rw['servis'] ?? '',
                                         $rw['kelengkapan'] ?? '',
-                                        !empty($item['alamat_penjual']) ? 'Siap kirim dari ' . $item['alamat_penjual'] : ''
+                                        $alamatPenjualRingkas !== '' ? 'Siap kirim dari ' . $alamatPenjualRingkas : ''
                                     ]);
                                     $catatanItem = implode(' • ', array_slice($parts, 0, 2));
                                 }
-                                if (empty($catatanItem) && !empty($item['alamat_penjual'])) {
-                                    $catatanItem = 'Siap kirim dari ' . htmlspecialchars($item['alamat_penjual']);
+                                if (empty($catatanItem) && $alamatPenjualRingkas !== '') {
+                                    $catatanItem = 'Siap kirim dari ' . $alamatPenjualRingkas;
                                 }
                             ?>
                                 <article class="cart-item-row p-3.5 sm:p-5 md:p-6 transition hover:bg-gray-50/50"

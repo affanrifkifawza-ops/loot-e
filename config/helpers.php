@@ -89,3 +89,90 @@ function parseDeskripsiProduk(?string $rawDeskripsi): array
         'riwayat'       => $riwayat,
     ];
 }
+
+/**
+ * Mem-parsing kolom `pengguna.alamat` (JSON terstruktur dari alamat_buyer.php atau teks biasa lama).
+ * Mengembalikan null jika alamat kosong.
+ */
+function parseAlamatPengguna(?string $rawAlamat, array $fallbackUser = []): ?array
+{
+    $raw = trim((string)$rawAlamat);
+    if ($raw === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded) && json_last_error() === JSON_ERROR_NONE) {
+        $parsed = [
+            'is_structured'   => true,
+            'nama_penerima'   => trim((string)($decoded['nama_penerima'] ?? '')),
+            'telepon'         => trim((string)($decoded['telepon'] ?? '')),
+            'provinsi'        => trim((string)($decoded['provinsi'] ?? '')),
+            'kota'            => trim((string)($decoded['kota'] ?? '')),
+            'kecamatan'       => trim((string)($decoded['kecamatan'] ?? '')),
+            'kelurahan'       => trim((string)($decoded['kelurahan'] ?? '')),
+            'kode_pos'        => trim((string)($decoded['kode_pos'] ?? '')),
+            'alamat_lengkap'  => trim((string)($decoded['alamat_lengkap'] ?? '')),
+            'detail_tambahan' => trim((string)($decoded['detail_tambahan'] ?? '')),
+        ];
+
+        if (
+            $parsed['alamat_lengkap'] === '' &&
+            $parsed['nama_penerima'] === '' &&
+            $parsed['kota'] === '' &&
+            $parsed['provinsi'] === ''
+        ) {
+            return null;
+        }
+
+        return $parsed;
+    }
+
+    return [
+        'is_structured'   => false,
+        'nama_penerima'   => trim((string)($fallbackUser['nama'] ?? '')),
+        'telepon'         => trim((string)($fallbackUser['no_hp'] ?? '')),
+        'provinsi'        => '',
+        'kota'            => '',
+        'kecamatan'       => '',
+        'kelurahan'       => '',
+        'kode_pos'        => '',
+        'alamat_lengkap'  => $raw,
+        'detail_tambahan' => '',
+    ];
+}
+
+/**
+ * Mengubah kolom `pengguna.alamat` (JSON maupun teks biasa) menjadi string lokasi yang rapi untuk ditampilkan.
+ */
+function formatAlamatRingkas(?string $rawAlamat, bool $kotaOnly = false): string
+{
+    $parsed = parseAlamatPengguna($rawAlamat);
+    if ($parsed === null) {
+        return '';
+    }
+
+    if ($parsed['is_structured']) {
+        if ($kotaOnly) {
+            return $parsed['kota'] !== ''
+                ? $parsed['kota']
+                : ($parsed['provinsi'] !== '' ? $parsed['provinsi'] : $parsed['alamat_lengkap']);
+        }
+
+        $parts = array_values(array_filter([
+            $parsed['alamat_lengkap'],
+            $parsed['kota'],
+            $parsed['provinsi'],
+        ], static fn($v) => $v !== ''));
+
+        return implode(', ', $parts);
+    }
+
+    $raw = $parsed['alamat_lengkap'];
+    if ($kotaOnly) {
+        $parts = array_values(array_filter(array_map('trim', explode(',', $raw))));
+        return !empty($parts) ? end($parts) : $raw;
+    }
+
+    return $raw;
+}

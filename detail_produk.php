@@ -129,7 +129,7 @@ $statusProduk    = $produk['status_produk'];
 $bisaNego        = (int)$produk['bisa_nego'] === 1;
 $bisaBarter      = (int)$produk['bisa_barter'] === 1;
 $namaPenjual     = $produk['nama_penjual'];
-$alamatPenjual   = $produk['alamat_penjual'] ?? '';
+$alamatPenjual   = formatAlamatRingkas($produk['alamat_penjual'] ?? '');
 $penjualVerified = (int)($produk['penjual_verified'] ?? 0) === 1;
 $isOwnProduct    = ($currentUser['id'] === (int)$produk['id_penjual']); // BR-01
 

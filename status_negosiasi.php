@@ -66,12 +66,8 @@ function formatRingkasWaktu(string $dateStr): string
 
 function ekstrakKota(?string $alamat): string
 {
-    $raw = trim((string)$alamat);
-    if ($raw === '') {
-        return 'Indonesia';
-    }
-    $parts = array_values(array_filter(array_map('trim', explode(',', $raw))));
-    return !empty($parts) ? end($parts) : $raw;
+    $kota = formatAlamatRingkas($alamat, true);
+    return $kota !== '' ? $kota : 'Indonesia';
 }
 
 try {
