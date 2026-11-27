@@ -35,7 +35,7 @@ try {
         $stmt->execute([$productId]);
         $produk = $stmt->fetch() ?: null;
     } else {
-        $produk = $db->query($sqlBase . " WHERE p.status_produk = 'tersedia' ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
+        $produk = $db->query($sqlBase . " WHERE p.status_produk = 'tersedia' AND p.stok > 0 ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
     }
 
     if ($produk) {
@@ -47,7 +47,7 @@ try {
             FROM produk p
             JOIN kategori k ON p.id_kategori = k.id
             JOIN pengguna u ON p.id_penjual = u.id
-            WHERE p.status_produk = 'tersedia' AND p.id != ?
+            WHERE p.status_produk = 'tersedia' AND p.stok > 0 AND p.id != ?
             ORDER BY (p.id_kategori = ?) DESC, p.id DESC
             LIMIT 3
         ");
@@ -109,6 +109,12 @@ $namaPenjual     = $produk['nama_penjual'];
 $alamatPenjual   = $produk['alamat_penjual'] ?? '';
 $penjualVerified = (int)($produk['penjual_verified'] ?? 0) === 1;
 $isOwnProduct    = ($currentUser['id'] === (int)$produk['id_penjual']); // BR-01
+
+// Produk draft belum dipublikasikan sehingga hanya dapat dilihat pemilik atau admin
+if ($statusProduk === 'draft' && !$isOwnProduct && ($currentUser['peran'] ?? 'user') !== 'admin') {
+    header("Location: search.php");
+    exit;
+}
 
 // shortcut: estimasi rentang referensi pasar berbasis ±12% harga produk karena belum ada tabel harga pasar, ganti dengan query referensi saat tersedia
 $refStep     = $hargaProduk >= 2000000 ? 50000 : ($hargaProduk >= 500000 ? 25000 : ($hargaProduk >= 100000 ? 10000 : 1000));
@@ -417,8 +423,13 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </div>
                 <?php elseif ($statusProduk !== 'tersedia' || $stokProduk <= 0): ?>
                     <div class="bg-gray-100 border border-gray-200 rounded-lg p-3.5 text-xs text-gray-700 leading-relaxed">
-                        <p class="font-bold mb-0.5">Produk Tidak Tersedia</p>
-                        <p>Produk ini sedang terkunci dalam transaksi lain atau stok sudah habis.</p>
+                        <?php if ($statusProduk === 'nonaktif'): ?>
+                            <p class="font-bold mb-0.5">Produk Dinonaktifkan</p>
+                            <p>Penjual sedang menonaktifkan produk ini untuk sementara.</p>
+                        <?php else: ?>
+                            <p class="font-bold mb-0.5">Produk Habis Terjual</p>
+                            <p>Stok produk ini sudah habis terjual.</p>
+                        <?php endif; ?>
                     </div>
                 <?php else: ?>
                     <?php if ($stokProduk > 1): ?>
@@ -919,7 +930,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow" />
             </div>
             <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
-                <strong>Catatan Priority Queue:</strong> Pengajuan negosiasi tidak mengunci stok barang. Pembeli lain tetap dapat melakukan Beli Langsung selama transaksi belum masuk tahap pembayaran.
+                <strong>Catatan Penawaran:</strong> Pengajuan negosiasi tidak memotong stok barang. Pembeli lain tetap dapat membeli langsung atau mengajukan tawaran lain; tawaranmu otomatis gagal jika stok habis lebih dulu.
             </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
@@ -953,7 +964,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow"></textarea>
             </div>
             <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
-                <strong>Catatan Priority Queue:</strong> Pengajuan barter tidak mengunci stok barang hingga tawaran disetujui dan masuk tahap pesanan.
+                <strong>Catatan Penawaran:</strong> Pengajuan barter tidak memotong stok barang hingga kesepakatan disetujui dan pesanan dibuat. Tawaran otomatis gagal jika salah satu produk habis terjual lebih dulu.
             </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">

@@ -75,11 +75,11 @@ $_navName        = $_navUser ? htmlspecialchars($_navUser['nama']) : '';
 
                         <div class="border-t border-gray-100 my-1.5"></div>
 
-                        <button type="button" role="menuitem"
+                        <a href="dashboard_seller.php" role="menuitem"
                             class="w-full text-left px-2.5 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition">
                             <i class="ph ph-storefront text-base text-gray-500"></i>
                             Toko Saya
-                        </button>
+                        </a>
                         <button type="button" role="menuitem"
                             class="w-full text-left px-2.5 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition">
                             <i class="ph ph-gear text-base text-gray-500"></i>

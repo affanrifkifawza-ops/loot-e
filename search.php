@@ -41,6 +41,7 @@ try {
             LEFT JOIN produk p
                 ON k.id = p.id_kategori
                AND p.status_produk = 'tersedia'
+               AND p.stok > 0
                AND (p.nama_produk LIKE ? OR k.nama_kategori LIKE ?)
             GROUP BY k.id, k.nama_kategori
             ORDER BY k.id ASC
@@ -51,7 +52,7 @@ try {
         $allCategories = $db->query("
             SELECT k.id, k.nama_kategori, COUNT(p.id) AS total_produk
             FROM kategori k
-            LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia'
+            LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia' AND p.stok > 0
             GROUP BY k.id, k.nama_kategori
             ORDER BY k.id ASC
         ")->fetchAll();
@@ -67,7 +68,7 @@ try {
     }
 
     // Kondisi filter disusun dinamis, semua nilai lewat prepared statement
-    $where  = ["p.status_produk = 'tersedia'"];
+    $where  = ["p.status_produk = 'tersedia'", "p.stok > 0"];
     $params = [];
 
     if ($searchQuery !== '') {
@@ -342,7 +343,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                             $reviewVal = (int)$item['total_reviews'];
                             $ratingVal = number_format((float)$item['avg_rating'], 1);
                             ?>
-                            <article class="bg-white border border-gray-200/80 rounded-xl p-4 shadow-2xs hover:shadow-md hover:border-gray-300/80 transition flex flex-col group">
+                            <article class="bg-white border border-gray-200/80 p-4 shadow-2xs hover:shadow-md hover:border-gray-300/80 transition flex flex-col group">
                                 <!-- Baris Atas: Badge Kondisi & Kategori -->
                                 <div class="flex items-center justify-between gap-2 mb-2.5">
                                     <span class="<?= $isBaru ? 'bg-emerald-50 text-emerald-700' : 'bg-[#FFF8E1] text-[#B88A00]' ?> text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0">
@@ -355,11 +356,11 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
 
                                 <!-- Gambar, Judul, Harga & Tagline Opsi Transaksi -->
                                 <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="flex-1 flex flex-col">
-                                    <div class="w-full h-44 rounded-lg overflow-hidden flex items-center justify-center p-3 relative mb-3 bg-[#FAFAFA] border border-gray-100">
+                                    <div class="w-full h-44 overflow-hidden flex items-center justify-center p-3 relative mb-3 bg-[#FAFAFA] border border-gray-100">
                                         <?php if (!empty($item['foto'])): ?>
                                             <img src="<?= htmlspecialchars($item['foto']) ?>" alt="<?= htmlspecialchars($item['nama_produk']) ?>" class="w-full h-full object-contain group-hover:scale-105 transition" />
                                         <?php else: ?>
-                                            <div class="w-full h-full rounded-md flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
+                                            <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
                                                 <span class="text-[9px] font-extrabold tracking-widest text-brand-yellow uppercase mb-1">
                                                     <?= htmlspecialchars($item['nama_kategori'] ?? 'Loot-E') ?>
                                                 </span>
@@ -413,7 +414,6 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                             <span class="text-gray-400 text-[11px]">Belum ada ulasan</span>
                                         <?php endif; ?>
                                         <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="text-[11px] font-semibold text-gray-500 group-hover:text-[#272727] inline-flex items-center gap-0.5 transition shrink-0">
-                                            Lihat Detail <i class="ph-bold ph-arrow-right text-[10px]"></i>
                                         </a>
                                     </div>
 

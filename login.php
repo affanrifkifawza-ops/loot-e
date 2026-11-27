@@ -17,18 +17,28 @@ if (isLoggedIn()) {
 
 $error = "";
 $info = "";
+$fieldErrors = [];
 if ($redirect !== "index.php" && $_SERVER["REQUEST_METHOD"] !== "POST") {
   $info = "Silakan login terlebih dahulu untuk melanjutkan.";
 }
 
 // Proses saat form disubmit via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $email    = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+  $rawEmail = trim($_POST['email'] ?? '');
+  $email    = filter_var($rawEmail, FILTER_VALIDATE_EMAIL);
   $password = $_POST['password'] ?? '';
 
-  if (!$email || empty($password)) {
-    $error = "Email valid dan kata sandi wajib diisi.";
-  } else {
+  if (empty($rawEmail)) {
+    $fieldErrors['email'] = "Alamat email wajib diisi.";
+  } elseif (!$email) {
+    $fieldErrors['email'] = "Format email tidak valid (contoh: nama@contoh.com).";
+  }
+
+  if (empty($password)) {
+    $fieldErrors['password'] = "Kata sandi wajib diisi.";
+  }
+
+  if (empty($fieldErrors)) {
     try {
       $db   = getDbConnection();
       $stmt = $db->prepare("SELECT id, nama, email, password, peran, is_verified FROM pengguna WHERE email = ?");
@@ -36,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $user = $stmt->fetch();
 
       if (!$user || !password_verify($password, $user['password'])) {
-        $error = "Email atau kata sandi salah. Silakan coba lagi.";
+        $error = "Email atau kata sandi salah. Silakan periksa kembali.";
+        $fieldErrors['password'] = "Email atau kata sandi tidak cocok.";
       } else {
         session_regenerate_id(true);
         $_SESSION['user_id']     = (int)$user['id'];
@@ -133,38 +144,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
 
-        <form action="login.php<?= $redirect !== 'index.php' ? '?redirect=' . urlencode($redirect) : '' ?>" method="POST" class="space-y-5">
+        <form id="form-login" action="login.php<?= $redirect !== 'index.php' ? '?redirect=' . urlencode($redirect) : '' ?>" method="POST" class="space-y-5" novalidate>
           <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>" />
           <!-- Input Email -->
           <div>
             <label for="email" class="block text-sm font-semibold text-gray-700 mb-1.5">Alamat Email</label>
             <div class="relative">
-              <i class="ph ph-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+              <i class="ph ph-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none"></i>
               <input type="email" id="email" name="email" placeholder="nama@contoh.com" required
                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
-                class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
+                aria-describedby="email-error"
+                aria-invalid="<?= isset($fieldErrors['email']) ? 'true' : 'false' ?>"
+                class="w-full pl-11 pr-4 py-3 rounded-xl border <?= isset($fieldErrors['email']) ? 'border-red-400 bg-red-50/20 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 bg-white focus:border-brand-yellow focus:ring-brand-yellow/30' ?> text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition shadow-sm" />
             </div>
+            <p id="email-error" class="<?= isset($fieldErrors['email']) ? 'flex' : 'hidden' ?> items-center gap-1.5 text-xs text-red-600 font-medium mt-1.5" role="alert">
+              <i class="ph ph-warning-circle text-base flex-shrink-0 text-red-500"></i>
+              <span class="error-text"><?= htmlspecialchars($fieldErrors['email'] ?? '') ?></span>
+            </p>
           </div>
 
           <!-- Input Kata Sandi -->
           <div>
-            <label for="password" class="block text-sm font-semibold text-gray-700 mb-1.5">Kata Sandi</label>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="password" class="block text-sm font-semibold text-gray-700">Kata Sandi</label>
+            </div>
             <div class="relative">
-              <i class="ph ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+              <i class="ph ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none"></i>
               <input type="password" id="password" name="password" placeholder="Masukkan kata sandi" required
-                class="w-full pl-11 pr-11 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition shadow-sm" />
-              <button type="button" onclick="toggleVis('password', this)"
-                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer">
+                aria-describedby="password-error"
+                aria-invalid="<?= isset($fieldErrors['password']) ? 'true' : 'false' ?>"
+                class="w-full pl-11 pr-11 py-3 rounded-xl border <?= isset($fieldErrors['password']) ? 'border-red-400 bg-red-50/20 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 bg-white focus:border-brand-yellow focus:ring-brand-yellow/30' ?> text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 transition shadow-sm" />
+              <button type="button" onclick="toggleVis('password', this)" aria-label="Tampilkan atau sembunyikan kata sandi"
+                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer p-1">
                 <i class="ph ph-eye text-lg"></i>
               </button>
             </div>
+            <p id="password-error" class="<?= isset($fieldErrors['password']) ? 'flex' : 'hidden' ?> items-center gap-1.5 text-xs text-red-600 font-medium mt-1.5" role="alert">
+              <i class="ph ph-warning-circle text-base flex-shrink-0 text-red-500"></i>
+              <span class="error-text"><?= htmlspecialchars($fieldErrors['password'] ?? '') ?></span>
+            </p>
           </div>
 
           <!-- Tombol Masuk -->
-          <button type="submit"
-            class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-brand-yellow hover:bg-yellow-500 active:scale-[0.99] transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer">
-            Masuk
-            <i class="ph ph-arrow-right font-bold text-lg"></i>
+          <button type="submit" id="btn-submit"
+            class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-brand-yellow hover:bg-yellow-500 active:scale-[0.99] transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed">
+            <span class="btn-text">Masuk</span>
+            <i class="ph ph-arrow-right font-bold text-lg btn-icon"></i>
+            <i class="ph ph-spinner animate-spin text-xl hidden btn-loading"></i>
           </button>
         </form>
 
@@ -204,6 +230,116 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         '<i class="ph ph-eye-slash text-lg"></i>' :
         '<i class="ph ph-eye text-lg"></i>';
     }
+
+    (() => {
+      const form = document.getElementById('form-login');
+      if (!form) return;
+
+      const email = document.getElementById('email');
+      const password = document.getElementById('password');
+      const submitBtn = document.getElementById('btn-submit');
+      const btnText = submitBtn.querySelector('.btn-text');
+      const btnIcon = submitBtn.querySelector('.btn-icon');
+      const btnLoading = submitBtn.querySelector('.btn-loading');
+
+      const touched = { email: false, password: false };
+
+      function setFieldError(input, errorId, message) {
+        const errEl = document.getElementById(errorId);
+        if (errEl) {
+          const textSpan = errEl.querySelector('.error-text');
+          if (textSpan) textSpan.textContent = message;
+          errEl.classList.remove('hidden');
+          errEl.classList.add('flex');
+        }
+        input.setAttribute('aria-invalid', 'true');
+        input.classList.remove('border-gray-300', 'bg-white', 'focus:border-brand-yellow', 'focus:ring-brand-yellow/30');
+        input.classList.add('border-red-400', 'bg-red-50/20', 'focus:border-red-500', 'focus:ring-red-500/20');
+      }
+
+      function clearFieldError(input, errorId) {
+        const errEl = document.getElementById(errorId);
+        if (errEl) {
+          errEl.classList.add('hidden');
+          errEl.classList.remove('flex');
+        }
+        input.setAttribute('aria-invalid', 'false');
+        input.classList.remove('border-red-400', 'bg-red-50/20', 'focus:border-red-500', 'focus:ring-red-500/20');
+        input.classList.add('border-gray-300', 'bg-white', 'focus:border-brand-yellow', 'focus:ring-brand-yellow/30');
+      }
+
+      function validateEmailField() {
+        const val = email.value.trim();
+        if (!val) {
+          setFieldError(email, 'email-error', 'Alamat email wajib diisi.');
+          return false;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(val)) {
+          setFieldError(email, 'email-error', 'Format alamat email tidak valid (contoh: nama@contoh.com).');
+          return false;
+        }
+        clearFieldError(email, 'email-error');
+        return true;
+      }
+
+      function validatePasswordField() {
+        const val = password.value;
+        if (!val) {
+          setFieldError(password, 'password-error', 'Kata sandi wajib diisi.');
+          return false;
+        }
+        clearFieldError(password, 'password-error');
+        return true;
+      }
+
+      // Validasi saat blur (user selesai mengisi input)
+      email.addEventListener('blur', () => {
+        touched.email = true;
+        validateEmailField();
+      });
+
+      password.addEventListener('blur', () => {
+        touched.password = true;
+        validatePasswordField();
+      });
+
+      // Real-time validasi saat mengetik (hanya jika sudah disentuh / ada error)
+      email.addEventListener('input', () => {
+        if (touched.email || email.getAttribute('aria-invalid') === 'true') {
+          validateEmailField();
+        }
+      });
+
+      password.addEventListener('input', () => {
+        if (touched.password || password.getAttribute('aria-invalid') === 'true') {
+          validatePasswordField();
+        }
+      });
+
+      form.addEventListener('submit', (e) => {
+        touched.email = true;
+        touched.password = true;
+
+        const isEmailValid = validateEmailField();
+        const isPasswordValid = validatePasswordField();
+
+        if (!isEmailValid || !isPasswordValid) {
+          e.preventDefault();
+          if (!isEmailValid) {
+            email.focus();
+          } else {
+            password.focus();
+          }
+          return;
+        }
+
+        submitBtn.disabled = true;
+        if (btnText) btnText.textContent = 'Memproses...';
+        if (btnIcon) btnIcon.classList.add('hidden');
+        if (btnLoading) btnLoading.classList.remove('hidden');
+      });
+    })();
   </script>
 </body>
 

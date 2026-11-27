@@ -18,12 +18,13 @@
 - **Target User:** Perakitan PC (*PC builders*), *gamers*, pekerja kreatif/kantoran, dan penjual/pembeli perangkat elektronik bekas maupun baru di Indonesia.
 - **User Roles (Model C2C Single User Role — Lihat `PRD.md` Bagian 3):**
   1. **`user` (Unverified Seller — `is_verified = 0`):** Role default saat registrasi. Bisa browsing, mencari produk, memakai Bottleneck Checker, menambah keranjang, Buy Now, mengajukan Nego/Barter, melacak pesanan, dan memberi ulasan. **Belum bisa upload/jual produk.**
-  2. **`user` (Verified Seller — `is_verified = 1`):** Pengguna yang sudah melengkapi `no_hp`, `alamat`, dan `info_rekening`. Memiliki semua hak pembeli ditambah hak mengunggah/mengelola produk, merespons tawaran nego/barter, dan menginput nomor resi.
+  2. **`user` (Verified Seller, `is_verified = 1`):** Pengguna yang sudah melengkapi `nik` (16 digit), `no_hp`, `alamat`, dan `info_rekening`. Memiliki semua hak pembeli ditambah hak mengunggah/mengelola produk, merespons tawaran nego/barter, dan menginput nomor resi.
   3. **`admin` (`peran = 'admin'`):** Mengelola master data pengguna, kategori, moderasi produk, memonitor pesanan, verifikasi pembayaran/pencairan Escrow, dan laporan pendapatan dari `biaya_layanan`.
 - **Dokumen Referensi Terkait (Jangan Diduplikasi, Baca Langsung Saat Dibutuhkan):**
   - Spesifikasi Produk & Business Rules (`BR-01` s.d. `BR-05`): [`PRD.md`](../PRD.md)
-  - Skema Database & Data Seeder (12 Tabel): [`db/db_loote.sql`](../db/db_loote.sql)
+  - Skema Database & Data Seeder (11 Tabel): [`db/db_loote.sql`](../db/db_loote.sql)
   - Kontrak Format JSON Kolom `produk.deskripsi`: [`docs/adr/0001-structured-product-description.md`](adr/0001-structured-product-description.md)
+  - Keputusan Status Produk & Penawaran Paralel: [`docs/adr/0002-product-status-and-parallel-offers.md`](adr/0002-product-status-and-parallel-offers.md)
   - Istilah Domain: [`docs/glossary.md`](glossary.md)
   - Catatan Teknis Persiapan Fitur Seller & Upload Produk: [`docs/loote-upload-produk-handoff.md`](loote-upload-produk-handoff.md)
   - Riwayat Audit Tahap 1: [`docs/loote-audit-handoff.md`](loote-audit-handoff.md)
@@ -417,7 +418,7 @@ Setelah memberikan laporan Phase 4:
 Hanya setelah user menyatakan **UI Approved** dan meminta integrasi backend, lanjutkan dengan langkah berikut:
 
 1. **Audit Database & Kontrak Data Aktual:**
-   - Periksa skema tabel dan kolom di [`db/db_loote.sql`](../db/db_loote.sql) (12 tabel berbahasa Indonesia: `pengguna`, `kategori`, `produk`, `keranjang`, `antrean`, `negosiasi`, `riwayat_negosiasi`, `barter`, `riwayat_barter`, `pesanan`, `detail_pesanan`, `ulasan`).
+   - Periksa skema tabel dan kolom di [`db/db_loote.sql`](../db/db_loote.sql) (11 tabel berbahasa Indonesia: `pengguna`, `kategori`, `produk`, `keranjang`, `negosiasi`, `riwayat_negosiasi`, `barter`, `riwayat_barter`, `pesanan`, `detail_pesanan`, `ulasan`).
    - Periksa catatan antisipasi bug di [`docs/loote-upload-produk-handoff.md`](loote-upload-produk-handoff.md) dan kontrak JSON `produk.deskripsi` di [`docs/adr/0001-structured-product-description.md`](adr/0001-structured-product-description.md).
 2. **Gunakan Infrastruktur Backend Existing:**
    - Gunakan koneksi PDO dari `getDbConnection()` (`config/koneksi.php`).
@@ -425,8 +426,8 @@ Hanya setelah user menyatakan **UI Approved** dan meminta integrasi backend, lan
    - Gunakan helper autentikasi di `auth.php` (`isLoggedIn()`, `getCurrentUser()`, `isVerifiedSeller()`, `requireAuth()`) dan helper format di `config/helpers.php` (`formatRupiah()`, `kategoriIcon()`, `parseDeskripsiProduk()`).
 3. **Patuhi 5 Critical Business Rules (`PRD.md` Bagian 5):**
    - **BR-01 (Anti Self-Transaction):** User tidak boleh membeli, menawar, atau barter produk miliknya sendiri (`$produk['id_penjual'] == $currentUser['id']`).
-   - **BR-02 (Locking Mechanism):** Status produk berubah ke `terkunci` / `habis` hanya saat masuk tahap `pesanan` (`menunggu_pembayaran` / `dibayar`). Untuk barter yang disetujui, kunci kedua produk secara bersamaan.
-   - **BR-03 (Buy Now Overrides Unpaid Offers):** Checkout Buy Now membatalkan sesi `negosiasi`, `barter`, dan `antrean` yang masih menggantung pada produk tersebut.
+   - **BR-02 (Stock-Based Reservation & Auto-Habis):** Stok berkurang secara atomik saat transaksi masuk tahap `pesanan` (`menunggu_pembayaran`) baik dari *Buy Now* maupun kesepakatan *Nego/Barter*. Produk tetap `tersedia` selama `stok > 0`, dan otomatis menjadi `habis` saat `stok == 0`. Untuk barter yang disepakati, stok kedua produk dikurangi bersamaan.
+   - **BR-03 (Auto-Fail Competing Offers):** Saat stok berkurang atau produk dinonaktifkan, seluruh sesi `negosiasi` dan `barter` lain yang masih aktif (`pending` / `counter_offer`) dengan kuantitas melebihi sisa stok (atau semua sesi aktif saat `stok == 0` / `nonaktif`) otomatis berubah ke status `gagal`.
    - **BR-04 (Verified Seller Only):** Halaman pembuatan/pengelolaan produk seller wajib memvalidasi `is_verified == 1` di sisi backend PHP (dan sinkronkan `$_SESSION['is_verified']`).
    - **BR-05 (Review Integrity):** Ulasan hanya bisa dikirim jika `status_pesanan == 'selesai'` dan pesanan belum pernah diulas (`UNIQUE KEY uq_ulasan_pesanan`).
 4. **Pertahankan UI yang Sudah Disetujui:**

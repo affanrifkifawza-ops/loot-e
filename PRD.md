@@ -36,7 +36,7 @@ Loot-E menerapkan konsep **Single User Role** untuk pengguna umum. Tidak ada pem
 | Peran (`peran`)                | Hak Akses & Kapabilitas                                                                                                                                                                                                                                                                 |
 | :----------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`user` (Unverified Seller)** | Hak akses _default_ saat registrasi. Dapat melakukan _browsing_, pencarian, menggunakan _Bottleneck Checker_, menambah keranjang, melakukan _Buy Now_, mengajukan _Nego/Barter_, melacak pesanan, dan memberi ulasan. **Belum dapat mengunggah produk.**                                |
-| **`user` (Verified Seller)**   | Pengguna biasa yang telah melengkapi data verifikasi (`no_hp`, `alamat`, `info_rekening` sehingga `is_verified = 1`). Memiliki seluruh hak akses pembeli **ditambah** hak untuk membuat/mengelola listing produk, merespons tawaran nego/barter, serta menginput nomor resi pengiriman. |
+| **`user` (Verified Seller)**   | Pengguna biasa yang telah melengkapi data verifikasi (`nik`, `no_hp`, `alamat`, `info_rekening` sehingga `is_verified = 1`). Memiliki seluruh hak akses pembeli **ditambah** hak untuk membuat/mengelola listing produk, merespons tawaran nego/barter, serta menginput nomor resi pengiriman. |
 | **`admin`**                    | Mengelola master data pengguna, kategori, dan produk; memonitor seluruh transaksi; memverifikasi pembayaran/pencairan _Escrow_; serta melihat laporan pendapatan platform (dari biaya layanan).                                                                                         |
 
 ---
@@ -46,12 +46,13 @@ Loot-E menerapkan konsep **Single User Role** untuk pengguna umum. Tidak ada pem
 ### 4.1 Autentikasi & Verifikasi Penjual (Seller Onboarding)
 
 - **Registrasi & Login:** Satu pintu login (`login.php`) untuk semua peran. Sistem melakukan _redirect_ otomatis berdasarkan kolom `peran` (`admin` ke dashboard admin, `user` ke halaman utama).
-- **Seller Verification Gate:** Saat pengguna dengan `is_verified = 0` menekan tombol "Jual Barang" atau "Tambah Produk", sistem mengarahkan pengguna ke halaman/modal verifikasi untuk mengisi **Nomor HP**, **Alamat Lengkap**, dan **Info Rekening/E-Wallet** (untuk pencairan dana _Escrow_). Setelah disimpan, `is_verified` berubah menjadi `1`.
+- **Seller Verification Gate:** Saat pengguna dengan `is_verified = 0` menekan tombol "Jual Barang" atau "Tambah Produk", sistem mengarahkan pengguna ke halaman/modal verifikasi untuk mengisi **NIK** (validasi 16 digit angka sebagai syarat kepemilikan KTP/usia), **Nomor HP** (validasi nomor telepon), **Alamat Lengkap**, dan **Info Rekening/E-Wallet** (untuk pencairan dana _Escrow_). Setelah disimpan, `is_verified` berubah menjadi `1`.
 
 ### 4.2 Manajemen Produk & Transparansi Kondisi
 
 - **Form Listing Terstruktur:** Penjual wajib mengisi nama produk, kategori, foto, harga, stok, kondisi umum, serta form rincian kondisi (Fisik, Fungsi, Lama Pemakaian, Riwayat Servis, Minus/Defect, dan Kelengkapan) yang digabungkan menjadi teks terstruktur pada kolom `deskripsi`.
 - **Opsi Transaksi Fleksibel:** Penjual dapat mencentang opsi **`bisa_nego`** dan/atau **`bisa_barter`** secara bebas (bisa pilih salah satu, keduanya, atau tidak dicentang sama sekali untuk harga pas).
+- **Status Produk (`status_produk`):** Terdiri dari 4 status yang selaras dengan katalog toko: `tersedia` (*Sedang Tayang*, `stok >= 1`), `draft` (*Draft*, belum tayang di etalase publik), `nonaktif` (*Nonaktif*, disembunyikan sementara oleh penjual), dan `habis` (*Terjual*, `stok = 0`).
 
 ### 4.3 Pencarian, Filter & Market Price Reference (Frontend)
 
@@ -63,21 +64,26 @@ Loot-E menerapkan konsep **Single User Role** untuk pengguna umum. Tidak ada pem
 - **Lokasi & UI:** Tombol **"⚡ Cek Kecocokan & Bottleneck"** muncul di halaman detail produk (khusus kategori komponen seperti CPU, GPU, RAM) dan membuka **Modal Interaktif**.
 - **Mekanisme:** Berjalan 100% di sisi _frontend_ menggunakan Vanilla JavaScript. Nama produk yang sedang dibuka otomatis terdeteksi skor performanya, lalu pengguna memilih komponen pembanding milik mereka dari _dropdown_ untuk melihat persentase potensi _bottleneck_ dan rekomendasi kecocokan.
 
-### 4.5 Tiga Jalur Transaksi & Priority Queue
+### 4.5 Tiga Jalur Transaksi & Penawaran Paralel (Multi-Offer)
 
 1. **Buy Now (Beli Langsung):** Pembeli langsung memasukkan barang ke keranjang atau _checkout_ sesuai harga listing.
 2. **Negotiation (Tawar Harga):**
-   - Hanya tersedia jika produk memiliki `bisa_nego = 1`.
-   - Pembeli mengajukan penawaran harga. Penjual dapat menerima (`diterima`), menolak (`ditolak`), atau membalas tawar (`counter_offer`).
+   - Hanya tersedia jika produk berstatus `tersedia` (`stok >= 1`) dan memiliki `bisa_nego = 1`.
+   - Pembeli mengajukan penawaran harga (dibantu _suggested price_ di UI agar tidak menawar dari nol, dengan batas minimum wajar 50% dari harga listing). Penjual dapat menerima (`diterima`), menolak (`ditolak`), atau membalas tawar (`counter_offer`).
    - **Timer 30 Menit:** Setiap sesi negosiasi memiliki batas waktu 30 menit. Jika terjadi `counter_offer` dari pembeli maupun penjual, timer otomatis di-_reset_ kembali menjadi 30 menit. Jika waktu habis tanpa kesepakatan, status menjadi `expired`.
 3. **Barter / Trade (Tukar Tambah):**
-   - Hanya tersedia jika produk memiliki `bisa_barter = 1`.
-   - **Syarat Mutlak:** Pengaju barter wajib memiliki minimal 1 produk aktif miliknya sendiri yang juga dicentang `bisa_barter = 1`.
+   - Hanya tersedia jika produk berstatus `tersedia` (`stok >= 1`) dan memiliki `bisa_barter = 1`.
+   - **Syarat Mutlak:** Pengaju barter wajib memiliki minimal 1 produk berstatus `tersedia` (`stok >= 1`) miliknya sendiri yang juga dicentang `bisa_barter = 1`.
    - Saat tombol Barter diklik, muncul modal berisi daftar produk milik pengaju yang memenuhi syarat untuk dipilih sebagai barang tukaran, beserta input manual nominal **Tambah Dana** (jika nilai barang berbeda).
    - Mendukung alur `counter_offer` nominal tambahan dana dan timer 30 menit yang sama dengan fitur negosiasi.
-4. **Priority Queue (Aturan Antrean):**
-   - Beberapa pengguna dapat mengantre untuk menawar/membarter produk yang sama.
-   - **Aturan Prioritas Mutlak:** Proses tawar-menawar (Nego/Barter) **tidak mengunci stok barang**. Pembeli lain yang melakukan **Buy Now** dapat langsung membeli barang tersebut dan melewati antrean negosiasi selama transaksi belum masuk tahap `menunggu_pembayaran`. UI wajib menampilkan peringatan transparansi ini kepada pengguna yang sedang mengajukan nego/barter.
+4. **Penawaran Paralel (Multi-Offer) & Aturan Anti-Spam:**
+   - Banyak pembeli dapat mengajukan Nego atau Barter secara bersamaan pada produk yang sama tanpa saling mengunci; penjual bebas memilih penawaran terbaik.
+   - **Tanpa Kunci Stok Saat Menawar:** Proses tawar-menawar **tidak memotong stok barang** sebelum kesepakatan tercapai. Pembeli lain tetap dapat melakukan **Buy Now** atau mencapai kesepakatan lebih dulu. UI wajib menampilkan catatan transparansi ini kepada pengguna yang mengajukan nego/barter.
+   - **Aturan Anti-Spam Re-Offer (setelah `ditolak`):**
+     - Maksimal **1 sesi aktif** (`pending` / `counter_offer`) per pembeli per produk pada waktu bersamaan.
+     - Maksimal **3x percobaan per hari** per pembeli per produk (status `gagal` karena stok habis/kurang tidak memotong kuota).
+     - **Cooldown 30 menit** sejak penawaran terakhir ditolak (dihitung dari `updated_at`).
+     - Penawaran ulang **wajib lebih tinggi** dari tawaran terakhir yang ditolak (untuk barter: wajib menaikkan `tambah_dana` atau mengganti barang tukaran).
 
 ### 4.6 Checkout, Escrow & Monetisasi (Biaya Layanan)
 
@@ -90,7 +96,7 @@ Loot-E menerapkan konsep **Single User Role** untuk pengguna umum. Tidak ada pem
 
 - **Shipping:** Penjual menginput nama kurir dan nomor resi pengiriman (`nomor_resi`) setelah pembayaran terkonfirmasi (`dibayar`).
 - **Review & Rating:** Pembeli hanya dapat memberikan rating (1–5) dan ulasan teks setelah status pesanan mencapai `selesai` (1 pesanan = 1 ulasan).
-- **Notifikasi & Status Tracking:** Pengguna dapat memantau perubahan status pesanan, status antrean, dan sisa waktu negosiasi/barter melalui halaman riwayat transaksi dan indikator notifikasi.
+- **Notifikasi & Status Tracking:** Pengguna dapat memantau perubahan status pesanan serta status dan sisa waktu negosiasi/barter melalui halaman riwayat transaksi dan indikator notifikasi.
 
 ### 4.8 Admin Panel
 
@@ -103,7 +109,7 @@ Loot-E menerapkan konsep **Single User Role** untuk pengguna umum. Tidak ada pem
 ## 5. CRITICAL BUSINESS RULES (NON-NEGOTIABLE)
 
 1. **BR-01 (Anti Self-Transaction):** Pengguna dilarang keras melakukan _Buy Now_, _Nego_, atau _Barter_ pada produk miliknya sendiri (`id_penjual == $_SESSION['id_user']`).
-2. **BR-02 (Locking Mechanism):** Status produk berubah dari `tersedia` menjadi `terkunci` (atau `habis` jika stok 1) hanya ketika sebuah transaksi telah dikonfirmasi masuk ke tahap `pesanan` (`menunggu_pembayaran` atau `dibayar`). Untuk transaksi barter yang disetujui, **kedua produk** (yang diincar dan yang ditawarkan) harus dikunci secara bersamaan.
-3. **BR-03 (Buy Now Overrides Unpaid Offers):** Jika suatu produk dibeli lewat _Buy Now_ hingga tahap checkout/bayar, seluruh sesi `negosiasi`, `barter`, dan `antrean` lain yang masih menggantung untuk produk tersebut harus otomatis dibatalkan/berubah statusnya.
+2. **BR-02 (Stock-Based Reservation & Auto-Habis):** Pengurangan `stok` terjadi secara atomik saat transaksi masuk ke tahap `pesanan` (`menunggu_pembayaran`), baik dari *Buy Now* maupun saat tawaran Nego/Barter disepakati (`diterima`). Jika sisa `stok > 0`, `status_produk` tetap `tersedia` agar pembeli lain tetap dapat membeli sisa unit; jika `stok == 0`, `status_produk` otomatis berubah menjadi `habis`. Untuk transaksi barter yang disepakati, stok **kedua produk** (`id_produk_diincar` dan `id_produk_ditawarkan`) dikurangi secara bersamaan dalam satu transaksi DB. Pembatalan pesanan sebelum dibayar (`dibatalkan`) mengembalikan stok dan mengubah `habis` kembali ke `tersedia`.
+3. **BR-03 (Auto-Fail Competing Offers on Insufficient Stock):** Setiap kali stok berkurang (akibat *Buy Now* maupun kesepakatan Nego/Barter lain) atau penjual menonaktifkan produk, seluruh sesi `negosiasi` dan `barter` lain yang masih aktif (`pending`, `counter_offer`) dengan kuantitas melebihi sisa stok (termasuk seluruh sesi aktif saat `stok == 0` atau `status_produk == 'nonaktif'`) harus otomatis berubah statusnya menjadi `gagal`, dengan pesan UI yang membedakan kasus produk habis terjual, sisa stok tidak mencukupi, atau produk dinonaktifkan.
 4. **BR-04 (Verified Seller Only):** Akses ke halaman pembuatan listing produk wajib dilindungi pengecekan `is_verified == 1` di sisi _backend_ PHP, bukan hanya menyembunyikan tombol di _frontend_.
 5. **BR-05 (Review Integrity):** Form ulasan hanya dapat diakses jika `status_pesanan == 'selesai'` dan pesanan tersebut belum pernah diulas sebelumnya.
