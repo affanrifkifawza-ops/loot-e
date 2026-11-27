@@ -9,7 +9,7 @@
   - Kontrak format JSON `produk.deskripsi`: `docs/adr/0001-structured-product-description.md`
   - Riwayat audit & refaktor tahap sebelumnya: `docs/loote-audit-handoff.md`
 - **Status Kesiapan Saat Ini:**
-  - Skema tabel `produk`, `kategori`, dan `pengguna` (termasuk kolom verifikasi seller `no_hp`, `alamat`, `info_rekening`, `is_verified`) sudah siap.
+  - Skema tabel `produk`, `kategori`, dan `pengguna` (termasuk kolom verifikasi seller `nik`, `no_hp`, `alamat`, `info_rekening`, `is_verified`) sudah siap.
   - Query etalase di `index.php`, `search.php`, `landingpage.php`, dan `detail_produk.php` aman menerima data produk baru dan sudah mendukung rendering kolom `p.foto` (fallback ikon kategori jika kosong).
   - Pembersihan data hardcoded, guard wajib login, serta aturan BR-01 pada `detail_produk.php` sudah diterapkan.
   - Whitelist redirect di `login.php` & `register.php` sudah mencakup `detail_produk.php`.
@@ -40,9 +40,9 @@
 ### 4. Sinkronisasi Session `is_verified` & Guard BR-04
 - **Masalah potensial:** `isVerifiedSeller()` di `auth.php` (baris 50–52) hanya membaca `$_SESSION['is_verified']`.
 - **Antisipasi:**
-  - Saat user selesai verifikasi seller (`UPDATE pengguna SET no_hp=?, alamat=?, info_rekening=?, is_verified=1 WHERE id=?`), **wajib langsung set `$_SESSION['is_verified'] = 1`**.
+  - Saat user selesai verifikasi seller (`UPDATE pengguna SET nik=?, no_hp=?, alamat=?, info_rekening=?, is_verified=1 WHERE id=?`), validasi cukup memastikan `nik` 16 digit angka (unik), format `no_hp` valid, serta `alamat` dan `info_rekening` terisi, lalu **wajib langsung set `$_SESSION['is_verified'] = 1`**.
   - Di halaman upload/edit/hapus produk, cek ulang `is_verified` ke DB (atau sinkronkan ke session) agar status tetap valid jika diubah admin (BR-04).
-  - Validasi input angka di PHP: `harga > 0` dan `<= 2000000000` (batas aman `INT` signed MySQL), `stok >= 1`, `id_kategori` harus eksis di tabel `kategori`.
+  - Validasi input angka di PHP: `harga > 0` dan `<= 2000000000` (batas aman `INT` signed MySQL), `stok >= 1` untuk produk `tersedia`, `id_kategori` harus eksis di tabel `kategori`, dan `status_produk` wajib whitelist (`tersedia`, `draft`, `nonaktif`, `habis` — lihat `docs/adr/0002-product-status-and-parallel-offers.md`).
 
 ### 5. Whitelist Redirect di `login.php` & `register.php`
 - **Status saat ini:** `$allowedRedirects` sudah mencakup `["index.php", "categories.php", "search.php", "detail_produk.php"]`.

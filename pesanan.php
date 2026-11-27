@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmtCancel->execute([$orderId, $userId]);
 
-                // Kembalikan stok & buka kunci produk jika sebelumnya terkunci/habis (BR-02)
+                // Kembalikan stok & aktifkan kembali produk jika sebelumnya habis terjual (BR-02)
                 $stmtItems = $db->prepare("
                     SELECT id_produk, kuantitas
                     FROM detail_pesanan
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE produk
                     SET stok = stok + ?,
                         status_produk = CASE
-                            WHEN status_produk IN ('terkunci', 'habis') THEN 'tersedia'
+                            WHEN status_produk = 'habis' THEN 'tersedia'
                             ELSE status_produk
                         END
                     WHERE id = ?
