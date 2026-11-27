@@ -41,6 +41,7 @@ try {
             LEFT JOIN produk p
                 ON k.id = p.id_kategori
                AND p.status_produk = 'tersedia'
+               AND p.stok > 0
                AND (p.nama_produk LIKE ? OR k.nama_kategori LIKE ?)
             GROUP BY k.id, k.nama_kategori
             ORDER BY k.id ASC
@@ -51,7 +52,7 @@ try {
         $allCategories = $db->query("
             SELECT k.id, k.nama_kategori, COUNT(p.id) AS total_produk
             FROM kategori k
-            LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia'
+            LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia' AND p.stok > 0
             GROUP BY k.id, k.nama_kategori
             ORDER BY k.id ASC
         ")->fetchAll();
@@ -67,7 +68,7 @@ try {
     }
 
     // Kondisi filter disusun dinamis, semua nilai lewat prepared statement
-    $where  = ["p.status_produk = 'tersedia'"];
+    $where  = ["p.status_produk = 'tersedia'", "p.stok > 0"];
     $params = [];
 
     if ($searchQuery !== '') {

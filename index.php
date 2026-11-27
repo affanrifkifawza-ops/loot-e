@@ -22,7 +22,7 @@ function ambilProduk(PDO $db, string $where, string $order): array
                (SELECT COUNT(*) FROM ulasan WHERE id_produk = p.id) AS total_ulasan
         FROM produk p
         JOIN kategori k ON k.id = p.id_kategori
-        WHERE p.status_produk = 'tersedia' $where
+        WHERE p.status_produk = 'tersedia' AND p.stok > 0 $where
         ORDER BY $order
         LIMIT 5
     ")->fetchAll();

@@ -13,6 +13,7 @@ $navActivePage = 'categories';
 $productId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : null;
 $produk = null;
 $idProduk = 0;
+$productPhotos = [];
 $relatedProducts = [];
 $reviews = [];
 $sellerStats = [
@@ -35,19 +36,40 @@ try {
         $stmt->execute([$productId]);
         $produk = $stmt->fetch() ?: null;
     } else {
-        $produk = $db->query($sqlBase . " WHERE p.status_produk = 'tersedia' ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
+        $produk = $db->query($sqlBase . " WHERE p.status_produk = 'tersedia' AND p.stok > 0 ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
     }
 
     if ($produk) {
         $idProduk  = (int)$produk['id'];
         $idPenjual = (int)$produk['id_penjual'];
 
+        $stmtPhotos = $db->prepare("
+            SELECT path_foto
+            FROM produk_foto
+            WHERE id_produk = ?
+            ORDER BY urutan ASC, id ASC
+        ");
+        $stmtPhotos->execute([$idProduk]);
+        foreach ($stmtPhotos->fetchAll(PDO::FETCH_COLUMN) as $photoPath) {
+            $cleanPath = trim((string)$photoPath);
+            if ($cleanPath !== '') {
+                $productPhotos[] = $cleanPath;
+            }
+        }
+        // Fallback untuk produk lama yang hanya menyimpan foto di kolom produk.foto
+        if (empty($productPhotos) && !empty($produk['foto'])) {
+            $legacyPath = trim((string)$produk['foto']);
+            if ($legacyPath !== '') {
+                $productPhotos[] = $legacyPath;
+            }
+        }
+
         $stmtRel = $db->prepare("
             SELECT p.id, p.nama_produk, p.foto, p.harga, p.kondisi, p.stok, k.nama_kategori, u.nama AS nama_penjual
             FROM produk p
             JOIN kategori k ON p.id_kategori = k.id
             JOIN pengguna u ON p.id_penjual = u.id
-            WHERE p.status_produk = 'tersedia' AND p.id != ?
+            WHERE p.status_produk = 'tersedia' AND p.stok > 0 AND p.id != ?
             ORDER BY (p.id_kategori = ?) DESC, p.id DESC
             LIMIT 3
         ");
@@ -67,7 +89,7 @@ try {
 
         $stmtSeller = $db->prepare("
             SELECT
-                (SELECT COUNT(*) FROM produk WHERE id_penjual = ? AND status_produk = 'tersedia') AS produk_aktif,
+                (SELECT COUNT(*) FROM produk WHERE id_penjual = ? AND status_produk = 'tersedia' AND stok > 0) AS produk_aktif,
                 (SELECT COALESCE(SUM(dp.kuantitas), 0)
                  FROM detail_pesanan dp
                  JOIN pesanan ps ON dp.id_pesanan = ps.id
@@ -87,6 +109,7 @@ try {
     }
 } catch (PDOException $e) {
     $produk = null;
+    $productPhotos = [];
     $relatedProducts = [];
     $reviews = [];
 }
@@ -109,6 +132,12 @@ $namaPenjual     = $produk['nama_penjual'];
 $alamatPenjual   = $produk['alamat_penjual'] ?? '';
 $penjualVerified = (int)($produk['penjual_verified'] ?? 0) === 1;
 $isOwnProduct    = ($currentUser['id'] === (int)$produk['id_penjual']); // BR-01
+
+// Produk draft belum dipublikasikan sehingga hanya dapat dilihat pemilik atau admin
+if ($statusProduk === 'draft' && !$isOwnProduct && ($currentUser['peran'] ?? 'user') !== 'admin') {
+    header("Location: search.php");
+    exit;
+}
 
 // shortcut: estimasi rentang referensi pasar berbasis ±12% harga produk karena belum ada tabel harga pasar, ganti dengan query referensi saat tersedia
 $refStep     = $hargaProduk >= 2000000 ? 50000 : ($hargaProduk >= 500000 ? 25000 : ($hargaProduk >= 100000 ? 10000 : 1000));
@@ -206,7 +235,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -245,6 +274,15 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             outline-offset: 2px;
         }
 
+        button:disabled {
+            cursor: not-allowed;
+        }
+
+        .gallery-thumbs-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #D1D5DB transparent;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             * {
                 scroll-behavior: auto !important;
@@ -275,22 +313,103 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
         <section class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start" aria-label="Informasi Utama Produk">
 
             <!-- Kolom 1: Foto Produk -->
+            <?php
+            $totalPhotos = count($productPhotos);
+            $hasMultiplePhotos = $totalPhotos > 1;
+            ?>
             <div class="md:col-span-12 lg:col-span-5 bg-white border border-gray-200/80 p-4 shadow-2xs">
-                <div class="relative w-full aspect-square bg-[#FAFAFA] border border-gray-200/80 flex items-center justify-center p-6 overflow-hidden">
-                    <!-- Badge Kondisi -->
-                    <span class="absolute top-3 left-3 z-10 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-md tracking-wide">
-                        <?= htmlspecialchars($kondisiProduk) ?>
-                    </span>
-
-                    <?php if (!empty($produk['foto'])): ?>
-                        <img src="<?= htmlspecialchars($produk['foto']) ?>" alt="<?= htmlspecialchars($namaProduk) ?>" width="600" height="600" fetchpriority="high" class="w-full h-full object-contain" />
-                    <?php else: ?>
-                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-4">
-                            <i class="ph <?= htmlspecialchars(kategoriIcon($kategoriNama)) ?> text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
-                            <p class="text-sm font-bold text-gray-800"><?= htmlspecialchars($namaProduk) ?></p>
-                            <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($kategoriNama) ?> &bull; <?= htmlspecialchars($kondisiProduk) ?></p>
+                <div id="product-gallery" class="<?= $hasMultiplePhotos ? 'flex flex-col-reverse sm:flex-row gap-3' : '' ?>">
+                    <?php if ($hasMultiplePhotos): ?>
+                        <!-- Rail Pilihan Foto (Kiri di desktop, bawah di mobile) -->
+                        <div class="sm:w-[72px] shrink-0 sm:relative">
+                            <div
+                                id="gallery-thumbs"
+                                role="group"
+                                aria-label="Pilihan foto produk"
+                                class="flex flex-row sm:flex-col gap-2 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto sm:absolute sm:inset-0 p-1 gallery-thumbs-scroll">
+                                <?php foreach ($productPhotos as $idx => $photoPath): ?>
+                                    <?php $isFirst = ($idx === 0); ?>
+                                    <button
+                                        type="button"
+                                        class="gallery-thumb relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg bg-[#FAFAFA] overflow-hidden p-1 transition cursor-pointer flex items-center justify-center <?= $isFirst ? 'border-2 border-brand-dark ring-2 ring-brand-yellow/70 opacity-100' : 'border border-gray-200 opacity-75 hover:opacity-100 hover:border-gray-400' ?>"
+                                        data-index="<?= $idx ?>"
+                                        data-src="<?= htmlspecialchars($photoPath, ENT_QUOTES, 'UTF-8') ?>"
+                                        aria-label="Tampilkan foto <?= $idx + 1 ?> dari <?= $totalPhotos ?>"
+                                        aria-pressed="<?= $isFirst ? 'true' : 'false' ?>">
+                                        <img
+                                            src="<?= htmlspecialchars($photoPath, ENT_QUOTES, 'UTF-8') ?>"
+                                            alt="<?= htmlspecialchars($namaProduk . ' - foto ' . ($idx + 1), ENT_QUOTES, 'UTF-8') ?>"
+                                            width="64"
+                                            height="64"
+                                            loading="lazy"
+                                            class="w-full h-full object-cover rounded-md pointer-events-none" />
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     <?php endif; ?>
+
+                    <!-- Area Foto Utama -->
+                    <div class="relative flex-1 min-w-0 aspect-square bg-[#FAFAFA] border border-gray-200/80 rounded-lg flex items-center justify-center p-5 sm:p-6 overflow-hidden">
+                        <!-- Badge Kondisi -->
+                        <span class="absolute top-3 left-3 z-10 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-md tracking-wide">
+                            <?= htmlspecialchars($kondisiProduk) ?>
+                        </span>
+
+                        <?php if ($totalPhotos > 0): ?>
+                            <img
+                                id="gallery-main-img"
+                                src="<?= htmlspecialchars($productPhotos[0], ENT_QUOTES, 'UTF-8') ?>"
+                                alt="<?= htmlspecialchars($namaProduk, ENT_QUOTES, 'UTF-8') ?>"
+                                width="600"
+                                height="600"
+                                fetchpriority="high"
+                                class="w-full h-full object-contain transition-opacity duration-150" />
+
+                            <!-- Status Memuat & Gagal Muat Foto -->
+                            <div id="gallery-loading" class="hidden absolute inset-0 bg-[#FAFAFA]/80 flex items-center justify-center text-xs font-semibold text-gray-700" role="status" aria-live="polite">
+                                Memuat foto...
+                            </div>
+                            <div id="gallery-error" class="hidden absolute inset-0 bg-[#FAFAFA] flex flex-col items-center justify-center text-center p-6" role="alert">
+                                <i class="ph ph-image-broken text-4xl text-gray-400 mb-2" aria-hidden="true"></i>
+                                <p class="text-xs font-semibold text-gray-800">Foto tidak dapat dimuat</p>
+                                <p class="text-[11px] text-gray-500 mt-1">Pilih foto lain atau muat ulang halaman.</p>
+                            </div>
+
+                            <?php if ($hasMultiplePhotos): ?>
+                                <!-- Navigasi Foto Sebelumnya & Berikutnya -->
+                                <button
+                                    type="button"
+                                    id="btn-gallery-prev"
+                                    disabled
+                                    aria-label="Foto sebelumnya"
+                                    class="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/95 hover:bg-white border border-gray-200 text-gray-800 shadow-xs flex items-center justify-center transition cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="ph-bold ph-caret-left text-base" aria-hidden="true"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    id="btn-gallery-next"
+                                    aria-label="Foto berikutnya"
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/95 hover:bg-white border border-gray-200 text-gray-800 shadow-xs flex items-center justify-center transition cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="ph-bold ph-caret-right text-base" aria-hidden="true"></i>
+                                </button>
+
+                                <!-- Indikator Urutan Foto -->
+                                <span
+                                    id="gallery-counter"
+                                    aria-live="polite"
+                                    class="absolute bottom-3 right-3 z-10 bg-white/95 border border-gray-200 text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-full shadow-xs tabular-nums">
+                                    1/<?= $totalPhotos ?>
+                                </span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div class="w-full h-full flex flex-col items-center justify-center text-center p-4">
+                                <i class="ph <?= htmlspecialchars(kategoriIcon($kategoriNama)) ?> text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
+                                <p class="text-sm font-bold text-gray-800"><?= htmlspecialchars($namaProduk) ?></p>
+                                <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($kategoriNama) ?> &bull; <?= htmlspecialchars($kondisiProduk) ?></p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
@@ -417,8 +536,13 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </div>
                 <?php elseif ($statusProduk !== 'tersedia' || $stokProduk <= 0): ?>
                     <div class="bg-gray-100 border border-gray-200 rounded-lg p-3.5 text-xs text-gray-700 leading-relaxed">
-                        <p class="font-bold mb-0.5">Produk Tidak Tersedia</p>
-                        <p>Produk ini sedang terkunci dalam transaksi lain atau stok sudah habis.</p>
+                        <?php if ($statusProduk === 'nonaktif'): ?>
+                            <p class="font-bold mb-0.5">Produk Dinonaktifkan</p>
+                            <p>Penjual sedang menonaktifkan produk ini untuk sementara.</p>
+                        <?php else: ?>
+                            <p class="font-bold mb-0.5">Produk Habis Terjual</p>
+                            <p>Stok produk ini sudah habis terjual.</p>
+                        <?php endif; ?>
                     </div>
                 <?php else: ?>
                     <?php if ($stokProduk > 1): ?>
@@ -919,7 +1043,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow" />
             </div>
             <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
-                <strong>Catatan Priority Queue:</strong> Pengajuan negosiasi tidak mengunci stok barang. Pembeli lain tetap dapat melakukan Beli Langsung selama transaksi belum masuk tahap pembayaran.
+                <strong>Catatan Penawaran:</strong> Pengajuan negosiasi tidak memotong stok barang. Pembeli lain tetap dapat membeli langsung atau mengajukan tawaran lain; tawaranmu otomatis gagal jika stok habis lebih dulu.
             </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
@@ -953,7 +1077,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow"></textarea>
             </div>
             <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
-                <strong>Catatan Priority Queue:</strong> Pengajuan barter tidak mengunci stok barang hingga tawaran disetujui dan masuk tahap pesanan.
+                <strong>Catatan Penawaran:</strong> Pengajuan barter tidak memotong stok barang hingga kesepakatan disetujui dan pesanan dibuat. Tawaran otomatis gagal jika salah satu produk habis terjual lebih dulu.
             </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
@@ -982,6 +1106,121 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
         document.addEventListener('DOMContentLoaded', function() {
             const produkTitleEl = document.getElementById('produk-title');
             const namaProduk = produkTitleEl ? produkTitleEl.textContent.trim() : 'Produk';
+
+            // Galeri Multi-Foto Produk
+            const galleryMainImg = document.getElementById('gallery-main-img');
+            const galleryLoading = document.getElementById('gallery-loading');
+            const galleryError = document.getElementById('gallery-error');
+            const galleryThumbs = Array.from(document.querySelectorAll('.gallery-thumb'));
+            const galleryCounter = document.getElementById('gallery-counter');
+            const btnGalleryPrev = document.getElementById('btn-gallery-prev');
+            const btnGalleryNext = document.getElementById('btn-gallery-next');
+            const galleryRoot = document.getElementById('product-gallery');
+
+            if (galleryMainImg) {
+                galleryMainImg.addEventListener('load', function() {
+                    if (galleryLoading) galleryLoading.classList.add('hidden');
+                    if (galleryError) galleryError.classList.add('hidden');
+                    galleryMainImg.classList.remove('opacity-0');
+                });
+                galleryMainImg.addEventListener('error', function() {
+                    if (galleryLoading) galleryLoading.classList.add('hidden');
+                    if (galleryError) galleryError.classList.remove('hidden');
+                    galleryMainImg.classList.add('opacity-0');
+                });
+                if (galleryMainImg.complete && galleryMainImg.naturalWidth === 0) {
+                    if (galleryError) galleryError.classList.remove('hidden');
+                    galleryMainImg.classList.add('opacity-0');
+                }
+            }
+
+            if (galleryMainImg && galleryThumbs.length > 1) {
+                let currentPhotoIndex = 0;
+                const totalPhotos = galleryThumbs.length;
+
+                function setActivePhoto(nextIndex) {
+                    const clamped = Math.max(0, Math.min(nextIndex, totalPhotos - 1));
+                    const targetBtn = galleryThumbs[clamped];
+                    if (!targetBtn) return;
+
+                    currentPhotoIndex = clamped;
+                    const nextSrc = targetBtn.getAttribute('data-src') || '';
+
+                    if (nextSrc && galleryMainImg.getAttribute('src') !== nextSrc) {
+                        if (galleryError) galleryError.classList.add('hidden');
+                        if (galleryLoading) galleryLoading.classList.remove('hidden');
+                        galleryMainImg.classList.add('opacity-0');
+                        galleryMainImg.setAttribute('src', nextSrc);
+                        galleryMainImg.setAttribute('alt', namaProduk + ' - foto ' + (clamped + 1) + ' dari ' + totalPhotos);
+                        if (galleryMainImg.complete && galleryMainImg.naturalWidth > 0) {
+                            if (galleryLoading) galleryLoading.classList.add('hidden');
+                            galleryMainImg.classList.remove('opacity-0');
+                        }
+                    }
+
+                    galleryThumbs.forEach(function(btn, idx) {
+                        const isActive = idx === clamped;
+                        btn.setAttribute('aria-pressed', String(isActive));
+                        btn.classList.toggle('border-2', isActive);
+                        btn.classList.toggle('border-brand-dark', isActive);
+                        btn.classList.toggle('ring-2', isActive);
+                        btn.classList.toggle('ring-brand-yellow/70', isActive);
+                        btn.classList.toggle('opacity-100', isActive);
+                        btn.classList.toggle('border', !isActive);
+                        btn.classList.toggle('border-gray-200', !isActive);
+                        btn.classList.toggle('opacity-75', !isActive);
+                        btn.classList.toggle('hover:opacity-100', !isActive);
+                        btn.classList.toggle('hover:border-gray-400', !isActive);
+                    });
+
+                    targetBtn.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'nearest'
+                    });
+
+                    if (galleryCounter) {
+                        galleryCounter.textContent = (clamped + 1) + '/' + totalPhotos;
+                    }
+                    if (btnGalleryPrev) btnGalleryPrev.disabled = clamped <= 0;
+                    if (btnGalleryNext) btnGalleryNext.disabled = clamped >= totalPhotos - 1;
+                }
+
+                galleryThumbs.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        const idx = parseInt(this.getAttribute('data-index') || '0', 10);
+                        setActivePhoto(idx);
+                    });
+                });
+
+                if (btnGalleryPrev) {
+                    btnGalleryPrev.addEventListener('click', function() {
+                        setActivePhoto(currentPhotoIndex - 1);
+                    });
+                }
+
+                if (btnGalleryNext) {
+                    btnGalleryNext.addEventListener('click', function() {
+                        setActivePhoto(currentPhotoIndex + 1);
+                    });
+                }
+
+                if (galleryRoot) {
+                    galleryRoot.addEventListener('keydown', function(e) {
+                        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                            if (currentPhotoIndex < totalPhotos - 1) {
+                                e.preventDefault();
+                                setActivePhoto(currentPhotoIndex + 1);
+                            }
+                        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                            if (currentPhotoIndex > 0) {
+                                e.preventDefault();
+                                setActivePhoto(currentPhotoIndex - 1);
+                            }
+                        }
+                    });
+                }
+            }
 
             // Toggle keterangan singkat pada banner referensi harga
             const btnInfoHarga = document.getElementById('btn-info-harga');
