@@ -23,6 +23,7 @@ DROP TABLE IF EXISTS `riwayat_negosiasi`;
 DROP TABLE IF EXISTS `negosiasi`;
 DROP TABLE IF EXISTS `antrean`; -- legacy table (dihapus pada ADR-0002)
 DROP TABLE IF EXISTS `keranjang`;
+DROP TABLE IF EXISTS `produk_foto`;
 DROP TABLE IF EXISTS `produk`;
 DROP TABLE IF EXISTS `kategori`;
 DROP TABLE IF EXISTS `pengguna`;
@@ -78,6 +79,20 @@ CREATE TABLE `produk` (
   KEY `idx_produk_kategori` (`id_kategori`),
   CONSTRAINT `fk_produk_penjual` FOREIGN KEY (`id_penjual`) REFERENCES `pengguna` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_produk_kategori` FOREIGN KEY (`id_kategori`) REFERENCES `kategori` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 3b. Table `produk_foto`
+-- ----------------------------------------------------------
+CREATE TABLE `produk_foto` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_produk` INT NOT NULL,
+  `path_foto` VARCHAR(255) NOT NULL,
+  `urutan` INT NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_produk_foto_produk` (`id_produk`, `urutan`),
+  CONSTRAINT `fk_produk_foto_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------

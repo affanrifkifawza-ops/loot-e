@@ -1,16 +1,52 @@
 <?php
-// dashboard_seller.php - Placeholder Halaman Dashboard Seller (UI-First)
+// dashboard_seller.php - Halaman Dashboard Seller (Guard Login & BR-04)
 require_once "auth.php";
 
-$sessionUser = getCurrentUser();
-$currentUser = $sessionUser;
+if (!isLoggedIn()) {
+    header("Location: login.php?redirect=dashboard_seller.php");
+    exit;
+}
+
+$db = getDbConnection();
+$userId = (int)$_SESSION['user_id'];
+
+$stmtUser = $db->prepare("
+    SELECT id, nama, email, peran, is_verified
+    FROM pengguna
+    WHERE id = ?
+    LIMIT 1
+");
+$stmtUser->execute([$userId]);
+$userRow = $stmtUser->fetch();
+
+if (!$userRow) {
+    header("Location: auth.php?action=logout");
+    exit;
+}
+
+// Sinkronkan session dengan data terbaru dari database (BR-04)
+$_SESSION['nama']        = $userRow['nama'];
+$_SESSION['email']       = $userRow['email'];
+$_SESSION['peran']       = $userRow['peran'];
+$_SESSION['is_verified'] = (int)$userRow['is_verified'];
+
+if ((int)$userRow['is_verified'] !== 1) {
+    $_SESSION['profile_flash'] = [
+        'type'    => 'error',
+        'message' => 'Selesaikan verifikasi akun terlebih dahulu untuk mengakses Toko Saya.',
+    ];
+    header("Location: profile.php");
+    exit;
+}
+
+$currentUser = getCurrentUser();
 $navActivePage = 'dashboard_seller';
 
 $accountActiveMenu = 'toko_dashboard';
 $accountSidebarUser = [
-    'nama'        => $sessionUser['nama'] ?? 'Loot-E Official Store',
-    'email'       => $sessionUser['email'] ?? 'seller@loote.com',
-    'is_verified' => $sessionUser ? (int)($sessionUser['is_verified'] ?? 0) : 1,
+    'nama'        => (string)$userRow['nama'],
+    'email'       => (string)$userRow['email'],
+    'is_verified' => 1,
 ];
 ?>
 <!DOCTYPE html>
