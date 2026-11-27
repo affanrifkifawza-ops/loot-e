@@ -25,11 +25,17 @@ $_isTokoActive   = $_sidebarActive === 'toko' || in_array($_sidebarActive, $_tok
 $_sidebarMenuItems = [
     ['id' => 'profil',     'label' => 'Profil Saya',     'icon' => 'ph-user',              'href' => 'profile.php'],
     ['id' => 'pesanan',    'label' => 'Pesanan Saya',    'icon' => 'ph-package',           'href' => 'pesanan.php'],
+<<<<<<< HEAD
     ['id' => 'negosiasi',  'label' => 'Negosiasi Saya',  'icon' => 'ph-chat-circle-text',  'href' => null],
     ['id' => 'barter',     'label' => 'Barter Saya',     'icon' => 'ph-arrows-left-right', 'href' => null],
     ['id' => 'toko',       'label' => 'Toko Saya',       'icon' => 'ph-storefront',        'href' => null, 'is_dropdown' => true],
+=======
+    ['id' => 'negosiasi',  'label' => 'Negosiasi Saya',  'icon' => 'ph-chat-circle-text',  'href' => 'nego_buyer.php'],
+    ['id' => 'barter',     'label' => 'Barter Saya',     'icon' => 'ph-arrows-left-right', 'href' => 'barter_buyer.php'],
+    ['id' => 'toko',       'label' => 'Toko Saya',       'icon' => 'ph-storefront',        'href' => null],
+>>>>>>> origin/develop
     ['id' => 'notifikasi', 'label' => 'Notifikasi',      'icon' => 'ph-bell',              'href' => null],
-    ['id' => 'alamat',     'label' => 'Alamat',          'icon' => 'ph-map-pin',           'href' => null],
+    ['id' => 'alamat',     'label' => 'Alamat',          'icon' => 'ph-map-pin',           'href' => 'alamat_buyer.php'],
     ['id' => 'keamanan',   'label' => 'Keamanan Akun',   'icon' => 'ph-shield-star',       'href' => null],
 ];
 
@@ -202,6 +208,7 @@ if (!$_isVerifiedUser) {
             <span>Logout</span>
         </a>
     </div>
+<<<<<<< HEAD
 </aside>
 
 <script>
@@ -238,3 +245,6 @@ if (!$_isVerifiedUser) {
         });
     })();
 </script>
+=======
+</aside>
+>>>>>>> origin/develop
