@@ -353,15 +353,45 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
     <?php require_once 'components/navbar.php'; ?>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        <nav aria-label="Breadcrumb">
-            <ol class="flex items-center gap-1.5 text-xs text-gray-500">
-                <li>
-                    <a href="categories.php" class="hover:text-gray-900 transition font-medium">Kategori</a>
-                </li>
-                <li aria-hidden="true" class="text-gray-400">/</li>
-                <li class="font-semibold text-gray-900" aria-current="page">Detail Produk</li>
-            </ol>
-        </nav>
+        <div class="bg-white border border-gray-200/80 rounded-lg px-2.5 py-1.5 shadow-2xs flex items-center justify-between gap-3">
+            <nav aria-label="Breadcrumb" class="min-w-0 flex-1">
+                <ol class="flex items-center flex-wrap gap-1 text-xs">
+                    <li>
+                        <a href="index.php" class="inline-flex items-center gap-1 px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                            <i class="ph ph-house text-sm" aria-hidden="true"></i>
+                            <span>Beranda</span>
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <li>
+                        <a href="categories.php" class="px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                            Kategori
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <li>
+                        <a href="search.php?kategori=<?= (int)$produk['id_kategori'] ?>" class="px-2 py-1 rounded-md font-semibold text-gray-700 hover:text-brand-dark hover:bg-brand-yellow/25 transition">
+                            <?= htmlspecialchars($kategoriNama, ENT_QUOTES, 'UTF-8') ?>
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <li class="px-1.5 py-1 font-semibold text-gray-900 truncate max-w-[180px] sm:max-w-[300px] md:max-w-[420px]" aria-current="page" title="<?= htmlspecialchars($namaProduk, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= htmlspecialchars($namaProduk, ENT_QUOTES, 'UTF-8') ?>
+                    </li>
+                </ol>
+            </nav>
+            <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = 'search.php?kategori=<?= (int)$produk['id_kategori'] ?>'; }"
+                class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition shrink-0 cursor-pointer">
+                <i class="ph ph-arrow-left text-xs" aria-hidden="true"></i>
+                <span>Kembali</span>
+            </button>
+        </div>
 
         <!-- Baris Utama Produk: Galeri (Kiri) + Info & Harga (Tengah) + Info Penjual (Kanan) -->
         <section class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start" aria-label="Informasi Utama Produk">

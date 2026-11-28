@@ -64,7 +64,7 @@ $totalAvailableProducts = count($allProducts);
 $initialExplorerLimit   = 8;
 $isVerifiedUser         = isVerifiedSeller();
 $sellerCtaHref          = $isVerifiedUser ? 'upload_produk.php' : 'verifikasi_akun.php';
-$sellerCtaLabel         = $isVerifiedUser ? 'Pasang Produk Sekarang' : 'Verifikasi Akun Seller';
+$sellerCtaLabel         = $isVerifiedUser ? 'Jual Produk Sekarang' : 'Mulai Jual Produk';
 ?>
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth">

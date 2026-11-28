@@ -147,16 +147,83 @@ if ($activeCategoryName !== '' && $searchQuery !== '') {
 $pageTitle = $pageHeading === 'Semua Produk' ? 'Pencarian' : $pageHeading;
 
 // Query string filter untuk link pagination agar filter tidak hilang
-$filterQuery = http_build_query(array_filter([
-    'q'         => $searchQuery,
+$baseFilterParams = [
+    'q'         => $searchQuery !== '' ? $searchQuery : null,
     'kategori'  => $kategoriFilter,
-    'kondisi'   => $kondisiFilter,
+    'kondisi'   => $kondisiFilter !== '' ? $kondisiFilter : null,
     'min_price' => $minPrice,
     'max_price' => $maxPrice,
     'nego'      => $filterNego ? 1 : null,
     'barter'    => $filterBarter ? 1 : null,
-], fn($v) => $v !== null && $v !== ''));
+];
+$filterQuery = http_build_query(array_filter($baseFilterParams, fn($v) => $v !== null && $v !== ''));
 $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '&' : '') . 'page=' . $n;
+
+$removeFilterUrl = function (array $keys) use ($baseFilterParams): string {
+    $next = $baseFilterParams;
+    foreach ($keys as $k) {
+        unset($next[$k]);
+    }
+    $qs = http_build_query(array_filter($next, fn($v) => $v !== null && $v !== ''));
+    return 'search.php' . ($qs !== '' ? '?' . $qs : '');
+};
+
+$activeFilterChips = [];
+if ($searchQuery !== '') {
+    $activeFilterChips[] = [
+        'label'      => 'Kata kunci: "' . $searchQuery . '"',
+        'icon'       => 'ph-magnifying-glass',
+        'remove_url' => $removeFilterUrl(['q']),
+        'aria_label' => 'Hapus filter kata kunci ' . $searchQuery,
+    ];
+}
+if ($kategoriFilter !== null && $activeCategoryName !== '') {
+    $activeFilterChips[] = [
+        'label'      => 'Kategori: ' . $activeCategoryName,
+        'icon'       => 'ph-squares-four',
+        'remove_url' => $removeFilterUrl(['kategori']),
+        'aria_label' => 'Hapus filter kategori ' . $activeCategoryName,
+    ];
+}
+if ($kondisiFilter !== '') {
+    $activeFilterChips[] = [
+        'label'      => 'Kondisi: ' . $kondisiFilter,
+        'icon'       => 'ph-tag',
+        'remove_url' => $removeFilterUrl(['kondisi']),
+        'aria_label' => 'Hapus filter kondisi ' . $kondisiFilter,
+    ];
+}
+if ($minPrice !== null || $maxPrice !== null) {
+    if ($minPrice !== null && $maxPrice !== null) {
+        $priceLabel = 'Harga: Rp ' . number_format($minPrice, 0, ',', '.') . ' – Rp ' . number_format($maxPrice, 0, ',', '.');
+    } elseif ($minPrice !== null) {
+        $priceLabel = 'Harga: ≥ Rp ' . number_format($minPrice, 0, ',', '.');
+    } else {
+        $priceLabel = 'Harga: ≤ Rp ' . number_format($maxPrice, 0, ',', '.');
+    }
+    $activeFilterChips[] = [
+        'label'      => $priceLabel,
+        'icon'       => 'ph-currency-circle-dollar',
+        'remove_url' => $removeFilterUrl(['min_price', 'max_price']),
+        'aria_label' => 'Hapus filter harga',
+    ];
+}
+if ($filterNego) {
+    $activeFilterChips[] = [
+        'label'      => 'Bisa Nego',
+        'icon'       => 'ph-handshake',
+        'remove_url' => $removeFilterUrl(['nego']),
+        'aria_label' => 'Hapus filter Bisa Nego',
+    ];
+}
+if ($filterBarter) {
+    $activeFilterChips[] = [
+        'label'      => 'Bisa Barter',
+        'icon'       => 'ph-arrows-left-right',
+        'remove_url' => $removeFilterUrl(['barter']),
+        'aria_label' => 'Hapus filter Bisa Barter',
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -273,11 +340,64 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
     ?>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-6 md:px-12 py-8">
-        <nav aria-label="Breadcrumb" class="text-xs font-semibold text-gray-500 mb-4">
-            <a href="categories.php" class="hover:text-brand-dark transition">Kategori</a>
-            <span class="mx-1 text-gray-400">/</span>
-            <span class="text-gray-800">Pencarian</span>
-        </nav>
+        <div class="bg-white border border-gray-200/80 rounded-lg px-2.5 py-1.5 shadow-2xs mb-5">
+            <nav aria-label="Breadcrumb">
+                <ol class="flex items-center flex-wrap gap-1 text-xs">
+                    <li>
+                        <a href="index.php" class="inline-flex items-center gap-1 px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                            <i class="ph ph-house text-sm" aria-hidden="true"></i>
+                            <span>Beranda</span>
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <?php if ($activeCategoryName !== ''): ?>
+                        <li>
+                            <a href="categories.php" class="px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                                Kategori
+                            </a>
+                        </li>
+                        <li aria-hidden="true" class="text-gray-300 flex items-center">
+                            <i class="ph ph-caret-right text-[11px]"></i>
+                        </li>
+                        <?php if ($searchQuery !== ''): ?>
+                            <li>
+                                <a href="search.php?kategori=<?= (int)$kategoriFilter ?>" class="px-2 py-1 rounded-md font-semibold text-gray-700 hover:text-brand-dark hover:bg-brand-yellow/25 transition">
+                                    <?= htmlspecialchars($activeCategoryName, ENT_QUOTES, 'UTF-8') ?>
+                                </a>
+                            </li>
+                            <li aria-hidden="true" class="text-gray-300 flex items-center">
+                                <i class="ph ph-caret-right text-[11px]"></i>
+                            </li>
+                            <li class="px-1.5 py-1 font-semibold text-gray-900 truncate max-w-[200px] sm:max-w-[340px]" aria-current="page">
+                                Pencarian: &ldquo;<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>&rdquo;
+                            </li>
+                        <?php else: ?>
+                            <li class="px-1.5 py-1 font-semibold text-gray-900" aria-current="page">
+                                <?= htmlspecialchars($activeCategoryName, ENT_QUOTES, 'UTF-8') ?>
+                            </li>
+                        <?php endif; ?>
+                    <?php elseif ($searchQuery !== ''): ?>
+                        <li>
+                            <a href="search.php" class="px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                                Pencarian
+                            </a>
+                        </li>
+                        <li aria-hidden="true" class="text-gray-300 flex items-center">
+                            <i class="ph ph-caret-right text-[11px]"></i>
+                        </li>
+                        <li class="px-1.5 py-1 font-semibold text-gray-900 truncate max-w-[200px] sm:max-w-[340px]" aria-current="page">
+                            &ldquo;<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>&rdquo;
+                        </li>
+                    <?php else: ?>
+                        <li class="px-1.5 py-1 font-semibold text-gray-900" aria-current="page">
+                            Semua Produk
+                        </li>
+                    <?php endif; ?>
+                </ol>
+            </nav>
+        </div>
         <!-- Header Judul Pencarian -->
         <div class="mb-6">
             <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#272727] tracking-tight">
@@ -286,6 +406,25 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
             <p class="text-xs sm:text-sm text-gray-500 font-medium mt-1">
                 <?= htmlspecialchars((string)$totalResults) ?> Hasil ditemukan
             </p>
+            <?php if (!empty($activeFilterChips)): ?>
+                <div class="flex flex-wrap items-center gap-2 mt-3.5" aria-label="Filter aktif">
+                    <span class="text-[11px] font-semibold text-gray-500">Filter aktif:</span>
+                    <?php foreach ($activeFilterChips as $chip): ?>
+                        <a href="<?= htmlspecialchars($chip['remove_url'], ENT_QUOTES, 'UTF-8') ?>"
+                            aria-label="<?= htmlspecialchars($chip['aria_label'], ENT_QUOTES, 'UTF-8') ?>"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-gray-200/90 text-xs font-medium text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition shadow-2xs group">
+                            <i class="ph <?= htmlspecialchars($chip['icon'], ENT_QUOTES, 'UTF-8') ?> text-xs text-gray-500 group-hover:text-red-600" aria-hidden="true"></i>
+                            <span><?= htmlspecialchars($chip['label'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <i class="ph-bold ph-x text-[10px] text-gray-400 group-hover:text-red-600 ml-0.5 transition" aria-hidden="true"></i>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if (count($activeFilterChips) > 1): ?>
+                        <a href="search.php" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-red-600 hover:bg-red-50 transition">
+                            Reset Semua
+                        </a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
         <!-- Tombol Toggle Filter untuk Layar Mobile -->
