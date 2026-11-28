@@ -46,11 +46,11 @@ if ($db instanceof PDO) {
         $rowsOrders = $stmtOrders->fetchAll();
 
         $statusMap = [
-            'menunggu_pembayaran' => ['Menunggu Pembayaran', 'cart.php?status=belum_bayar'],
-            'dibayar'             => ['Diproses', 'cart.php?status=diproses'],
-            'dikirim'             => ['Dikirim', 'cart.php?status=dikirim'],
-            'selesai'             => ['Selesai', 'cart.php?status=ulasan'],
-            'dibatalkan'          => ['Dibatalkan', 'cart.php'],
+            'menunggu_pembayaran' => ['Menunggu Pembayaran', 'pesanan.php'],
+            'dibayar'             => ['Diproses', 'pesanan.php'],
+            'dikirim'             => ['Dikirim', 'pesanan.php'],
+            'selesai'             => ['Selesai', 'pesanan.php'],
+            'dibatalkan'          => ['Dibatalkan', 'pesanan.php'],
         ];
         $emojiMap = [
             'gpu'        => '🖥️',
@@ -70,7 +70,7 @@ if ($db instanceof PDO) {
                 default        => 'ORD-',
             };
             $orderCode = $prefix . str_pad((string)$row['id'], 4, '0', STR_PAD_LEFT);
-            $statusInfo = $statusMap[$row['status_pesanan'] ?? 'menunggu_pembayaran'] ?? ['Menunggu Pembayaran', 'cart.php?status=belum_bayar'];
+            $statusInfo = $statusMap[$row['status_pesanan'] ?? 'menunggu_pembayaran'] ?? ['Menunggu Pembayaran', 'pesanan.php'];
             $katKey = strtolower(trim((string)($row['nama_kategori'] ?? '')));
             $qty = max(1, (int)($row['kuantitas'] ?? 1));
             $harga = (int)($row['harga_satuan'] ?? $row['total_harga'] ?? 0);
@@ -110,6 +110,7 @@ if ($db instanceof PDO) {
             'diterima'      => 'Penawaran harga disetujui! Segera lanjutkan ke checkout.',
             'ditolak'       => 'Penawaran harga belum disepakati.',
             'expired'       => 'Batas waktu negosiasi telah habis.',
+            'gagal'         => 'Negosiasi ditutup otomatis karena stok tidak tersedia.',
         ];
 
         foreach ($rowsNego as $row) {
@@ -223,7 +224,7 @@ if (empty($updates)) {
                 <section class="bg-white px-5 pt-5 pb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-base font-extrabold text-[#272727]">Pesanan Saya</h2>
-                        <a href="cart.php?status=belum_bayar" class="text-xs font-bold text-brand-yellow hover:underline cursor-pointer">
+                        <a href="pesanan.php" class="text-xs font-bold text-brand-yellow hover:underline cursor-pointer">
                             Lihat Semua
                         </a>
                     </div>
@@ -273,7 +274,7 @@ if (empty($updates)) {
                     <p class="text-xs text-gray-500 leading-relaxed mb-4">
                         Cek pesanan yang masuk dan perkembangan tokomu secara rutin di satu tempat
                     </p>
-                    <a href="index.php" class="block w-full bg-brand-yellow hover:brightness-95 text-[#272727] font-bold text-sm py-3 px-4 rounded-[2px] shadow-2xs transition-all text-center cursor-pointer">
+                    <a href="dashboard_seller.php" class="block w-full bg-brand-yellow hover:brightness-95 text-[#272727] font-bold text-sm py-3 px-4 rounded-[2px] shadow-2xs transition-all text-center cursor-pointer">
                         Masuk ke Toko Saya
                     </a>
                 </section>
