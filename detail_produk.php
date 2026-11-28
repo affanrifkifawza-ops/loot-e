@@ -65,13 +65,17 @@ try {
         }
 
         $stmtRel = $db->prepare("
-            SELECT p.id, p.nama_produk, p.foto, p.harga, p.kondisi, p.stok, k.nama_kategori, u.nama AS nama_penjual
+            SELECT p.id, p.nama_produk, p.foto, p.harga, p.kondisi, p.stok,
+                   p.bisa_nego, p.bisa_barter, k.nama_kategori,
+                   u.nama AS nama_penjual, u.alamat AS alamat_penjual, u.is_verified AS penjual_verified,
+                   (SELECT AVG(rating) FROM ulasan WHERE id_produk = p.id) AS avg_rating,
+                   (SELECT COUNT(*) FROM ulasan WHERE id_produk = p.id) AS total_reviews
             FROM produk p
             JOIN kategori k ON p.id_kategori = k.id
             JOIN pengguna u ON p.id_penjual = u.id
             WHERE p.status_produk = 'tersedia' AND p.stok > 0 AND p.id != ?
             ORDER BY (p.id_kategori = ?) DESC, p.id DESC
-            LIMIT 3
+            LIMIT 4
         ");
         $stmtRel->execute([$idProduk, (int)$produk['id_kategori']]);
         $relatedProducts = $stmtRel->fetchAll();
@@ -283,6 +287,56 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             scrollbar-color: #D1D5DB transparent;
         }
 
+        .loote-card {
+            position: relative;
+            transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 200ms ease-out,
+                border-color 200ms ease-out;
+        }
+
+        .loote-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--brand-yellow);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 5;
+        }
+
+        .loote-card:hover {
+            transform: translateY(-3px);
+            border-color: #D1D5DB;
+            box-shadow: 0 10px 22px -10px rgba(39, 39, 39, 0.12);
+        }
+
+        .loote-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .loote-card .card-img-primary {
+            transition: transform 240ms ease-out;
+        }
+
+        .loote-card:hover .card-img-primary {
+            transform: scale(1.05);
+        }
+
+        .loote-card .card-hover-hint {
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 180ms ease-out, transform 180ms ease-out;
+        }
+
+        .loote-card:hover .card-hover-hint {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         @media (prefers-reduced-motion: reduce) {
             * {
                 scroll-behavior: auto !important;
@@ -352,8 +406,8 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     <!-- Area Foto Utama -->
                     <div class="relative flex-1 min-w-0 aspect-square bg-[#FAFAFA] border border-gray-200/80 rounded-lg flex items-center justify-center p-5 sm:p-6 overflow-hidden">
                         <!-- Badge Kondisi -->
-                        <span class="absolute top-3 left-3 z-10 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-md tracking-wide">
-                            <?= htmlspecialchars($kondisiProduk) ?>
+                        <span class="absolute top-3 left-3 z-10 <?= kondisiBadgeClasses($kondisiProduk) ?> text-xs font-bold px-2.5 py-1 rounded-md tracking-wide">
+                            <?= htmlspecialchars($kondisiProduk, ENT_QUOTES, 'UTF-8') ?>
                         </span>
 
                         <?php if ($totalPhotos > 0): ?>
@@ -437,8 +491,8 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         <?php endif; ?>
                         <span aria-hidden="true" class="text-gray-300">&bull;</span>
                         <span><?= htmlspecialchars($kategoriNama) ?></span>
-                        <span class="bg-emerald-50 text-emerald-700 text-[11px] font-medium px-2 py-0.5 rounded-full">
-                            <?= htmlspecialchars($kondisiProduk) ?>
+                        <span class="<?= kondisiBadgeClasses($kondisiProduk) ?> text-[11px] font-bold px-2 py-0.5 rounded-md">
+                            <?= htmlspecialchars($kondisiProduk, ENT_QUOTES, 'UTF-8') ?>
                         </span>
                     </div>
                 </div>
@@ -507,21 +561,24 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </dl>
                 </div>
 
-                <!-- Badges Fasilitas Transaksi -->
-                <?php if ($bisaNego || $bisaBarter): ?>
-                    <div class="flex flex-wrap gap-1.5 text-xs">
-                        <?php if ($bisaNego): ?>
-                            <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
-                                Bisa Nego
-                            </span>
-                        <?php endif; ?>
-                        <?php if ($bisaBarter): ?>
-                            <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
-                                Bisa Barter
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
+                <!-- Badges Fasilitas Transaksi (selaras dengan search.php) -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <?php if ($bisaNego): ?>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-bold">
+                            <i class="ph-bold ph-tag text-sm" aria-hidden="true"></i> Bisa Nego
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($bisaBarter): ?>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-sky-50 text-sky-700 border border-sky-200/80 text-xs font-bold">
+                            <i class="ph-bold ph-arrows-left-right text-sm" aria-hidden="true"></i> Bisa Barter
+                        </span>
+                    <?php endif; ?>
+                    <?php if (!$bisaNego && !$bisaBarter): ?>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-50 text-gray-600 border border-gray-200/80 text-xs font-semibold">
+                            <i class="ph ph-check-circle text-sm" aria-hidden="true"></i> Harga Pas
+                        </span>
+                    <?php endif; ?>
+                </div>
 
                 <!-- Grid Tombol Aksi / Guard BR-01 -->
                 <?php if ($isOwnProduct): ?>
@@ -976,39 +1033,10 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 </a>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <?php if (!empty($relatedProducts)): ?>
-                    <?php foreach ($relatedProducts as $rel): ?>
-                        <a href="detail_produk.php?id=<?= (int)$rel['id'] ?>" class="bg-white border border-gray-200/80 p-4 space-y-3 hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between shadow-2xs">
-                            <div class="space-y-3">
-                                <div class="relative w-full aspect-video bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
-                                    <span class="absolute top-2 left-2 z-10 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
-                                        <?= htmlspecialchars($rel['kondisi']) ?>
-                                    </span>
-                                    <?php if (!empty($rel['foto'])): ?>
-                                        <img src="<?= htmlspecialchars($rel['foto']) ?>" alt="<?= htmlspecialchars($rel['nama_produk']) ?>" width="400" height="225" loading="lazy" class="w-full h-full object-contain p-2" />
-                                    <?php else: ?>
-                                        <div class="text-center text-gray-400">
-                                            <i class="ph <?= htmlspecialchars(kategoriIcon($rel['nama_kategori'])) ?> text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
-                                            <span class="block text-[11px]"><?= htmlspecialchars($rel['nama_kategori']) ?></span>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-sm text-gray-900 leading-snug line-clamp-2">
-                                        <?= htmlspecialchars($rel['nama_produk']) ?>
-                                    </h3>
-                                    <p class="text-base font-extrabold text-gray-900 mt-1">
-                                        <?= formatRupiah((int)$rel['harga']) ?>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5">
-                                <span class="truncate"><?= htmlspecialchars($rel['nama_penjual']) ?></span>
-                                <span class="shrink-0">Stok <?= (int)$rel['stok'] ?></span>
-                            </div>
-                        </a>
+                    <?php foreach ($relatedProducts as $item): ?>
+                        <?php require 'components/product_card.php'; ?>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <p class="col-span-full text-xs text-gray-500 bg-white border border-gray-200/80 p-6 text-center">

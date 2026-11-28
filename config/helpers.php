@@ -249,3 +249,15 @@ function formatRekeningRingkas(?string $rawRekening): string
 
     return $summary;
 }
+
+/**
+ * Kelas warna & border tag kondisi produk (selaras di kartu produk dan detail produk).
+ * Memenuhi kontras WCAG AA (>= 4.5:1).
+ */
+function kondisiBadgeClasses(string $kondisi): string
+{
+    $isBaru = strtolower(trim($kondisi)) === 'baru';
+    return $isBaru
+        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70'
+        : 'bg-[#FFF8E1] text-[#92400E] border border-amber-200/70';
+}
