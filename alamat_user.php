@@ -37,6 +37,7 @@ $currentUser = [
     'peran'       => (string)$userRow['peran'],
     'is_verified' => (int)$userRow['is_verified'],
 ];
+$userNoHp = trim((string)($userRow['no_hp'] ?? ''));
 
 $accountActiveMenu = 'alamat';
 $accountSidebarUser = [
@@ -77,6 +78,7 @@ function formatTeleponDisplay(string $telepon): string
 $formMode = 'tambah';
 $formValues = null;
 $forcedState = null;
+$fieldErrors = [];
 
 // Proses simpan / ubah alamat (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -84,7 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mode           = (string)($_POST['mode'] ?? 'tambah');
     $addressId      = (int)($_POST['address_id'] ?? 0);
     $namaPenerima   = trim((string)($_POST['nama_penerima'] ?? ''));
-    $telepon        = trim((string)($_POST['telepon'] ?? ''));
     $provinsi       = trim((string)($_POST['provinsi'] ?? ''));
     $kota           = trim((string)($_POST['kota'] ?? ''));
     $kecamatan      = trim((string)($_POST['kecamatan'] ?? ''));
@@ -97,7 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formValues = [
         'id'              => $addressId,
         'nama_penerima'   => $namaPenerima,
-        'telepon'         => $telepon,
         'provinsi'        => $provinsi,
         'kota'            => $kota,
         'kecamatan'       => $kecamatan,
@@ -110,53 +110,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrfAddress, $postedToken)) {
         $flash = ['type' => 'error', 'message' => 'Sesi formulir tidak valid. Silakan muat ulang halaman dan coba lagi.'];
         $forcedState = $formMode;
-    } elseif (
-        $namaPenerima === '' ||
-        $telepon === '' ||
-        $provinsi === '' ||
-        $kota === '' ||
-        $kecamatan === '' ||
-        $kelurahan === '' ||
-        $kodePos === '' ||
-        $alamatLengkap === ''
-    ) {
-        $flash = ['type' => 'error', 'message' => 'Harap lengkapi seluruh kolom wajib yang tersedia.'];
-        $forcedState = $formMode;
-    } elseif (mb_strlen($namaPenerima) > 100 || mb_strlen($telepon) > 30 || mb_strlen($kodePos) > 10) {
-        $flash = ['type' => 'error', 'message' => 'Panjang input melebihi batas yang diizinkan.'];
-        $forcedState = $formMode;
     } else {
-        try {
-            $alamatPayload = [
-                'nama_penerima'   => $namaPenerima,
-                'telepon'         => $telepon,
-                'provinsi'        => $provinsi,
-                'kota'            => $kota,
-                'kecamatan'       => $kecamatan,
-                'kelurahan'       => $kelurahan,
-                'kode_pos'        => $kodePos,
-                'alamat_lengkap'  => $alamatLengkap,
-                'detail_tambahan' => $detailTambahan,
-            ];
-            $alamatJson = json_encode($alamatPayload, JSON_UNESCAPED_UNICODE);
-            if ($alamatJson === false) {
-                throw new RuntimeException('Gagal mengodekan data alamat.');
-            }
+        if ($namaPenerima === '') {
+            $fieldErrors['nama_penerima'] = 'Nama penerima wajib diisi.';
+        } elseif (mb_strlen($namaPenerima) > 100) {
+            $fieldErrors['nama_penerima'] = 'Nama penerima maksimal 100 karakter.';
+        }
 
-            $stmtUpdate = $db->prepare("UPDATE pengguna SET alamat = ? WHERE id = ?");
-            $stmtUpdate->execute([$alamatJson, $userId]);
+        if ($provinsi === '') {
+            $fieldErrors['provinsi'] = 'Provinsi wajib dipilih.';
+        }
 
-            $_SESSION['address_flash'] = [
-                'type'    => 'success',
-                'message' => $formMode === 'edit'
-                    ? 'Perubahan alamat berhasil disimpan.'
-                    : 'Alamat baru berhasil ditambahkan.',
-            ];
-            header("Location: alamat_user.php");
-            exit;
-        } catch (Throwable $e) {
-            $flash = ['type' => 'error', 'message' => 'Gagal menyimpan data alamat. Silakan coba lagi.'];
+        if ($kota === '') {
+            $fieldErrors['kota'] = 'Kota / Kabupaten wajib dipilih.';
+        }
+
+        if ($kecamatan === '') {
+            $fieldErrors['kecamatan'] = 'Kecamatan wajib dipilih.';
+        }
+
+        if ($kelurahan === '') {
+            $fieldErrors['kelurahan'] = 'Kelurahan wajib dipilih.';
+        }
+
+        if ($kodePos === '') {
+            $fieldErrors['kode_pos'] = 'Kode pos wajib diisi.';
+        } elseif (mb_strlen($kodePos) > 10) {
+            $fieldErrors['kode_pos'] = 'Kode pos maksimal 10 karakter.';
+        }
+
+        if ($alamatLengkap === '') {
+            $fieldErrors['alamat_lengkap'] = 'Alamat lengkap wajib diisi.';
+        }
+
+        if (!empty($fieldErrors)) {
+            $flash = ['type' => 'error', 'message' => 'Periksa kembali kolom wajib alamat yang ditandai merah.'];
             $forcedState = $formMode;
+        } else {
+            try {
+                $alamatPayload = [
+                    'nama_penerima'   => $namaPenerima,
+                    'provinsi'        => $provinsi,
+                    'kota'            => $kota,
+                    'kecamatan'       => $kecamatan,
+                    'kelurahan'       => $kelurahan,
+                    'kode_pos'        => $kodePos,
+                    'alamat_lengkap'  => $alamatLengkap,
+                    'detail_tambahan' => $detailTambahan,
+                ];
+                $alamatJson = json_encode($alamatPayload, JSON_UNESCAPED_UNICODE);
+                if ($alamatJson === false) {
+                    throw new RuntimeException('Gagal mengodekan data alamat.');
+                }
+
+                $stmtUpdate = $db->prepare("UPDATE pengguna SET alamat = ? WHERE id = ?");
+                $stmtUpdate->execute([$alamatJson, $userId]);
+
+                $_SESSION['address_flash'] = [
+                    'type'    => 'success',
+                    'message' => $formMode === 'edit'
+                        ? 'Perubahan alamat berhasil disimpan.'
+                        : 'Alamat baru berhasil ditambahkan.',
+                ];
+                header("Location: alamat_user.php");
+                exit;
+            } catch (Throwable $e) {
+                $flash = ['type' => 'error', 'message' => 'Gagal menyimpan data alamat. Silakan coba lagi.'];
+                $forcedState = $formMode;
+            }
         }
     }
 }
@@ -249,6 +270,11 @@ if ($forcedState !== null) {
         textarea:focus-visible {
             outline: 2px solid var(--brand-yellow);
             outline-offset: 2px;
+        }
+
+        .field-error {
+            border-color: #DC2626 !important;
+            background-color: #FEF2F2 !important;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -374,7 +400,11 @@ if ($forcedState !== null) {
                                     <?= htmlspecialchars((string)($address['nama_penerima'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
                                 </h3>
                                 <p id="display-telepon" class="text-xs text-gray-500 mt-1">
-                                    <?= htmlspecialchars(formatTeleponDisplay((string)($address['telepon'] ?? '')), ENT_QUOTES, 'UTF-8') ?>
+                                    <?php if ($userNoHp !== ''): ?>
+                                        <?= htmlspecialchars(formatTeleponDisplay($userNoHp), ENT_QUOTES, 'UTF-8') ?>
+                                    <?php else: ?>
+                                        Nomor HP belum diatur. <a href="profile.php" class="text-[#272727] font-semibold underline hover:text-amber-600 transition">Lengkapi di Profil</a>
+                                    <?php endif; ?>
                                 </p>
                                 <div id="display-alamat-full" class="text-xs text-gray-600 leading-relaxed mt-2.5 space-y-0.5">
                                     <p><?= htmlspecialchars((string)($address['alamat_lengkap'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
@@ -434,7 +464,7 @@ if ($forcedState !== null) {
                         </div>
 
                         <!-- Form Isian Alamat -->
-                        <form id="form-alamat" method="POST" action="alamat_user.php" class="mt-6 space-y-4">
+                        <form id="form-alamat" method="POST" action="alamat_user.php" novalidate class="mt-6 space-y-4">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfAddress, ENT_QUOTES, 'UTF-8') ?>" />
                             <input type="hidden" id="form-mode" name="mode" value="<?= htmlspecialchars($formMode, ENT_QUOTES, 'UTF-8') ?>" />
                             <input type="hidden" id="form-address-id" name="address_id" value="<?= (int)($address['id'] ?? 0) ?>" />
@@ -445,21 +475,12 @@ if ($forcedState !== null) {
                                     Nama Penerima
                                 </label>
                                 <input type="text" id="input-nama-penerima" name="nama_penerima" required
-                                    placeholder="Masukkan nama penerima"
-                                    class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
+                                    <?= isset($fieldErrors['nama_penerima']) ? 'aria-invalid="true" ' : '' ?>placeholder="Masukkan nama penerima"
+                                    class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition<?= isset($fieldErrors['nama_penerima']) ? ' field-error' : '' ?>" />
+                                <p id="err-nama-penerima" class="<?= isset($fieldErrors['nama_penerima']) ? '' : 'hidden ' ?>mt-1 text-xs font-medium text-red-600"><?= htmlspecialchars($fieldErrors['nama_penerima'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
                             </div>
 
-                            <!-- 2. Nomor Telepon -->
-                            <div>
-                                <label for="input-telepon" class="block text-xs font-semibold text-gray-700 mb-1.5">
-                                    Nomor Telepon
-                                </label>
-                                <input type="tel" id="input-telepon" name="telepon" required
-                                    placeholder="Contoh: 081234567890"
-                                    class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
-                            </div>
-
-                            <!-- 3. Provinsi & Kota / Kabupaten (2 Kolom) -->
+                            <!-- 2. Provinsi & Kota / Kabupaten (2 Kolom) -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label for="select-provinsi" class="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -467,7 +488,7 @@ if ($forcedState !== null) {
                                     </label>
                                     <div class="relative">
                                         <select id="select-provinsi" name="provinsi" required
-                                            class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition">
+                                            <?= isset($fieldErrors['provinsi']) ? 'aria-invalid="true" ' : '' ?>class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition<?= isset($fieldErrors['provinsi']) ? ' field-error' : '' ?>">
                                             <option value="" disabled selected>Pilih provinsi</option>
                                             <?php foreach ($provinsiOptions as $prov): ?>
                                                 <option value="<?= htmlspecialchars($prov, ENT_QUOTES, 'UTF-8') ?>">
@@ -477,6 +498,7 @@ if ($forcedState !== null) {
                                         </select>
                                         <i class="ph ph-caret-down text-gray-400 text-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
                                     </div>
+                                    <p id="err-provinsi" class="<?= isset($fieldErrors['provinsi']) ? '' : 'hidden ' ?>mt-1 text-xs font-medium text-red-600"><?= htmlspecialchars($fieldErrors['provinsi'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
                                 </div>
 
                                 <div>
@@ -485,7 +507,7 @@ if ($forcedState !== null) {
                                     </label>
                                     <div class="relative">
                                         <select id="select-kota" name="kota" required
-                                            class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition">
+                                            <?= isset($fieldErrors['kota']) ? 'aria-invalid="true" ' : '' ?>class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition<?= isset($fieldErrors['kota']) ? ' field-error' : '' ?>">
                                             <option value="" disabled selected>Pilih kota / kabupaten</option>
                                             <?php foreach ($kotaOptions as $kt): ?>
                                                 <option value="<?= htmlspecialchars($kt, ENT_QUOTES, 'UTF-8') ?>">
@@ -495,6 +517,7 @@ if ($forcedState !== null) {
                                         </select>
                                         <i class="ph ph-caret-down text-gray-400 text-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
                                     </div>
+                                    <p id="err-kota" class="<?= isset($fieldErrors['kota']) ? '' : 'hidden ' ?>mt-1 text-xs font-medium text-red-600"><?= htmlspecialchars($fieldErrors['kota'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
                                 </div>
                             </div>
 
@@ -506,7 +529,7 @@ if ($forcedState !== null) {
                                     </label>
                                     <div class="relative">
                                         <select id="select-kecamatan" name="kecamatan" required
-                                            class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition">
+                                            <?= isset($fieldErrors['kecamatan']) ? 'aria-invalid="true" ' : '' ?>class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition<?= isset($fieldErrors['kecamatan']) ? ' field-error' : '' ?>">
                                             <option value="" disabled selected>Pilih kecamatan</option>
                                             <?php foreach ($kecamatanOptions as $kec): ?>
                                                 <option value="<?= htmlspecialchars($kec, ENT_QUOTES, 'UTF-8') ?>">
@@ -516,6 +539,7 @@ if ($forcedState !== null) {
                                         </select>
                                         <i class="ph ph-caret-down text-gray-400 text-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
                                     </div>
+                                    <p id="err-kecamatan" class="<?= isset($fieldErrors['kecamatan']) ? '' : 'hidden ' ?>mt-1 text-xs font-medium text-red-600"><?= htmlspecialchars($fieldErrors['kecamatan'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
                                 </div>
 
                                 <div>
@@ -524,7 +548,7 @@ if ($forcedState !== null) {
                                     </label>
                                     <div class="relative">
                                         <select id="select-kelurahan" name="kelurahan" required
-                                            class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition">
+                                            <?= isset($fieldErrors['kelurahan']) ? 'aria-invalid="true" ' : '' ?>class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 appearance-none focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow cursor-pointer transition<?= isset($fieldErrors['kelurahan']) ? ' field-error' : '' ?>">
                                             <option value="" disabled selected>Pilih kelurahan</option>
                                             <?php foreach ($kelurahanOptions as $kel): ?>
                                                 <option value="<?= htmlspecialchars($kel, ENT_QUOTES, 'UTF-8') ?>">
@@ -534,6 +558,7 @@ if ($forcedState !== null) {
                                         </select>
                                         <i class="ph ph-caret-down text-gray-400 text-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true"></i>
                                     </div>
+                                    <p id="err-kelurahan" class="<?= isset($fieldErrors['kelurahan']) ? '' : 'hidden ' ?>mt-1 text-xs font-medium text-red-600"><?= htmlspecialchars($fieldErrors['kelurahan'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
                                 </div>
                             </div>
 
@@ -543,8 +568,9 @@ if ($forcedState !== null) {
                                     Kode Pos
                                 </label>
                                 <input type="text" id="input-kode-pos" name="kode_pos" required maxlength="10"
-                                    placeholder="Contoh: 40123"
-                                    class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition" />
+                                    <?= isset($fieldErrors['kode_pos']) ? 'aria-invalid="true" ' : '' ?>placeholder="Contoh: 40123"
+                                    class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition<?= isset($fieldErrors['kode_pos']) ? ' field-error' : '' ?>" />
+                                <p id="err-kode-pos" class="<?= isset($fieldErrors['kode_pos']) ? '' : 'hidden ' ?>mt-1 text-xs font-medium text-red-600"><?= htmlspecialchars($fieldErrors['kode_pos'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
                             </div>
 
                             <!-- 6. Alamat Lengkap -->
@@ -553,8 +579,9 @@ if ($forcedState !== null) {
                                     Alamat Lengkap
                                 </label>
                                 <textarea id="input-alamat-lengkap" name="alamat_lengkap" rows="2" required
-                                    placeholder="Masukkan alamat lengkap (nama jalan, nomor rumah, RT/RW, dll)"
-                                    class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition resize-y"></textarea>
+                                    <?= isset($fieldErrors['alamat_lengkap']) ? 'aria-invalid="true" ' : '' ?>placeholder="Masukkan alamat lengkap (nama jalan, nomor rumah, RT/RW, dll)"
+                                    class="w-full bg-white border border-gray-300 rounded-[2px] px-3.5 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow transition resize-y<?= isset($fieldErrors['alamat_lengkap']) ? ' field-error' : '' ?>"></textarea>
+                                <p id="err-alamat-lengkap" class="<?= isset($fieldErrors['alamat_lengkap']) ? '' : 'hidden ' ?>mt-1 text-xs font-medium text-red-600"><?= htmlspecialchars($fieldErrors['alamat_lengkap'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
                             </div>
 
                             <!-- 7. Detail Tambahan / Patokan (Opsional) -->
@@ -625,7 +652,6 @@ if ($forcedState !== null) {
 
             // Elemen Input Form
             const inputNama = document.getElementById('input-nama-penerima');
-            const inputTelepon = document.getElementById('input-telepon');
             const selectProv = document.getElementById('select-provinsi');
             const selectKota = document.getElementById('select-kota');
             const selectKec = document.getElementById('select-kecamatan');
@@ -639,6 +665,47 @@ if ($forcedState !== null) {
             const postedValues = <?= json_encode($formValues, JSON_UNESCAPED_UNICODE) ?>;
             const hasAddress = <?= $hasAddress ? 'true' : 'false' ?>;
             const initialFlash = <?= json_encode($flash, JSON_UNESCAPED_UNICODE) ?>;
+
+            const errMap = {
+                namaPenerima: document.getElementById('err-nama-penerima'),
+                provinsi: document.getElementById('err-provinsi'),
+                kota: document.getElementById('err-kota'),
+                kecamatan: document.getElementById('err-kecamatan'),
+                kelurahan: document.getElementById('err-kelurahan'),
+                kodePos: document.getElementById('err-kode-pos'),
+                alamatLengkap: document.getElementById('err-alamat-lengkap'),
+            };
+
+            function setFieldError(targetEl, errorEl, message) {
+                if (errorEl) {
+                    if (message) {
+                        errorEl.textContent = message;
+                        errorEl.classList.remove('hidden');
+                    } else {
+                        errorEl.textContent = '';
+                        errorEl.classList.add('hidden');
+                    }
+                }
+                if (targetEl) {
+                    if (message) {
+                        targetEl.classList.add('field-error');
+                        targetEl.setAttribute('aria-invalid', 'true');
+                    } else {
+                        targetEl.classList.remove('field-error');
+                        targetEl.removeAttribute('aria-invalid');
+                    }
+                }
+            }
+
+            function clearAllErrors() {
+                setFieldError(inputNama, errMap.namaPenerima, '');
+                setFieldError(selectProv, errMap.provinsi, '');
+                setFieldError(selectKota, errMap.kota, '');
+                setFieldError(selectKec, errMap.kecamatan, '');
+                setFieldError(selectKel, errMap.kelurahan, '');
+                setFieldError(inputKodePos, errMap.kodePos, '');
+                setFieldError(inputAlamat, errMap.alamatLengkap, '');
+            }
 
             // Toast Notifikasi
             const toast = document.getElementById('alamat-toast');
@@ -657,6 +724,10 @@ if ($forcedState !== null) {
 
             // Fungsi Transisi State Tampilan
             function switchState(state, usePosted) {
+                if (!usePosted) {
+                    clearAllErrors();
+                }
+
                 sectionEmpty.classList.add('hidden');
                 sectionView.classList.add('hidden');
                 sectionForm.classList.add('hidden');
@@ -679,7 +750,6 @@ if ($forcedState !== null) {
                     const src = usePosted && postedValues ? postedValues : null;
                     if (src) {
                         inputNama.value = src.nama_penerima || '';
-                        inputTelepon.value = src.telepon || '';
                         selectProv.value = src.provinsi || '';
                         selectKota.value = src.kota || '';
                         selectKec.value = src.kecamatan || '';
@@ -696,7 +766,12 @@ if ($forcedState !== null) {
                     }
 
                     sectionForm.classList.remove('hidden');
-                    inputNama.focus();
+                    const firstErrorEl = usePosted ? sectionForm.querySelector('.field-error') : null;
+                    if (firstErrorEl && typeof firstErrorEl.focus === 'function') {
+                        firstErrorEl.focus();
+                    } else {
+                        inputNama.focus();
+                    }
                 } else if (state === 'edit') {
                     if (!hasAddress && !(usePosted && postedValues)) {
                         switchState('tambah', false);
@@ -708,11 +783,11 @@ if ($forcedState !== null) {
                     formHeadingDesc.textContent = 'Perbarui informasi alamat yang akan digunakan.';
                     btnSubmitLabel.textContent = 'Simpan Perubahan';
 
-                    const src = (usePosted && postedValues) ? postedValues : currentAddress;
+                    const isUsingPosted = Boolean(usePosted && postedValues);
+                    const src = isUsingPosted ? postedValues : currentAddress;
                     if (src) {
                         if (formAddressId) formAddressId.value = src.id || (currentAddress ? currentAddress.id : 0);
                         inputNama.value = src.nama_penerima || '';
-                        inputTelepon.value = src.telepon || '';
                         selectProv.value = src.provinsi || '';
                         selectKota.value = src.kota || '';
                         selectKec.value = src.kecamatan || '';
@@ -723,7 +798,12 @@ if ($forcedState !== null) {
                     }
 
                     sectionForm.classList.remove('hidden');
-                    inputNama.focus();
+                    const firstErrorEl = usePosted ? sectionForm.querySelector('.field-error') : null;
+                    if (firstErrorEl && typeof firstErrorEl.focus === 'function') {
+                        firstErrorEl.focus();
+                    } else {
+                        inputNama.focus();
+                    }
                 }
             }
 
@@ -734,21 +814,89 @@ if ($forcedState !== null) {
                 switchState(hasAddress ? 'view' : 'empty', false);
             });
 
+            // Hapus error inline saat user mulai memperbaiki input
+            [
+                { el: inputNama, err: errMap.namaPenerima, evt: 'input' },
+                { el: selectProv, err: errMap.provinsi, evt: 'change' },
+                { el: selectKota, err: errMap.kota, evt: 'change' },
+                { el: selectKec, err: errMap.kecamatan, evt: 'change' },
+                { el: selectKel, err: errMap.kelurahan, evt: 'change' },
+                { el: inputKodePos, err: errMap.kodePos, evt: 'input' },
+                { el: inputAlamat, err: errMap.alamatLengkap, evt: 'input' },
+            ].forEach(function(item) {
+                if (!item.el) return;
+                item.el.addEventListener(item.evt, function() {
+                    if (item.el.value.trim() !== '') {
+                        setFieldError(item.el, item.err, '');
+                    }
+                });
+            });
+
             // Validasi Client-side sebelum Submit ke Backend
             if (formAlamat) {
                 formAlamat.addEventListener('submit', function(e) {
-                    const namaVal = inputNama.value.trim();
-                    const teleponVal = inputTelepon.value.trim();
-                    const provVal = selectProv.value;
-                    const kotaVal = selectKota.value;
-                    const kecVal = selectKec.value;
-                    const kelVal = selectKel.value;
-                    const kodePosVal = inputKodePos.value.trim();
-                    const alamatVal = inputAlamat.value.trim();
+                    clearAllErrors();
 
-                    if (!namaVal || !teleponVal || !provVal || !kotaVal || !kecVal || !kelVal || !kodePosVal || !alamatVal) {
+                    let firstInvalidTarget = null;
+                    function registerInvalid(el) {
+                        if (!firstInvalidTarget && el) {
+                            firstInvalidTarget = el;
+                        }
+                    }
+
+                    const namaVal = inputNama.value.trim();
+                    if (!namaVal) {
+                        setFieldError(inputNama, errMap.namaPenerima, 'Nama penerima wajib diisi.');
+                        registerInvalid(inputNama);
+                    } else if (namaVal.length > 100) {
+                        setFieldError(inputNama, errMap.namaPenerima, 'Nama penerima maksimal 100 karakter.');
+                        registerInvalid(inputNama);
+                    }
+
+                    if (!selectProv.value) {
+                        setFieldError(selectProv, errMap.provinsi, 'Provinsi wajib dipilih.');
+                        registerInvalid(selectProv);
+                    }
+
+                    if (!selectKota.value) {
+                        setFieldError(selectKota, errMap.kota, 'Kota / Kabupaten wajib dipilih.');
+                        registerInvalid(selectKota);
+                    }
+
+                    if (!selectKec.value) {
+                        setFieldError(selectKec, errMap.kecamatan, 'Kecamatan wajib dipilih.');
+                        registerInvalid(selectKec);
+                    }
+
+                    if (!selectKel.value) {
+                        setFieldError(selectKel, errMap.kelurahan, 'Kelurahan wajib dipilih.');
+                        registerInvalid(selectKel);
+                    }
+
+                    const kodePosVal = inputKodePos.value.trim();
+                    if (!kodePosVal) {
+                        setFieldError(inputKodePos, errMap.kodePos, 'Kode pos wajib diisi.');
+                        registerInvalid(inputKodePos);
+                    } else if (kodePosVal.length > 10) {
+                        setFieldError(inputKodePos, errMap.kodePos, 'Kode pos maksimal 10 karakter.');
+                        registerInvalid(inputKodePos);
+                    }
+
+                    const alamatVal = inputAlamat.value.trim();
+                    if (!alamatVal) {
+                        setFieldError(inputAlamat, errMap.alamatLengkap, 'Alamat lengkap wajib diisi.');
+                        registerInvalid(inputAlamat);
+                    }
+
+                    if (firstInvalidTarget) {
                         e.preventDefault();
-                        showToast('Harap lengkapi seluruh kolom wajib yang tersedia.', 'error');
+                        if (typeof firstInvalidTarget.scrollIntoView === 'function') {
+                            firstInvalidTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        if (typeof firstInvalidTarget.focus === 'function') {
+                            firstInvalidTarget.focus({ preventScroll: true });
+                        }
+                        showToast('Periksa kembali kolom wajib alamat yang ditandai merah.', 'error');
                     }
                 });
             }

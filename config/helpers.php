@@ -103,10 +103,13 @@ function parseAlamatPengguna(?string $rawAlamat, array $fallbackUser = []): ?arr
 
     $decoded = json_decode($raw, true);
     if (is_array($decoded) && json_last_error() === JSON_ERROR_NONE) {
+        $fallbackNoHp = trim((string)($fallbackUser['no_hp'] ?? ''));
+        $parsedTelepon = $fallbackNoHp !== '' ? $fallbackNoHp : trim((string)($decoded['telepon'] ?? ''));
+
         $parsed = [
             'is_structured'   => true,
             'nama_penerima'   => trim((string)($decoded['nama_penerima'] ?? '')),
-            'telepon'         => trim((string)($decoded['telepon'] ?? '')),
+            'telepon'         => $parsedTelepon,
             'provinsi'        => trim((string)($decoded['provinsi'] ?? '')),
             'kota'            => trim((string)($decoded['kota'] ?? '')),
             'kecamatan'       => trim((string)($decoded['kecamatan'] ?? '')),
