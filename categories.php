@@ -85,8 +85,11 @@ foreach ($stmt->fetchAll() as $cat) {
 
 <body class="bg-[#F4F5F7] font-sans text-gray-800">
     <!-- Navbar -->
-    <?php $navActivePage = 'categories';
-    require_once 'components/navbar.php'; ?>
+    <?php
+    $navActivePage  = 'categories';
+    $navOverlayHero = true;
+    require_once 'components/navbar.php';
+    ?>
 
     <!-- Hero Section -->
     <section class="relative bg-brand-yellow overflow-hidden">
@@ -98,7 +101,7 @@ foreach ($stmt->fetchAll() as $cat) {
             <div class="absolute inset-0 bg-gradient-to-r from-brand-yellow via-brand-yellow/85 sm:via-brand-yellow/60 to-transparent"></div>
         </div>
 
-        <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-12 <?= $searchQuery !== '' ? 'pt-10 pb-6 md:pt-14 md:pb-8' : 'py-12 md:py-16' ?> flex items-center min-h-[260px] sm:min-h-[300px] md:min-h-[340px]">
+        <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-12 <?= $searchQuery !== '' ? 'pt-10 pb-6 md:pt-28 md:pb-8' : 'py-12 md:pt-28 md:pb-16' ?> flex items-center min-h-[260px] sm:min-h-[300px] md:min-h-[360px]">
             <div class="max-w-xl w-full">
                 <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#272727] leading-tight mb-5 tracking-tight">
                     Explore Categories

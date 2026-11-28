@@ -9,11 +9,11 @@
   - Kontrak format JSON `produk.deskripsi`: `docs/adr/0001-structured-product-description.md`
   - Riwayat audit & refaktor tahap sebelumnya: `docs/loote-audit-handoff.md`
 - **Status Kesiapan Saat Ini:**
-  - Skema tabel `produk`, `kategori`, dan `pengguna` (termasuk kolom verifikasi seller `no_hp`, `alamat`, `info_rekening`, `is_verified`) sudah siap.
+  - Skema tabel `produk`, `kategori`, dan `pengguna` (kolom verifikasi seller: `nik` `CHAR(16)`, `info_rekening` `TEXT` JSON, `is_verified`; kolom profil opsional: `no_hp`, `alamat` dengan default `NULL`) sudah siap.
   - Query etalase di `index.php`, `search.php`, `landingpage.php`, dan `detail_produk.php` aman menerima data produk baru dan sudah mendukung rendering kolom `p.foto` (fallback ikon kategori jika kosong).
   - Pembersihan data hardcoded, guard wajib login, serta aturan BR-01 pada `detail_produk.php` sudah diterapkan.
-  - Whitelist redirect di `login.php` & `register.php` sudah mencakup `detail_produk.php`.
-  - Belum ada halaman verifikasi seller, halaman upload/kelola produk, maupun folder penyimpanan gambar `uploads/produk/`.
+  - Whitelist redirect di `login.php` & `register.php` sudah mencakup `detail_produk.php`, `verifikasi_akun.php`, `alamat_user.php`, `dashboard_seller.php`, `katalog.php`, dan `upload_produk.php`.
+  - Halaman gate `verifikasi_akun.php`, `alamat_user.php`, `dashboard_seller.php`, `katalog.php`, dan `upload_produk.php` sudah tersedia; UI formulir verifikasi seller akan ditambahkan sebagai state lanjutan di dalam `verifikasi_akun.php`.
 
 ---
 
@@ -40,13 +40,14 @@
 ### 4. Sinkronisasi Session `is_verified` & Guard BR-04
 - **Masalah potensial:** `isVerifiedSeller()` di `auth.php` (baris 50–52) hanya membaca `$_SESSION['is_verified']`.
 - **Antisipasi:**
-  - Saat user selesai verifikasi seller (`UPDATE pengguna SET no_hp=?, alamat=?, info_rekening=?, is_verified=1 WHERE id=?`), **wajib langsung set `$_SESSION['is_verified'] = 1`**.
+  - Saat user selesai verifikasi seller (`UPDATE pengguna SET nik=?, info_rekening=?, is_verified=1 WHERE id=?`), validasi backend cukup memastikan `nik` 16 digit angka (unik), payload JSON `info_rekening` (`nama_bank`, `nama_pemilik`, `nomor_rekening`) lengkap (gunakan helper `parseRekeningPengguna()` / `formatRekeningRingkas()` saat membaca), dan persetujuan tercentang, lalu **wajib langsung set `$_SESSION['is_verified'] = 1`**. Field demo lain pada form verifikasi (nama sesuai KTP, tanggal lahir, jenis kelamin, foto KTP, selfie wajah) bersifat opsional di frontend dan tidak disimpan ke database, sementara `no_hp` dan `alamat` bersifat opsional milik profil pengguna (`profile.php` & `alamat_user.php`).
+  - **Catatan Sesi Berikutnya (UI Form Verifikasi & Approval Admin):** Form verifikasi ditempatkan sebagai state di dalam `verifikasi_akun.php` (pola state seperti `alamat_user.php`) dengan tombol `Batal` untuk kembali ke state awal (tanpa fitur draft). Pengaturan langsung `is_verified = 1` bersifat sementara selama fokus pengembangan masih pada user biasa; alur approval oleh admin akan dibahas kembali saat halaman admin dibuat.
   - Di halaman upload/edit/hapus produk, cek ulang `is_verified` ke DB (atau sinkronkan ke session) agar status tetap valid jika diubah admin (BR-04).
-  - Validasi input angka di PHP: `harga > 0` dan `<= 2000000000` (batas aman `INT` signed MySQL), `stok >= 1`, `id_kategori` harus eksis di tabel `kategori`.
+  - Validasi input angka di PHP: `harga > 0` dan `<= 2000000000` (batas aman `INT` signed MySQL), `stok >= 1` untuk produk `tersedia`, `id_kategori` harus eksis di tabel `kategori`, dan `status_produk` wajib whitelist (`tersedia`, `draft`, `nonaktif`, `habis` — lihat `docs/adr/0002-product-status-and-parallel-offers.md`).
 
 ### 5. Whitelist Redirect di `login.php` & `register.php`
 - **Status saat ini:** `$allowedRedirects` sudah mencakup `["index.php", "categories.php", "search.php", "detail_produk.php"]`.
-- **Antisipasi:** Saat membuat halaman seller baru (`verifikasi_seller.php`, `tambah_produk.php`, `produk_saya.php`), tambahkan file-file tersebut ke `$allowedRedirects` agar redirect pasca-login tetap berjalan.
+- **Antisipasi:** Pastikan halaman akun dan seller (`verifikasi_akun.php`, `alamat_user.php`, `dashboard_seller.php`, `katalog.php`, `upload_produk.php`) tetap terdaftar di `$allowedRedirects` agar redirect pasca-login tetap berjalan.
 
 ### 6. Guard BR-01 & Data Dinamis di `detail_produk.php`
 - **Status saat ini (Sudah Diterapkan):**
@@ -59,7 +60,7 @@
 ---
 
 ## Urutan Progres Berikutnya (Rekomendasi)
-1. **Seller Onboarding & Navbar:** Buat `verifikasi_seller.php` (gate `is_verified = 0 -> 1`) + tambahkan tombol "Jual Barang" di `components/navbar.php` + update `$allowedRedirects` di `login.php` & `register.php`.
+1. **Seller Onboarding & Verifikasi Akun:** Lengkapi state form verifikasi pada `verifikasi_akun.php` (`is_verified = 0 -> 1` sementara sebelum approval admin) + tambahkan tombol "Jual Barang" di `components/navbar.php` jika diperlukan.
 2. **CRUD Produk Seller:** Buat `tambah_produk.php` (form terstruktur JSON ADR-0001 + upload foto aman + dropdown kondisi baku) dan `produk_saya.php` (daftar, edit, hapus produk milik seller sendiri).
 3. **Jalur Transaksi MVP:** Keranjang & Buy Now/Checkout + Escrow (BR-02), Negosiasi & Barter dengan timer 30 menit (BR-03), Input Resi & Ulasan (BR-05), lalu Admin Panel (`admin/index.php`).
 

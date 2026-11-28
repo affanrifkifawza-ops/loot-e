@@ -89,3 +89,175 @@ function parseDeskripsiProduk(?string $rawDeskripsi): array
         'riwayat'       => $riwayat,
     ];
 }
+
+/**
+ * Mem-parsing kolom `pengguna.alamat` (JSON terstruktur dari alamat_user.php atau teks biasa lama).
+ * Mengembalikan null jika alamat kosong.
+ */
+function parseAlamatPengguna(?string $rawAlamat, array $fallbackUser = []): ?array
+{
+    $raw = trim((string)$rawAlamat);
+    if ($raw === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded) && json_last_error() === JSON_ERROR_NONE) {
+        $fallbackNoHp = trim((string)($fallbackUser['no_hp'] ?? ''));
+        $parsedTelepon = $fallbackNoHp !== '' ? $fallbackNoHp : trim((string)($decoded['telepon'] ?? ''));
+
+        $parsed = [
+            'is_structured'   => true,
+            'nama_penerima'   => trim((string)($decoded['nama_penerima'] ?? '')),
+            'telepon'         => $parsedTelepon,
+            'provinsi'        => trim((string)($decoded['provinsi'] ?? '')),
+            'kota'            => trim((string)($decoded['kota'] ?? '')),
+            'kecamatan'       => trim((string)($decoded['kecamatan'] ?? '')),
+            'kelurahan'       => trim((string)($decoded['kelurahan'] ?? '')),
+            'kode_pos'        => trim((string)($decoded['kode_pos'] ?? '')),
+            'alamat_lengkap'  => trim((string)($decoded['alamat_lengkap'] ?? '')),
+            'detail_tambahan' => trim((string)($decoded['detail_tambahan'] ?? '')),
+        ];
+
+        if (
+            $parsed['alamat_lengkap'] === '' &&
+            $parsed['nama_penerima'] === '' &&
+            $parsed['kota'] === '' &&
+            $parsed['provinsi'] === ''
+        ) {
+            return null;
+        }
+
+        return $parsed;
+    }
+
+    return [
+        'is_structured'   => false,
+        'nama_penerima'   => trim((string)($fallbackUser['nama'] ?? '')),
+        'telepon'         => trim((string)($fallbackUser['no_hp'] ?? '')),
+        'provinsi'        => '',
+        'kota'            => '',
+        'kecamatan'       => '',
+        'kelurahan'       => '',
+        'kode_pos'        => '',
+        'alamat_lengkap'  => $raw,
+        'detail_tambahan' => '',
+    ];
+}
+
+/**
+ * Mengubah kolom `pengguna.alamat` (JSON maupun teks biasa) menjadi string lokasi yang rapi untuk ditampilkan.
+ */
+function formatAlamatRingkas(?string $rawAlamat, bool $kotaOnly = false): string
+{
+    $parsed = parseAlamatPengguna($rawAlamat);
+    if ($parsed === null) {
+        return '';
+    }
+
+    if ($parsed['is_structured']) {
+        if ($kotaOnly) {
+            return $parsed['kota'] !== ''
+                ? $parsed['kota']
+                : ($parsed['provinsi'] !== '' ? $parsed['provinsi'] : $parsed['alamat_lengkap']);
+        }
+
+        $parts = array_values(array_filter([
+            $parsed['alamat_lengkap'],
+            $parsed['kota'],
+            $parsed['provinsi'],
+        ], static fn($v) => $v !== ''));
+
+        return implode(', ', $parts);
+    }
+
+    $raw = $parsed['alamat_lengkap'];
+    if ($kotaOnly) {
+        $parts = array_values(array_filter(array_map('trim', explode(',', $raw))));
+        return !empty($parts) ? end($parts) : $raw;
+    }
+
+    return $raw;
+}
+
+/**
+ * Mem-parsing kolom `pengguna.info_rekening` (JSON terstruktur atau teks biasa lama seperti "BCA - 1234567890").
+ * Mengembalikan null jika data rekening kosong.
+ */
+function parseRekeningPengguna(?string $rawRekening): ?array
+{
+    $raw = trim((string)$rawRekening);
+    if ($raw === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded) && json_last_error() === JSON_ERROR_NONE) {
+        $parsed = [
+            'is_structured'  => true,
+            'nama_bank'      => trim((string)($decoded['nama_bank'] ?? '')),
+            'nama_pemilik'   => trim((string)($decoded['nama_pemilik'] ?? '')),
+            'nomor_rekening' => trim((string)($decoded['nomor_rekening'] ?? '')),
+        ];
+
+        if (
+            $parsed['nama_bank'] === '' &&
+            $parsed['nama_pemilik'] === '' &&
+            $parsed['nomor_rekening'] === ''
+        ) {
+            return null;
+        }
+
+        return $parsed;
+    }
+
+    $namaBank = '';
+    $nomorRekening = $raw;
+    if (str_contains($raw, ' - ')) {
+        [$bankPart, $rekPart] = explode(' - ', $raw, 2);
+        $namaBank = trim($bankPart);
+        $nomorRekening = trim($rekPart);
+    }
+
+    return [
+        'is_structured'  => false,
+        'nama_bank'      => $namaBank,
+        'nama_pemilik'   => '',
+        'nomor_rekening' => $nomorRekening,
+    ];
+}
+
+/**
+ * Mengubah kolom `pengguna.info_rekening` menjadi string satu baris yang rapi untuk tampilan UI.
+ */
+function formatRekeningRingkas(?string $rawRekening): string
+{
+    $parsed = parseRekeningPengguna($rawRekening);
+    if ($parsed === null) {
+        return '';
+    }
+
+    $mainParts = array_values(array_filter([
+        $parsed['nama_bank'],
+        $parsed['nomor_rekening'],
+    ], static fn($v) => $v !== ''));
+
+    $summary = implode(' - ', $mainParts);
+    if ($parsed['nama_pemilik'] !== '') {
+        $summary .= ($summary !== '' ? ' ' : '') . '(a.n. ' . $parsed['nama_pemilik'] . ')';
+    }
+
+    return $summary;
+}
+
+/**
+ * Kelas warna & border tag kondisi produk (selaras di kartu produk dan detail produk).
+ * Memenuhi kontras WCAG AA (>= 4.5:1).
+ */
+function kondisiBadgeClasses(string $kondisi): string
+{
+    $isBaru = strtolower(trim($kondisi)) === 'baru';
+    return $isBaru
+        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70'
+        : 'bg-[#FFF8E1] text-[#92400E] border border-amber-200/70';
+}

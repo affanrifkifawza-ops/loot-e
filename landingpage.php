@@ -14,7 +14,7 @@ $produkTampil = getDbConnection()->query("
   SELECT p.id, p.nama_produk, p.foto, p.harga, k.nama_kategori
   FROM produk p
   JOIN kategori k ON k.id = p.id_kategori
-  WHERE p.status_produk = 'tersedia'
+  WHERE p.status_produk = 'tersedia' AND p.stok > 0
   ORDER BY p.created_at DESC, p.id DESC
   LIMIT 5
 ")->fetchAll();

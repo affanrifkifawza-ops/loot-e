@@ -66,12 +66,8 @@ function formatRingkasWaktu(string $dateStr): string
 
 function ekstrakKota(?string $alamat): string
 {
-    $raw = trim((string)$alamat);
-    if ($raw === '') {
-        return 'Indonesia';
-    }
-    $parts = array_values(array_filter(array_map('trim', explode(',', $raw))));
-    return !empty($parts) ? end($parts) : $raw;
+    $kota = formatAlamatRingkas($alamat, true);
+    return $kota !== '' ? $kota : 'Indonesia';
 }
 
 try {
@@ -141,7 +137,7 @@ try {
             $stmtProd->execute([(int)$negoRow['id_produk']]);
             $produkRow = $stmtProd->fetch() ?: null;
         } else {
-            $produkRow = $db->query($sqlProdukBase . " WHERE p.bisa_nego = 1 AND p.status_produk = 'tersedia' ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
+            $produkRow = $db->query($sqlProdukBase . " WHERE p.bisa_nego = 1 AND p.status_produk = 'tersedia' AND p.stok > 0 ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
         }
     }
 
@@ -239,7 +235,50 @@ $hematBalik  = max(0, $hargaAsli - $tawaranPenjual);
 $persenBalik = $hargaAsli > 0 ? number_format(($hematBalik / $hargaAsli) * 100, 1) . '%' : '0.0%';
 
 // Status & metadata negosiasi
-$statusKey = $negoRow['status'] ?? 'counter_offer';
+$statusKey     = $negoRow['status'] ?? 'counter_offer';
+$stokProduk    = (int)($produkRow['stok'] ?? 0);
+$statusProduk  = (string)($produkRow['status_produk'] ?? 'tersedia');
+$qtyNego       = max(1, (int)($negoRow['kuantitas'] ?? 1));
+
+// Bedakan feedback status 'gagal' sesuai kondisi aktual produk & sisa stok (ADR-0002 / BR-03)
+if ($statusProduk === 'habis' || $stokProduk <= 0) {
+    $gagalMeta = [
+        'badge'     => 'Gagal',
+        'label'     => 'Penawaran Gagal (Produk Habis)',
+        'judul'     => 'Produk Sudah Habis Terjual',
+        'deskripsi' => 'Tawaranmu kalah bersaing dan produk ini sudah habis terjual.',
+        'step2'     => 'done',
+        'step3'     => 'pending',
+    ];
+} elseif ($statusProduk === 'nonaktif') {
+    $gagalMeta = [
+        'badge'     => 'Gagal',
+        'label'     => 'Penawaran Gagal (Produk Nonaktif)',
+        'judul'     => 'Produk Dinonaktifkan Penjual',
+        'deskripsi' => 'Penjual sedang menonaktifkan produk ini untuk sementara sehingga sesi penawaran ditutup.',
+        'step2'     => 'done',
+        'step3'     => 'pending',
+    ];
+} elseif ($statusProduk === 'tersedia' && $stokProduk < $qtyNego) {
+    $gagalMeta = [
+        'badge'     => 'Gagal',
+        'label'     => 'Penawaran Gagal (Stok Tidak Cukup)',
+        'judul'     => 'Sisa Stok Tidak Mencukupi',
+        'deskripsi' => 'Sisa stok produk saat ini (' . $stokProduk . ' unit) tidak lagi mencukupi jumlah unit pada tawaranmu (' . $qtyNego . ' unit). Kamu dapat mengajukan penawaran baru sesuai sisa stok yang tersedia.',
+        'step2'     => 'done',
+        'step3'     => 'pending',
+    ];
+} else {
+    $gagalMeta = [
+        'badge'     => 'Gagal',
+        'label'     => 'Penawaran Gagal (Stok Kembali Tersedia)',
+        'judul'     => 'Sesi Sebelumnya Gagal, Produk Kembali Tersedia',
+        'deskripsi' => 'Tawaran pada sesi ini sebelumnya gagal saat stok sempat habis, namun saat ini produk tersedia kembali. Kamu dapat mengajukan penawaran baru.',
+        'step2'     => 'done',
+        'step3'     => 'pending',
+    ];
+}
+
 $statusMap = [
     'pending' => [
         'badge'     => 'Menunggu Penjual',
@@ -261,7 +300,7 @@ $statusMap = [
         'badge'     => 'Disetujui',
         'label'     => 'Penawaran Disetujui Penjual',
         'judul'     => 'Kesepakatan Harga Tercapai',
-        'deskripsi' => 'Penjual telah menyetujui harga negosiasi. Segera lanjutkan ke tahap checkout agar stok produk terkunci untuk kamu.',
+        'deskripsi' => 'Penjual telah menyetujui harga negosiasi. Pesanan telah dibuat dan stok dialokasikan untuk kamu; segera selesaikan pembayaran sebelum batas waktu berakhir.',
         'step2'     => 'done',
         'step3'     => 'done',
     ],
@@ -269,7 +308,7 @@ $statusMap = [
         'badge'     => 'Ditolak',
         'label'     => 'Penawaran Ditolak',
         'judul'     => 'Penawaran Harga Belum Disepakati',
-        'deskripsi' => 'Penawaran pada sesi ini ditolak. Kamu masih dapat mengajukan penawaran harga baru selama produk tersedia.',
+        'deskripsi' => 'Penawaran pada sesi ini ditolak. Kamu masih dapat mengajukan penawaran harga baru yang lebih tinggi setelah masa jeda 30 menit selama produk tersedia.',
         'step2'     => 'done',
         'step3'     => 'pending',
     ],
@@ -281,6 +320,7 @@ $statusMap = [
         'step2'     => 'done',
         'step3'     => 'pending',
     ],
+    'gagal' => $gagalMeta,
 ];
 $statusMeta = $statusMap[$statusKey] ?? $statusMap['counter_offer'];
 
@@ -675,20 +715,35 @@ $penjual   = $negosiasi['penjual'];
 
                     <!-- Tombol Aksi Utama -->
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3 mt-5">
-                        <button type="button" id="btn-ajukan-harga-baru"
-                            class="bg-[#272727] hover:bg-black text-white text-xs font-bold px-4 py-2.5 inline-flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer">
-                            <i class="ph ph-tag text-sm" aria-hidden="true"></i>
-                            Ajukan Harga Baru
-                        </button>
-                        <button type="button" id="btn-terima-checkout"
-                            class="bg-brand-yellow hover:brightness-95 text-[#272727] text-xs font-bold px-5 py-2.5 flex-1 inline-flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer">
-                            <i class="ph ph-shopping-bag text-sm" aria-hidden="true"></i>
-                            Terima &amp; Checkout (<?= formatRupiah((int)$penawaran['balik_penjual']) ?>)
-                        </button>
-                        <button type="button" id="btn-tolak-penawaran"
-                            class="bg-[#F00000] hover:bg-red-700 text-white text-xs font-bold px-5 py-2.5 inline-flex items-center justify-center transition active:scale-[0.99] cursor-pointer">
-                            Tolak Penawaran
-                        </button>
+                        <?php if ($statusKey === 'gagal'): ?>
+                            <?php if ($statusProduk === 'tersedia' && $stokProduk > 0): ?>
+                                <a href="detail_produk.php?id=<?= (int)$produk['id'] ?>"
+                                    class="bg-brand-yellow hover:brightness-95 text-[#272727] text-xs font-bold px-5 py-2.5 flex-1 inline-flex items-center justify-center gap-2 transition active:scale-[0.99]">
+                                    <i class="ph ph-tag text-sm" aria-hidden="true"></i>
+                                    Ajukan Penawaran Baru (Sisa Stok: <?= $stokProduk ?>)
+                                </a>
+                            <?php endif; ?>
+                            <a href="search.php"
+                                class="bg-[#272727] hover:bg-black text-white text-xs font-bold px-5 py-2.5 inline-flex items-center justify-center gap-2 transition active:scale-[0.99]">
+                                <i class="ph ph-magnifying-glass text-sm" aria-hidden="true"></i>
+                                Cari Produk Serupa
+                            </a>
+                        <?php else: ?>
+                            <button type="button" id="btn-ajukan-harga-baru"
+                                class="bg-[#272727] hover:bg-black text-white text-xs font-bold px-4 py-2.5 inline-flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer">
+                                <i class="ph ph-tag text-sm" aria-hidden="true"></i>
+                                Ajukan Harga Baru
+                            </button>
+                            <button type="button" id="btn-terima-checkout"
+                                class="bg-brand-yellow hover:brightness-95 text-[#272727] text-xs font-bold px-5 py-2.5 flex-1 inline-flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer">
+                                <i class="ph ph-shopping-bag text-sm" aria-hidden="true"></i>
+                                Terima &amp; Checkout (<?= formatRupiah((int)$penawaran['balik_penjual']) ?>)
+                            </button>
+                            <button type="button" id="btn-tolak-penawaran"
+                                class="bg-[#F00000] hover:bg-red-700 text-white text-xs font-bold px-5 py-2.5 inline-flex items-center justify-center transition active:scale-[0.99] cursor-pointer">
+                                Tolak Penawaran
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </section>
 

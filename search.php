@@ -27,21 +27,48 @@ $products = [];
 $totalResults = 0;
 $totalPages = 1;
 $allCategories = [];
+$activeCategoryName = '';
 
 try {
     $db = getDbConnection();
 
-    // Daftar kategori beserta jumlah produk yang tersedia
-    $allCategories = $db->query("
-        SELECT k.id, k.nama_kategori, COUNT(p.id) AS total_produk
-        FROM kategori k
-        LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia'
-        GROUP BY k.id, k.nama_kategori
-        ORDER BY k.id ASC
-    ")->fetchAll();
+    // Daftar kategori beserta jumlah produk yang tersedia (menyesuaikan kata kunci pencarian jika ada)
+    if ($searchQuery !== '') {
+        $catTerm = "%" . $searchQuery . "%";
+        $stmtCat = $db->prepare("
+            SELECT k.id, k.nama_kategori, COUNT(p.id) AS total_produk
+            FROM kategori k
+            LEFT JOIN produk p
+                ON k.id = p.id_kategori
+               AND p.status_produk = 'tersedia'
+               AND p.stok > 0
+               AND (p.nama_produk LIKE ? OR k.nama_kategori LIKE ?)
+            GROUP BY k.id, k.nama_kategori
+            ORDER BY k.id ASC
+        ");
+        $stmtCat->execute([$catTerm, $catTerm]);
+        $allCategories = $stmtCat->fetchAll();
+    } else {
+        $allCategories = $db->query("
+            SELECT k.id, k.nama_kategori, COUNT(p.id) AS total_produk
+            FROM kategori k
+            LEFT JOIN produk p ON k.id = p.id_kategori AND p.status_produk = 'tersedia' AND p.stok > 0
+            GROUP BY k.id, k.nama_kategori
+            ORDER BY k.id ASC
+        ")->fetchAll();
+    }
+
+    if ($kategoriFilter !== null) {
+        foreach ($allCategories as $cat) {
+            if ((int)$cat['id'] === $kategoriFilter) {
+                $activeCategoryName = $cat['nama_kategori'];
+                break;
+            }
+        }
+    }
 
     // Kondisi filter disusun dinamis, semua nilai lewat prepared statement
-    $where  = ["p.status_produk = 'tersedia'"];
+    $where  = ["p.status_produk = 'tersedia'", "p.stok > 0"];
     $params = [];
 
     if ($searchQuery !== '') {
@@ -66,8 +93,13 @@ try {
         $where[]  = "p.harga <= ?";
         $params[] = $maxPrice;
     }
-    if ($filterNego)   $where[] = "p.bisa_nego = 1";
-    if ($filterBarter) $where[] = "p.bisa_barter = 1";
+    if ($filterNego && $filterBarter) {
+        $where[] = "(p.bisa_nego = 1 OR p.bisa_barter = 1)";
+    } elseif ($filterNego) {
+        $where[] = "p.bisa_nego = 1";
+    } elseif ($filterBarter) {
+        $where[] = "p.bisa_barter = 1";
+    }
 
     $whereSql = implode(' AND ', $where);
 
@@ -85,6 +117,7 @@ try {
     // $perPage dan $offset sudah berupa integer
     $stmt = $db->prepare("
         SELECT p.*, k.nama_kategori, u.nama AS nama_penjual,
+               u.alamat AS alamat_penjual, u.is_verified AS penjual_verified,
                (SELECT AVG(rating) FROM ulasan WHERE id_produk = p.id) AS avg_rating,
                (SELECT COUNT(*) FROM ulasan WHERE id_produk = p.id) AS total_reviews
         FROM produk p
@@ -100,17 +133,97 @@ try {
     $products = [];
 }
 
+if ($activeCategoryName !== '' && $searchQuery !== '') {
+    $pageHeading = strcasecmp($searchQuery, $activeCategoryName) === 0
+        ? $activeCategoryName
+        : $searchQuery . ' / ' . $activeCategoryName;
+} elseif ($activeCategoryName !== '') {
+    $pageHeading = $activeCategoryName;
+} elseif ($searchQuery !== '') {
+    $pageHeading = $searchQuery;
+} else {
+    $pageHeading = 'Semua Produk';
+}
+$pageTitle = $pageHeading === 'Semua Produk' ? 'Pencarian' : $pageHeading;
+
 // Query string filter untuk link pagination agar filter tidak hilang
-$filterQuery = http_build_query(array_filter([
-    'q'         => $searchQuery,
+$baseFilterParams = [
+    'q'         => $searchQuery !== '' ? $searchQuery : null,
     'kategori'  => $kategoriFilter,
-    'kondisi'   => $kondisiFilter,
+    'kondisi'   => $kondisiFilter !== '' ? $kondisiFilter : null,
     'min_price' => $minPrice,
     'max_price' => $maxPrice,
     'nego'      => $filterNego ? 1 : null,
     'barter'    => $filterBarter ? 1 : null,
-], fn($v) => $v !== null && $v !== ''));
+];
+$filterQuery = http_build_query(array_filter($baseFilterParams, fn($v) => $v !== null && $v !== ''));
 $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '&' : '') . 'page=' . $n;
+
+$removeFilterUrl = function (array $keys) use ($baseFilterParams): string {
+    $next = $baseFilterParams;
+    foreach ($keys as $k) {
+        unset($next[$k]);
+    }
+    $qs = http_build_query(array_filter($next, fn($v) => $v !== null && $v !== ''));
+    return 'search.php' . ($qs !== '' ? '?' . $qs : '');
+};
+
+$activeFilterChips = [];
+if ($searchQuery !== '') {
+    $activeFilterChips[] = [
+        'label'      => 'Kata kunci: "' . $searchQuery . '"',
+        'icon'       => 'ph-magnifying-glass',
+        'remove_url' => $removeFilterUrl(['q']),
+        'aria_label' => 'Hapus filter kata kunci ' . $searchQuery,
+    ];
+}
+if ($kategoriFilter !== null && $activeCategoryName !== '') {
+    $activeFilterChips[] = [
+        'label'      => 'Kategori: ' . $activeCategoryName,
+        'icon'       => 'ph-squares-four',
+        'remove_url' => $removeFilterUrl(['kategori']),
+        'aria_label' => 'Hapus filter kategori ' . $activeCategoryName,
+    ];
+}
+if ($kondisiFilter !== '') {
+    $activeFilterChips[] = [
+        'label'      => 'Kondisi: ' . $kondisiFilter,
+        'icon'       => 'ph-tag',
+        'remove_url' => $removeFilterUrl(['kondisi']),
+        'aria_label' => 'Hapus filter kondisi ' . $kondisiFilter,
+    ];
+}
+if ($minPrice !== null || $maxPrice !== null) {
+    if ($minPrice !== null && $maxPrice !== null) {
+        $priceLabel = 'Harga: Rp ' . number_format($minPrice, 0, ',', '.') . ' – Rp ' . number_format($maxPrice, 0, ',', '.');
+    } elseif ($minPrice !== null) {
+        $priceLabel = 'Harga: ≥ Rp ' . number_format($minPrice, 0, ',', '.');
+    } else {
+        $priceLabel = 'Harga: ≤ Rp ' . number_format($maxPrice, 0, ',', '.');
+    }
+    $activeFilterChips[] = [
+        'label'      => $priceLabel,
+        'icon'       => 'ph-currency-circle-dollar',
+        'remove_url' => $removeFilterUrl(['min_price', 'max_price']),
+        'aria_label' => 'Hapus filter harga',
+    ];
+}
+if ($filterNego) {
+    $activeFilterChips[] = [
+        'label'      => 'Bisa Nego',
+        'icon'       => 'ph-handshake',
+        'remove_url' => $removeFilterUrl(['nego']),
+        'aria_label' => 'Hapus filter Bisa Nego',
+    ];
+}
+if ($filterBarter) {
+    $activeFilterChips[] = [
+        'label'      => 'Bisa Barter',
+        'icon'       => 'ph-arrows-left-right',
+        'remove_url' => $removeFilterUrl(['barter']),
+        'aria_label' => 'Hapus filter Bisa Barter',
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -118,11 +231,11 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><?= htmlspecialchars($searchQuery !== '' ? $searchQuery : 'Pencarian') ?> | Loot-E</title>
+    <title><?= htmlspecialchars($pageTitle) ?> | Loot-E</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -159,6 +272,56 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
             outline-offset: 2px;
         }
 
+        .loote-card {
+            position: relative;
+            transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 200ms ease-out,
+                border-color 200ms ease-out;
+        }
+
+        .loote-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--brand-yellow);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 5;
+        }
+
+        .loote-card:hover {
+            transform: translateY(-3px);
+            border-color: #D1D5DB;
+            box-shadow: 0 10px 22px -10px rgba(39, 39, 39, 0.12);
+        }
+
+        .loote-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .loote-card .card-img-primary {
+            transition: transform 240ms ease-out;
+        }
+
+        .loote-card:hover .card-img-primary {
+            transform: scale(1.05);
+        }
+
+        .loote-card .card-hover-hint {
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 180ms ease-out, transform 180ms ease-out;
+        }
+
+        .loote-card:hover .card-hover-hint {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         @media (prefers-reduced-motion: reduce) {
             * {
                 scroll-behavior: auto !important;
@@ -177,26 +340,98 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
     ?>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-6 md:px-12 py-8">
-        <nav aria-label="Breadcrumb" class="text-xs font-semibold text-gray-500 mb-4">
-            <a href="categories.php" class="hover:text-brand-dark transition">Categories</a>
-            <span class="mx-1 text-gray-400">/</span>
-            <span class="text-gray-800">Pencarian</span>
-        </nav>
+        <div class="bg-white border border-gray-200/80 rounded-lg px-2.5 py-1.5 shadow-2xs mb-5">
+            <nav aria-label="Breadcrumb">
+                <ol class="flex items-center flex-wrap gap-1 text-xs">
+                    <li>
+                        <a href="index.php" class="inline-flex items-center gap-1 px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                            <i class="ph ph-house text-sm" aria-hidden="true"></i>
+                            <span>Beranda</span>
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <?php if ($activeCategoryName !== ''): ?>
+                        <li>
+                            <a href="categories.php" class="px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                                Kategori
+                            </a>
+                        </li>
+                        <li aria-hidden="true" class="text-gray-300 flex items-center">
+                            <i class="ph ph-caret-right text-[11px]"></i>
+                        </li>
+                        <?php if ($searchQuery !== ''): ?>
+                            <li>
+                                <a href="search.php?kategori=<?= (int)$kategoriFilter ?>" class="px-2 py-1 rounded-md font-semibold text-gray-700 hover:text-brand-dark hover:bg-brand-yellow/25 transition">
+                                    <?= htmlspecialchars($activeCategoryName, ENT_QUOTES, 'UTF-8') ?>
+                                </a>
+                            </li>
+                            <li aria-hidden="true" class="text-gray-300 flex items-center">
+                                <i class="ph ph-caret-right text-[11px]"></i>
+                            </li>
+                            <li class="px-1.5 py-1 font-semibold text-gray-900 truncate max-w-[200px] sm:max-w-[340px]" aria-current="page">
+                                Pencarian: &ldquo;<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>&rdquo;
+                            </li>
+                        <?php else: ?>
+                            <li class="px-1.5 py-1 font-semibold text-gray-900" aria-current="page">
+                                <?= htmlspecialchars($activeCategoryName, ENT_QUOTES, 'UTF-8') ?>
+                            </li>
+                        <?php endif; ?>
+                    <?php elseif ($searchQuery !== ''): ?>
+                        <li>
+                            <a href="search.php" class="px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                                Pencarian
+                            </a>
+                        </li>
+                        <li aria-hidden="true" class="text-gray-300 flex items-center">
+                            <i class="ph ph-caret-right text-[11px]"></i>
+                        </li>
+                        <li class="px-1.5 py-1 font-semibold text-gray-900 truncate max-w-[200px] sm:max-w-[340px]" aria-current="page">
+                            &ldquo;<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>&rdquo;
+                        </li>
+                    <?php else: ?>
+                        <li class="px-1.5 py-1 font-semibold text-gray-900" aria-current="page">
+                            Semua Produk
+                        </li>
+                    <?php endif; ?>
+                </ol>
+            </nav>
+        </div>
         <!-- Header Judul Pencarian -->
         <div class="mb-6">
             <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#272727] tracking-tight">
-                &ldquo;<?= htmlspecialchars($searchQuery !== '' ? $searchQuery : 'Semua Produk') ?>&rdquo;
+                &ldquo;<?= htmlspecialchars($pageHeading) ?>&rdquo;
             </h1>
             <p class="text-xs sm:text-sm text-gray-500 font-medium mt-1">
                 <?= htmlspecialchars((string)$totalResults) ?> Hasil ditemukan
             </p>
+            <?php if (!empty($activeFilterChips)): ?>
+                <div class="flex flex-wrap items-center gap-2 mt-3.5" aria-label="Filter aktif">
+                    <span class="text-[11px] font-semibold text-gray-500">Filter aktif:</span>
+                    <?php foreach ($activeFilterChips as $chip): ?>
+                        <a href="<?= htmlspecialchars($chip['remove_url'], ENT_QUOTES, 'UTF-8') ?>"
+                            aria-label="<?= htmlspecialchars($chip['aria_label'], ENT_QUOTES, 'UTF-8') ?>"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-gray-200/90 text-xs font-medium text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition shadow-2xs group">
+                            <i class="ph <?= htmlspecialchars($chip['icon'], ENT_QUOTES, 'UTF-8') ?> text-xs text-gray-500 group-hover:text-red-600" aria-hidden="true"></i>
+                            <span><?= htmlspecialchars($chip['label'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <i class="ph-bold ph-x text-[10px] text-gray-400 group-hover:text-red-600 ml-0.5 transition" aria-hidden="true"></i>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if (count($activeFilterChips) > 1): ?>
+                        <a href="search.php" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-red-600 hover:bg-red-50 transition">
+                            Reset Semua
+                        </a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
         <!-- Tombol Toggle Filter untuk Layar Mobile -->
         <div class="md:hidden mb-4">
             <button type="button" id="toggleFilterBtn"
-                class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 rounded-lg text-xs font-bold text-[#272727] shadow-xs active:bg-gray-50">
-                <i class="ph ph-sliders text-base text-brand-yellow"></i>
+                class="w-full min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 rounded-lg text-xs font-bold text-[#272727] shadow-xs active:bg-gray-50 cursor-pointer">
+                <i class="ph ph-sliders text-base text-brand-yellow" aria-hidden="true"></i>
                 <span>Tampilkan Filter Pencarian</span>
             </button>
         </div>
@@ -210,8 +445,8 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
 
                     <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                         <h2 class="text-base font-bold text-[#272727]">Filter</h2>
-                        <?php if ($kategoriFilter || $kondisiFilter || $minPrice !== null || $maxPrice !== null || $filterNego || $filterBarter): ?>
-                            <a href="search.php?q=<?= urlencode($searchQuery) ?>" class="text-[11px] font-semibold text-red-500 hover:underline">Reset</a>
+                        <?php if ($searchQuery !== '' || $kategoriFilter || $kondisiFilter || $minPrice !== null || $maxPrice !== null || $filterNego || $filterBarter): ?>
+                            <a href="search.php" class="text-[11px] font-semibold text-red-500 hover:underline">Reset</a>
                         <?php endif; ?>
                     </div>
 
@@ -264,7 +499,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                                 class="w-full border border-gray-300 rounded px-2.5 py-1 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-brand-yellow" />
                         </div>
                         <button type="submit"
-                            class="w-full bg-[#272727] text-white py-1.5 text-xs font-semibold hover:bg-neutral-800 active:scale-[0.99] transition shadow-2xs">
+                            class="w-full min-h-[38px] bg-[#272727] text-white py-1.5 text-xs font-semibold hover:bg-neutral-800 active:scale-[0.99] transition shadow-2xs cursor-pointer">
                             Terapkan
                         </button>
                     </div>
@@ -291,122 +526,7 @@ $pageUrl = fn(int $n) => 'search.php?' . $filterQuery . ($filterQuery !== '' ? '
                 <?php if (!empty($products)): ?>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                         <?php foreach ($products as $item): ?>
-                            <?php
-                            $catIcon = kategoriIcon($item['nama_kategori']);
-                            $isBaru = $item['kondisi'] === 'Baru';
-                            $badgeLabel = $isBaru ? 'Baru' : 'Bekas';
-                            $reviewVal = (int)$item['total_reviews'];
-                            $ratingVal = number_format((float)$item['avg_rating'], 1);
-                            $isOwnProduct = (int)$item['id_penjual'] === $currentUser['id']; // BR-01
-                            ?>
-                            <article class="bg-white border border-gray-200/80 p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between group">
-                                <!-- Tag Kondisi -->
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="<?= $isBaru ? 'bg-emerald-50 text-emerald-700' : 'bg-[#FFF8E1] text-[#B88A00]' ?> text-[10px] font-bold px-2 py-0.5 rounded">
-                                        <?= htmlspecialchars($badgeLabel) ?>
-                                    </span>
-                                </div>
-
-                                <!-- Gambar Hardware / Kotak Produk -->
-                                <a href="detail_produk.php?id=<?= (int)$item['id'] ?>" class="block">
-                                    <div class="w-full h-40 overflow-hidden flex items-center justify-center p-3 relative mb-2 bg-[#FAFAFA] border border-gray-100">
-                                        <?php if (!empty($item['foto'])): ?>
-                                            <img src="<?= htmlspecialchars($item['foto']) ?>" alt="<?= htmlspecialchars($item['nama_produk']) ?>" class="w-full h-full object-contain group-hover:scale-105 transition" />
-                                        <?php else: ?>
-                                            <div class="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-white p-3 relative shadow-inner">
-                                                <span class="text-[9px] font-extrabold tracking-widest text-brand-yellow uppercase mb-1">
-                                                    <?= htmlspecialchars($item['nama_kategori'] ?? 'Loot-E') ?>
-                                                </span>
-                                                <i class="ph <?= $catIcon ?> text-4xl text-gray-200 my-1 group-hover:scale-105 transition"></i>
-                                                <span class="text-[10px] font-bold text-gray-300 text-center line-clamp-1">
-                                                    <?= htmlspecialchars($item['nama_produk']) ?>
-                                                </span>
-                                                <span class="absolute bottom-1 right-2 text-[8px] text-brand-yellow font-bold">VERIFIED</span>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-
-                                    <div>
-                                        <span class="text-[10px] text-gray-400 font-medium block">
-                                            <?= htmlspecialchars($item['kondisi'] ?? 'Kondisi Normal') ?>
-                                        </span>
-                                        <h3 class="text-sm font-bold text-[#272727] leading-snug mt-0.5 group-hover:text-black line-clamp-2 min-h-[38px]">
-                                            <?= htmlspecialchars($item['nama_produk']) ?>
-                                        </h3>
-                                        <span class="text-xs font-bold text-brand-yellow block mt-0.5">
-                                            <?= htmlspecialchars($item['nama_kategori'] ?? 'Elektronik') ?>
-                                        </span>
-                                        <p class="text-base font-extrabold text-[#272727] mt-1">
-                                            <?= formatRupiah((int)$item['harga']) ?>
-                                        </p>
-                                    </div>
-                                </a>
-
-                                <!-- Detail Spesifikasi & Harga -->
-                                <div>
-
-                                    <!-- Badge Nego & Barter -->
-                                    <?php if ($item['bisa_nego'] || $item['bisa_barter']): ?>
-                                        <div class="flex items-center gap-3 text-[11px] text-brand-yellow font-medium mt-1.5">
-                                            <?php if ($item['bisa_nego']): ?>
-                                                <span class="flex items-center gap-1">
-                                                    <i class="ph ph-tag text-xs font-bold"></i> Bisa Nego
-                                                </span>
-                                            <?php endif; ?>
-                                            <?php if ($item['bisa_barter']): ?>
-                                                <span class="flex items-center gap-1">
-                                                    <i class="ph ph-arrows-left-right text-xs font-bold"></i> Bisa Barter
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <!-- Rating -->
-                                    <div class="flex items-center justify-between text-xs text-gray-600 mt-2 pb-2.5 border-b border-gray-100">
-                                        <?php if ($reviewVal > 0): ?>
-                                            <span class="flex items-center gap-1 font-semibold text-gray-800">
-                                                <i class="ph-fill ph-star text-amber-400 text-xs"></i>
-                                                <?= htmlspecialchars($ratingVal) ?>
-                                                <span class="text-gray-400 font-normal">(<?= $reviewVal ?>)</span>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-gray-400 text-[11px]">Belum ada ulasan</span>
-                                        <?php endif; ?>
-                                    </div>
-
-                                    <!-- Info Penjual -->
-                                    <div class="flex items-center justify-between pt-2.5 text-xs">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-6 h-6 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-[10px]">
-                                                <?= htmlspecialchars(strtoupper(substr($item['nama_penjual'] ?? 'Seller', 0, 1))) ?>
-                                            </div>
-                                            <div>
-                                                <p class="font-bold text-[#272727] text-xs leading-none line-clamp-1"><?= htmlspecialchars($item['nama_penjual'] ?? 'Loot-E Store') ?></p>
-                                                <p class="text-[9px] text-gray-400 leading-tight mt-0.5">Fast Response</p>
-                                            </div>
-                                        </div>
-                                        <span class="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                                            <i class="ph-fill ph-shield-check text-xs"></i> Trusted Seller
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <!-- Tombol Aksi: hanya tampil sesuai opsi produk dan bukan produk milik sendiri (BR-01) -->
-                                <?php if (!$isOwnProduct && ($item['bisa_nego'] || $item['bisa_barter'])): ?>
-                                    <div class="mt-3.5 grid grid-cols-2 gap-2">
-                                        <?php if ($item['bisa_nego']): ?>
-                                            <a href="detail_produk.php?id=<?= (int)$item['id'] ?>#nego" class="bg-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:brightness-95 transition shadow-2xs <?= $item['bisa_barter'] ? '' : 'col-span-2' ?>">
-                                                Ajukan Harga
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php if ($item['bisa_barter']): ?>
-                                            <a href="detail_produk.php?id=<?= (int)$item['id'] ?>#barter" class="border border-brand-yellow text-brand-dark py-1.5 px-2 rounded text-xs font-bold text-center hover:bg-brand-yellow/15 transition <?= $item['bisa_nego'] ? '' : 'col-span-2' ?>">
-                                                Ajukan Barter
-                                            </a>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </article>
+                            <?php require 'components/product_card.php'; ?>
                         <?php endforeach; ?>
                     </div>
 

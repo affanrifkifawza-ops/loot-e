@@ -13,6 +13,7 @@ $navActivePage = 'categories';
 $productId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : null;
 $produk = null;
 $idProduk = 0;
+$productPhotos = [];
 $relatedProducts = [];
 $reviews = [];
 $sellerStats = [
@@ -35,21 +36,46 @@ try {
         $stmt->execute([$productId]);
         $produk = $stmt->fetch() ?: null;
     } else {
-        $produk = $db->query($sqlBase . " WHERE p.status_produk = 'tersedia' ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
+        $produk = $db->query($sqlBase . " WHERE p.status_produk = 'tersedia' AND p.stok > 0 ORDER BY p.id ASC LIMIT 1")->fetch() ?: null;
     }
 
     if ($produk) {
         $idProduk  = (int)$produk['id'];
         $idPenjual = (int)$produk['id_penjual'];
 
+        $stmtPhotos = $db->prepare("
+            SELECT path_foto
+            FROM produk_foto
+            WHERE id_produk = ?
+            ORDER BY urutan ASC, id ASC
+        ");
+        $stmtPhotos->execute([$idProduk]);
+        foreach ($stmtPhotos->fetchAll(PDO::FETCH_COLUMN) as $photoPath) {
+            $cleanPath = trim((string)$photoPath);
+            if ($cleanPath !== '') {
+                $productPhotos[] = $cleanPath;
+            }
+        }
+        // Fallback untuk produk lama yang hanya menyimpan foto di kolom produk.foto
+        if (empty($productPhotos) && !empty($produk['foto'])) {
+            $legacyPath = trim((string)$produk['foto']);
+            if ($legacyPath !== '') {
+                $productPhotos[] = $legacyPath;
+            }
+        }
+
         $stmtRel = $db->prepare("
-            SELECT p.id, p.nama_produk, p.foto, p.harga, p.kondisi, p.stok, k.nama_kategori, u.nama AS nama_penjual
+            SELECT p.id, p.nama_produk, p.foto, p.harga, p.kondisi, p.stok,
+                   p.bisa_nego, p.bisa_barter, k.nama_kategori,
+                   u.nama AS nama_penjual, u.alamat AS alamat_penjual, u.is_verified AS penjual_verified,
+                   (SELECT AVG(rating) FROM ulasan WHERE id_produk = p.id) AS avg_rating,
+                   (SELECT COUNT(*) FROM ulasan WHERE id_produk = p.id) AS total_reviews
             FROM produk p
             JOIN kategori k ON p.id_kategori = k.id
             JOIN pengguna u ON p.id_penjual = u.id
-            WHERE p.status_produk = 'tersedia' AND p.id != ?
+            WHERE p.status_produk = 'tersedia' AND p.stok > 0 AND p.id != ?
             ORDER BY (p.id_kategori = ?) DESC, p.id DESC
-            LIMIT 3
+            LIMIT 4
         ");
         $stmtRel->execute([$idProduk, (int)$produk['id_kategori']]);
         $relatedProducts = $stmtRel->fetchAll();
@@ -67,7 +93,7 @@ try {
 
         $stmtSeller = $db->prepare("
             SELECT
-                (SELECT COUNT(*) FROM produk WHERE id_penjual = ? AND status_produk = 'tersedia') AS produk_aktif,
+                (SELECT COUNT(*) FROM produk WHERE id_penjual = ? AND status_produk = 'tersedia' AND stok > 0) AS produk_aktif,
                 (SELECT COALESCE(SUM(dp.kuantitas), 0)
                  FROM detail_pesanan dp
                  JOIN pesanan ps ON dp.id_pesanan = ps.id
@@ -87,6 +113,7 @@ try {
     }
 } catch (PDOException $e) {
     $produk = null;
+    $productPhotos = [];
     $relatedProducts = [];
     $reviews = [];
 }
@@ -106,9 +133,32 @@ $statusProduk    = $produk['status_produk'];
 $bisaNego        = (int)$produk['bisa_nego'] === 1;
 $bisaBarter      = (int)$produk['bisa_barter'] === 1;
 $namaPenjual     = $produk['nama_penjual'];
-$alamatPenjual   = $produk['alamat_penjual'] ?? '';
+$alamatPenjual   = formatAlamatRingkas($produk['alamat_penjual'] ?? '');
 $penjualVerified = (int)($produk['penjual_verified'] ?? 0) === 1;
 $isOwnProduct    = ($currentUser['id'] === (int)$produk['id_penjual']); // BR-01
+
+// Produk draft belum dipublikasikan sehingga hanya dapat dilihat pemilik atau admin
+if ($statusProduk === 'draft' && !$isOwnProduct && ($currentUser['peran'] ?? 'user') !== 'admin') {
+    header("Location: search.php");
+    exit;
+}
+
+// shortcut: estimasi rentang referensi pasar berbasis ±12% harga produk karena belum ada tabel harga pasar, ganti dengan query referensi saat tersedia
+$refStep     = $hargaProduk >= 2000000 ? 50000 : ($hargaProduk >= 500000 ? 25000 : ($hargaProduk >= 100000 ? 10000 : 1000));
+$refHargaMin = max($refStep, (int)(round(($hargaProduk * 0.88) / $refStep) * $refStep));
+$refHargaMax = max($refHargaMin + $refStep, (int)(round(($hargaProduk * 1.12) / $refStep) * $refStep));
+if ($hargaProduk < $refHargaMin) {
+    $marketStatusLabel = 'Di bawah pasar';
+    $marketStatusClass = 'bg-emerald-100 text-emerald-800';
+} elseif ($hargaProduk > $refHargaMax) {
+    $marketStatusLabel = 'Di atas pasar';
+    $marketStatusClass = 'bg-amber-100 text-amber-900';
+} else {
+    $marketStatusLabel = 'Sesuai pasar';
+    $marketStatusClass = 'bg-emerald-100 text-emerald-800';
+}
+
+$defaultTawaran = min($hargaProduk, max(1000, (int)(round(($hargaProduk * 0.9) / 1000) * 1000)));
 
 $totalUlasan = count($reviews);
 $avgRating   = $totalUlasan > 0 ? array_sum(array_column($reviews, 'rating')) / $totalUlasan : 0.0;
@@ -135,6 +185,46 @@ $labelRiwayatMap = [
     'kelengkapan' => 'Kelengkapan',
 ];
 
+// Susun maks 4 poin ringkasan unit dari data riwayat/spesifikasi asli untuk mengisi ruang setelah banner harga dipersingkat
+$quickHighlights = [];
+$riwayatOrder = ['kelengkapan', 'fisik', 'lama_pakai', 'minus', 'fungsi', 'servis'];
+foreach ($riwayatOrder as $key) {
+    if (!empty($parsedDeskripsi['riwayat'][$key])) {
+        $quickHighlights[] = [
+            'label' => $labelRiwayatMap[$key] ?? ucwords(str_replace('_', ' ', $key)),
+            'value' => $parsedDeskripsi['riwayat'][$key],
+        ];
+    }
+    if (count($quickHighlights) >= 4) {
+        break;
+    }
+}
+if (count($quickHighlights) < 4 && !empty($parsedDeskripsi['spesifikasi'])) {
+    foreach ($parsedDeskripsi['spesifikasi'] as $spec) {
+        $quickHighlights[] = [
+            'label' => $spec['label'],
+            'value' => $spec['nilai'],
+        ];
+        if (count($quickHighlights) >= 4) {
+            break;
+        }
+    }
+}
+if (empty($quickHighlights)) {
+    $opsiList = ['Beli Langsung'];
+    if ($bisaNego) $opsiList[] = 'Nego';
+    if ($bisaBarter) $opsiList[] = 'Barter';
+    $quickHighlights = [
+        ['label' => 'Kondisi', 'value' => $kondisiProduk],
+        ['label' => 'Kategori', 'value' => $kategoriNama],
+        ['label' => 'Stok Tersedia', 'value' => $stokProduk . ' Unit'],
+        ['label' => 'Opsi Transaksi', 'value' => implode(', ', $opsiList)],
+    ];
+}
+$detailTargetTab = !empty($parsedDeskripsi['riwayat'])
+    ? 'panel-riwayat'
+    : (!empty($parsedDeskripsi['spesifikasi']) ? 'panel-spesifikasi' : 'panel-deskripsi');
+
 $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenjual), 0, 2) ?: 'LE');
 ?>
 <!DOCTYPE html>
@@ -149,7 +239,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -188,36 +278,63 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             outline-offset: 2px;
         }
 
-        /* Custom Styling Range Slider Harga Pasar (Indikator Statis) */
-        #price-range-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            background: transparent;
-            pointer-events: none;
+        button:disabled {
+            cursor: not-allowed;
         }
 
-        #price-range-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 9999px;
-            background-color: #FFC914;
-            border: 2px solid #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-            cursor: default;
-            pointer-events: none;
+        .gallery-thumbs-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #D1D5DB transparent;
         }
 
-        #price-range-slider::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            border-radius: 9999px;
-            background-color: #FFC914;
-            border: 2px solid #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-            cursor: default;
-            pointer-events: none;
+        .loote-card {
+            position: relative;
+            transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 200ms ease-out,
+                border-color 200ms ease-out;
+        }
+
+        .loote-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--brand-yellow);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 5;
+        }
+
+        .loote-card:hover {
+            transform: translateY(-3px);
+            border-color: #D1D5DB;
+            box-shadow: 0 10px 22px -10px rgba(39, 39, 39, 0.12);
+        }
+
+        .loote-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .loote-card .card-img-primary {
+            transition: transform 240ms ease-out;
+        }
+
+        .loote-card:hover .card-img-primary {
+            transform: scale(1.05);
+        }
+
+        .loote-card .card-hover-hint {
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 180ms ease-out, transform 180ms ease-out;
+        }
+
+        .loote-card:hover .card-hover-hint {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -236,40 +353,151 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
     <?php require_once 'components/navbar.php'; ?>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        <nav aria-label="Breadcrumb">
-            <ol class="flex items-center gap-1.5 text-xs text-gray-500">
-                <li>
-                    <a href="categories.php" class="hover:text-gray-900 transition font-medium">Kategori</a>
-                </li>
-                <li aria-hidden="true" class="text-gray-400">/</li>
-                <li class="font-semibold text-gray-900" aria-current="page">Detail Produk</li>
-            </ol>
-        </nav>
+        <div class="bg-white border border-gray-200/80 rounded-lg px-2.5 py-1.5 shadow-2xs flex items-center justify-between gap-3">
+            <nav aria-label="Breadcrumb" class="min-w-0 flex-1">
+                <ol class="flex items-center flex-wrap gap-1 text-xs">
+                    <li>
+                        <a href="index.php" class="inline-flex items-center gap-1 px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                            <i class="ph ph-house text-sm" aria-hidden="true"></i>
+                            <span>Beranda</span>
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <li>
+                        <a href="categories.php" class="px-2 py-1 rounded-md font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition">
+                            Kategori
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <li>
+                        <a href="search.php?kategori=<?= (int)$produk['id_kategori'] ?>" class="px-2 py-1 rounded-md font-semibold text-gray-700 hover:text-brand-dark hover:bg-brand-yellow/25 transition">
+                            <?= htmlspecialchars($kategoriNama, ENT_QUOTES, 'UTF-8') ?>
+                        </a>
+                    </li>
+                    <li aria-hidden="true" class="text-gray-300 flex items-center">
+                        <i class="ph ph-caret-right text-[11px]"></i>
+                    </li>
+                    <li class="px-1.5 py-1 font-semibold text-gray-900 truncate max-w-[180px] sm:max-w-[300px] md:max-w-[420px]" aria-current="page" title="<?= htmlspecialchars($namaProduk, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= htmlspecialchars($namaProduk, ENT_QUOTES, 'UTF-8') ?>
+                    </li>
+                </ol>
+            </nav>
+            <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = 'search.php?kategori=<?= (int)$produk['id_kategori'] ?>'; }"
+                class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-gray-600 hover:text-brand-dark hover:bg-gray-100 transition shrink-0 cursor-pointer">
+                <i class="ph ph-arrow-left text-xs" aria-hidden="true"></i>
+                <span>Kembali</span>
+            </button>
+        </div>
 
         <!-- Baris Utama Produk: Galeri (Kiri) + Info & Harga (Tengah) + Info Penjual (Kanan) -->
         <section class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start" aria-label="Informasi Utama Produk">
 
             <!-- Kolom 1: Foto Produk -->
+            <?php
+            $totalPhotos = count($productPhotos);
+            $hasMultiplePhotos = $totalPhotos > 1;
+            ?>
             <div class="md:col-span-12 lg:col-span-5 bg-white border border-gray-200/80 p-4 shadow-2xs">
-                <div class="relative w-full aspect-square bg-[#FAFAFA] border border-gray-200/80 flex items-center justify-center p-6 overflow-hidden">
-                    <!-- Badge Kondisi -->
-                    <span class="absolute top-3 left-3 z-10 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-md tracking-wide">
-                        <?= htmlspecialchars($kondisiProduk) ?>
-                    </span>
-
-                    <?php if (!empty($produk['foto'])): ?>
-                        <img src="<?= htmlspecialchars($produk['foto']) ?>" alt="<?= htmlspecialchars($namaProduk) ?>" class="w-full h-full object-contain" />
-                    <?php else: ?>
-                        <div class="w-full h-full flex flex-col items-center justify-center text-center p-4">
-                            <i class="ph <?= htmlspecialchars(kategoriIcon($kategoriNama)) ?> text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
-                            <p class="text-sm font-bold text-gray-800"><?= htmlspecialchars($namaProduk) ?></p>
-                            <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($kategoriNama) ?> &bull; <?= htmlspecialchars($kondisiProduk) ?></p>
+                <div id="product-gallery" class="<?= $hasMultiplePhotos ? 'flex flex-col-reverse sm:flex-row gap-3' : '' ?>">
+                    <?php if ($hasMultiplePhotos): ?>
+                        <!-- Rail Pilihan Foto (Kiri di desktop, bawah di mobile) -->
+                        <div class="sm:w-[72px] shrink-0 sm:relative">
+                            <div
+                                id="gallery-thumbs"
+                                role="group"
+                                aria-label="Pilihan foto produk"
+                                class="flex flex-row sm:flex-col gap-2 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto sm:absolute sm:inset-0 p-1 gallery-thumbs-scroll">
+                                <?php foreach ($productPhotos as $idx => $photoPath): ?>
+                                    <?php $isFirst = ($idx === 0); ?>
+                                    <button
+                                        type="button"
+                                        class="gallery-thumb relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg bg-[#FAFAFA] overflow-hidden p-1 transition cursor-pointer flex items-center justify-center <?= $isFirst ? 'border-2 border-brand-dark ring-2 ring-brand-yellow/70 opacity-100' : 'border border-gray-200 opacity-75 hover:opacity-100 hover:border-gray-400' ?>"
+                                        data-index="<?= $idx ?>"
+                                        data-src="<?= htmlspecialchars($photoPath, ENT_QUOTES, 'UTF-8') ?>"
+                                        aria-label="Tampilkan foto <?= $idx + 1 ?> dari <?= $totalPhotos ?>"
+                                        aria-pressed="<?= $isFirst ? 'true' : 'false' ?>">
+                                        <img
+                                            src="<?= htmlspecialchars($photoPath, ENT_QUOTES, 'UTF-8') ?>"
+                                            alt="<?= htmlspecialchars($namaProduk . ' - foto ' . ($idx + 1), ENT_QUOTES, 'UTF-8') ?>"
+                                            width="64"
+                                            height="64"
+                                            loading="lazy"
+                                            class="w-full h-full object-cover rounded-md pointer-events-none" />
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     <?php endif; ?>
+
+                    <!-- Area Foto Utama -->
+                    <div class="relative flex-1 min-w-0 aspect-square bg-[#FAFAFA] border border-gray-200/80 rounded-lg flex items-center justify-center p-5 sm:p-6 overflow-hidden">
+                        <!-- Badge Kondisi -->
+                        <span class="absolute top-3 left-3 z-10 <?= kondisiBadgeClasses($kondisiProduk) ?> text-xs font-bold px-2.5 py-1 rounded-md tracking-wide">
+                            <?= htmlspecialchars($kondisiProduk, ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+
+                        <?php if ($totalPhotos > 0): ?>
+                            <img
+                                id="gallery-main-img"
+                                src="<?= htmlspecialchars($productPhotos[0], ENT_QUOTES, 'UTF-8') ?>"
+                                alt="<?= htmlspecialchars($namaProduk, ENT_QUOTES, 'UTF-8') ?>"
+                                width="600"
+                                height="600"
+                                fetchpriority="high"
+                                class="w-full h-full object-contain transition-opacity duration-150" />
+
+                            <!-- Status Memuat & Gagal Muat Foto -->
+                            <div id="gallery-loading" class="hidden absolute inset-0 bg-[#FAFAFA]/80 flex items-center justify-center text-xs font-semibold text-gray-700" role="status" aria-live="polite">
+                                Memuat foto...
+                            </div>
+                            <div id="gallery-error" class="hidden absolute inset-0 bg-[#FAFAFA] flex flex-col items-center justify-center text-center p-6" role="alert">
+                                <i class="ph ph-image-broken text-4xl text-gray-400 mb-2" aria-hidden="true"></i>
+                                <p class="text-xs font-semibold text-gray-800">Foto tidak dapat dimuat</p>
+                                <p class="text-[11px] text-gray-500 mt-1">Pilih foto lain atau muat ulang halaman.</p>
+                            </div>
+
+                            <?php if ($hasMultiplePhotos): ?>
+                                <!-- Navigasi Foto Sebelumnya & Berikutnya -->
+                                <button
+                                    type="button"
+                                    id="btn-gallery-prev"
+                                    disabled
+                                    aria-label="Foto sebelumnya"
+                                    class="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/95 hover:bg-white border border-gray-200 text-gray-800 shadow-xs flex items-center justify-center transition cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="ph-bold ph-caret-left text-base" aria-hidden="true"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    id="btn-gallery-next"
+                                    aria-label="Foto berikutnya"
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/95 hover:bg-white border border-gray-200 text-gray-800 shadow-xs flex items-center justify-center transition cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed">
+                                    <i class="ph-bold ph-caret-right text-base" aria-hidden="true"></i>
+                                </button>
+
+                                <!-- Indikator Urutan Foto -->
+                                <span
+                                    id="gallery-counter"
+                                    aria-live="polite"
+                                    class="absolute bottom-3 right-3 z-10 bg-white/95 border border-gray-200 text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-full shadow-xs tabular-nums">
+                                    1/<?= $totalPhotos ?>
+                                </span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div class="w-full h-full flex flex-col items-center justify-center text-center p-4">
+                                <i class="ph <?= htmlspecialchars(kategoriIcon($kategoriNama)) ?> text-7xl text-gray-700 mb-2" aria-hidden="true"></i>
+                                <p class="text-sm font-bold text-gray-800"><?= htmlspecialchars($namaProduk) ?></p>
+                                <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($kategoriNama) ?> &bull; <?= htmlspecialchars($kondisiProduk) ?></p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
-            <!-- Kolom 2: Detail Produk, Harga, Market Insight, dan Aksi -->
+            <!-- Kolom 2: Detail Produk, Harga, Banner Referensi Harga, Ringkasan Unit, dan Aksi -->
             <div class="md:col-span-12 lg:col-span-4 bg-white border border-gray-200/80 p-5 sm:p-6 space-y-4 shadow-2xs">
                 <!-- Judul Produk -->
                 <div>
@@ -278,7 +506,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </h1>
 
                     <!-- Rating & Meta -->
-                    <div class="flex flex-wrap items-center gap-1 mt-2 text-xs text-gray-500">
+                    <div class="flex flex-wrap items-center gap-1.5 mt-2 text-xs text-gray-500">
                         <?php if ($totalUlasan > 0): ?>
                             <div class="flex items-center gap-1 text-gray-900 font-semibold">
                                 <i class="ph-fill ph-star text-amber-500 text-sm" aria-hidden="true"></i>
@@ -286,23 +514,22 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                                 <span class="text-gray-500 font-normal">(<?= $totalUlasan ?> ulasan)</span>
                             </div>
                         <?php else: ?>
-                            <div class="flex items-center gap-1 text-gray-400 font-medium">
+                            <div class="flex items-center gap-1 text-gray-500 font-medium">
                                 <i class="ph ph-star text-sm" aria-hidden="true"></i>
                                 <span>Belum ada ulasan</span>
                             </div>
                         <?php endif; ?>
-                        <span aria-hidden="true" class="text-gray-300">•</span>
-                        <span aria-hidden="true" class="text-gray-300"></span>
+                        <span aria-hidden="true" class="text-gray-300">&bull;</span>
                         <span><?= htmlspecialchars($kategoriNama) ?></span>
-                        <span class="bg-emerald-50 text-emerald-700 text-[11px] font-medium px-2 py-0.5 rounded-full">
-                            <?= htmlspecialchars($kondisiProduk) ?>
+                        <span class="<?= kondisiBadgeClasses($kondisiProduk) ?> text-[11px] font-bold px-2 py-0.5 rounded-md">
+                            <?= htmlspecialchars($kondisiProduk, ENT_QUOTES, 'UTF-8') ?>
                         </span>
                     </div>
                 </div>
 
                 <!-- Bagian Harga & Stok -->
                 <div class="flex items-baseline justify-between gap-3 pt-2 border-t border-gray-100">
-                    <span class="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
+                    <span class="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight tabular-nums">
                         <?= formatRupiah($hargaProduk) ?>
                     </span>
                     <span class="text-xs text-gray-500 font-medium shrink-0">
@@ -310,67 +537,75 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </span>
                 </div>
 
-                <!-- Box Analisis Harga Pasar -->
-                <div class="bg-[#FFFDF5] rounded-lg p-3.5 space-y-3">
-                    <div class="flex items-center justify-between text-xs">
-                        <div class="flex items-center gap-1.5 font-semibold text-amber-900">
-                            <i class="ph-fill ph-tag text-amber-600" aria-hidden="true"></i>
-                            <span>Harga Pasar</span>
+                <!-- Banner Referensi Harga (Minimalis, 2 baris agar angka tidak terpotong) -->
+                <div class="bg-[#FFFDF5] border border-amber-200/80 rounded-lg px-3.5 py-2.5 space-y-1.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5 text-[11px] font-medium text-amber-900">
+                            <i class="ph-fill ph-tag text-amber-600 text-sm shrink-0" aria-hidden="true"></i>
+                            <span>Referensi Harga Pasar</span>
                         </div>
-                        <span class="text-gray-600 text-xs">Harga listing <?= formatRupiah($hargaProduk) ?></span>
+                        <button
+                            type="button"
+                            id="btn-info-harga"
+                            aria-expanded="false"
+                            aria-controls="price-info-note"
+                            aria-label="Penjelasan referensi harga pasar"
+                            class="w-7 h-7 -mr-1 flex items-center justify-center rounded-md text-amber-900 hover:bg-amber-100 transition cursor-pointer shrink-0">
+                            <i class="ph ph-info text-base" aria-hidden="true"></i>
+                        </button>
                     </div>
-
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <span class="text-sm sm:text-base font-bold text-gray-900">
-                            Rp 600.000 - Rp 750.000
+                        <span class="text-sm font-bold text-gray-900 tabular-nums">
+                            <?= formatRupiah($refHargaMin) ?> - <?= formatRupiah($refHargaMax) ?>
                         </span>
-                        <span id="market-status-badge" class="bg-emerald-100 text-emerald-800 text-[11px] font-semibold px-2 py-0.5 rounded-full transition">
-                            Dalam kisaran harga pasar
+                        <span id="market-status-badge" class="<?= htmlspecialchars($marketStatusClass) ?> text-[11px] font-semibold px-2 py-0.5 rounded-md shrink-0">
+                            <?= htmlspecialchars($marketStatusLabel) ?>
                         </span>
                     </div>
-
-                    <!-- Slider / Gauge Bar Representatif (Indikator Statis) -->
-                    <div class="pt-1">
-                        <div class="relative w-full flex items-center py-1">
-                            <!-- Track Bar Gradient -->
-                            <div class="absolute inset-x-0 h-2 rounded-full bg-gradient-to-r from-emerald-200 via-amber-200 to-rose-200 border border-gray-200 pointer-events-none"></div>
-
-                            <!-- Native Accessible Range Input (Statis / Tidak Dapat Digeser) -->
-                            <input
-                                type="range"
-                                id="price-range-slider"
-                                min="600000"
-                                max="850000"
-                                step="5000"
-                                value="680000"
-                                disabled
-                                readonly
-                                tabindex="-1"
-                                aria-label="Indikator posisi harga pasar"
-                                class="relative w-full h-2 z-10 cursor-default pointer-events-none focus:outline-none" />
-                        </div>
-                        <div class="flex justify-between text-[11px] text-gray-500 mt-1 font-medium select-none">
-                            <span>Rp 600K</span>
-                            <span id="slider-current-label" class="font-bold text-gray-900">Rp 680K</span>
-                            <span>Rp 850K</span>
-                        </div>
-                    </div>
-
-                    <p class="text-[11px] text-gray-500 leading-relaxed border-t border-amber-100 pt-2">
-                        Refrensi harga membantu kamu menilai harga produk. Harga ditentukan oleh seller
+                    <p id="price-info-note" class="hidden text-[11px] text-gray-600 leading-relaxed border-t border-amber-200/70 pt-2">
+                        Estimasi kisaran harga pasar membantu kamu menilai kewajaran harga produk. Harga akhir tetap ditentukan oleh penjual.
                     </p>
                 </div>
 
-                <!-- Badges Fasilitas Transaksi -->
-                <div class="flex flex-wrap gap-1.5 text-xs">
+                <!-- Ringkasan Unit -->
+                <div class="bg-gray-50/80 border border-gray-200/80 rounded-lg p-3.5 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <h2 class="text-xs font-bold text-gray-900">Ringkasan Unit</h2>
+                        <button
+                            type="button"
+                            id="btn-lihat-detail-unit"
+                            data-target="<?= htmlspecialchars($detailTargetTab) ?>"
+                            class="text-[11px] font-semibold text-amber-800 hover:text-amber-950 transition cursor-pointer">
+                            Lihat lengkap
+                        </button>
+                    </div>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+                        <?php foreach ($quickHighlights as $item): ?>
+                            <div class="min-w-0">
+                                <dt class="text-[11px] text-gray-500"><?= htmlspecialchars($item['label']) ?></dt>
+                                <dd class="font-semibold text-gray-900 leading-snug line-clamp-2" title="<?= htmlspecialchars($item['value']) ?>">
+                                    <?= htmlspecialchars($item['value']) ?>
+                                </dd>
+                            </div>
+                        <?php endforeach; ?>
+                    </dl>
+                </div>
+
+                <!-- Badges Fasilitas Transaksi (selaras dengan search.php) -->
+                <div class="flex flex-wrap items-center gap-2">
                     <?php if ($bisaNego): ?>
-                        <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
-                            Bisa Nego
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-bold">
+                            <i class="ph-bold ph-tag text-sm" aria-hidden="true"></i> Bisa Nego
                         </span>
                     <?php endif; ?>
                     <?php if ($bisaBarter): ?>
-                        <span class="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full font-medium">
-                            Bisa Barter
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-sky-50 text-sky-700 border border-sky-200/80 text-xs font-bold">
+                            <i class="ph-bold ph-arrows-left-right text-sm" aria-hidden="true"></i> Bisa Barter
+                        </span>
+                    <?php endif; ?>
+                    <?php if (!$bisaNego && !$bisaBarter): ?>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-50 text-gray-600 border border-gray-200/80 text-xs font-semibold">
+                            <i class="ph ph-check-circle text-sm" aria-hidden="true"></i> Harga Pas
                         </span>
                     <?php endif; ?>
                 </div>
@@ -388,11 +623,57 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </div>
                 <?php elseif ($statusProduk !== 'tersedia' || $stokProduk <= 0): ?>
                     <div class="bg-gray-100 border border-gray-200 rounded-lg p-3.5 text-xs text-gray-700 leading-relaxed">
-                        <p class="font-bold mb-0.5">Produk Tidak Tersedia</p>
-                        <p>Produk ini sedang terkunci dalam transaksi lain atau stok sudah habis.</p>
+                        <?php if ($statusProduk === 'nonaktif'): ?>
+                            <p class="font-bold mb-0.5">Produk Dinonaktifkan</p>
+                            <p>Penjual sedang menonaktifkan produk ini untuk sementara.</p>
+                        <?php else: ?>
+                            <p class="font-bold mb-0.5">Produk Habis Terjual</p>
+                            <p>Stok produk ini sudah habis terjual.</p>
+                        <?php endif; ?>
                     </div>
                 <?php else: ?>
-                    <div class="grid grid-cols-2 gap-2.5 pt-2">
+                    <?php if ($stokProduk > 1): ?>
+                        <!-- Pemilih Jumlah Beli (hanya tampil jika stok > 1 pcs) -->
+                        <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                            <div class="flex items-center gap-2.5">
+                                <label for="input-qty" class="text-xs font-semibold text-gray-700">Jumlah</label>
+                                <div class="inline-flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
+                                    <button
+                                        type="button"
+                                        id="btn-qty-minus"
+                                        aria-label="Kurangi jumlah"
+                                        disabled
+                                        class="w-9 h-9 flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer">
+                                        <i class="ph ph-minus text-xs font-bold" aria-hidden="true"></i>
+                                    </button>
+                                    <input
+                                        type="number"
+                                        id="input-qty"
+                                        value="1"
+                                        min="1"
+                                        max="<?= $stokProduk ?>"
+                                        inputmode="numeric"
+                                        aria-label="Jumlah pembelian"
+                                        class="w-11 h-9 text-center text-xs font-bold text-gray-900 border-x border-gray-200 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                    <button
+                                        type="button"
+                                        id="btn-qty-plus"
+                                        aria-label="Tambah jumlah"
+                                        class="w-9 h-9 flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer">
+                                        <i class="ph ph-plus text-xs font-bold" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-right min-w-0">
+                                <span class="block text-[11px] text-gray-500">Subtotal</span>
+                                <span id="subtotal-display" class="block text-sm font-extrabold text-gray-900 tabular-nums">
+                                    <?= formatRupiah($hargaProduk) ?>
+                                </span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="grid grid-cols-2 gap-2.5 pt-1">
                         <?php if ($bisaNego): ?>
                             <button
                                 type="button"
@@ -497,12 +778,12 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
         </section>
 
         <!-- Tab Navigasi Konten Detail -->
-        <section class="bg-white border border-gray-200/80 overflow-hidden shadow-2xs" aria-label="Tab Detail Produk">
+        <section id="section-tab-detail" class="bg-white border border-gray-200/80 overflow-hidden shadow-2xs" aria-label="Tab Detail Produk">
             <div class="border-b border-gray-200 px-4 sm:px-6 overflow-x-auto" role="tablist">
                 <nav class="flex gap-2 sm:gap-6 min-w-max" aria-label="Bagian Detail">
                     <button
                         type="button"
-                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-bold border-b-2 border-brand-yellow text-gray-900 cursor-pointer focus:outline-none"
+                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-bold border-b-2 border-brand-yellow text-gray-900 cursor-pointer"
                         data-target="panel-deskripsi"
                         role="tab"
                         aria-selected="true"
@@ -511,7 +792,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </button>
                     <button
                         type="button"
-                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 cursor-pointer focus:outline-none transition"
+                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 cursor-pointer transition"
                         data-target="panel-spesifikasi"
                         role="tab"
                         aria-selected="false"
@@ -520,7 +801,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </button>
                     <button
                         type="button"
-                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 cursor-pointer focus:outline-none transition"
+                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 cursor-pointer transition"
                         data-target="panel-riwayat"
                         role="tab"
                         aria-selected="false"
@@ -529,7 +810,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     </button>
                     <button
                         type="button"
-                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 cursor-pointer focus:outline-none transition"
+                        class="tab-link py-3.5 px-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-900 cursor-pointer transition"
                         data-target="panel-ulasan"
                         role="tab"
                         aria-selected="false"
@@ -782,39 +1063,10 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 </a>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <?php if (!empty($relatedProducts)): ?>
-                    <?php foreach ($relatedProducts as $rel): ?>
-                        <a href="detail_produk.php?id=<?= (int)$rel['id'] ?>" class="bg-white border border-gray-200/80 p-4 space-y-3 hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between shadow-2xs">
-                            <div class="space-y-3">
-                                <div class="relative w-full aspect-video bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
-                                    <span class="absolute top-2 left-2 z-10 bg-[#FEF3C7] text-[#92400E] text-[10px] font-semibold px-2 py-0.5 rounded">
-                                        <?= htmlspecialchars($rel['kondisi']) ?>
-                                    </span>
-                                    <?php if (!empty($rel['foto'])): ?>
-                                        <img src="<?= htmlspecialchars($rel['foto']) ?>" alt="<?= htmlspecialchars($rel['nama_produk']) ?>" class="w-full h-full object-contain p-2" />
-                                    <?php else: ?>
-                                        <div class="text-center text-gray-400">
-                                            <i class="ph <?= htmlspecialchars(kategoriIcon($rel['nama_kategori'])) ?> text-4xl mb-1 text-gray-500" aria-hidden="true"></i>
-                                            <span class="block text-[11px]"><?= htmlspecialchars($rel['nama_kategori']) ?></span>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-sm text-gray-900 leading-snug line-clamp-2">
-                                        <?= htmlspecialchars($rel['nama_produk']) ?>
-                                    </h3>
-                                    <p class="text-base font-extrabold text-gray-900 mt-1">
-                                        <?= formatRupiah((int)$rel['harga']) ?>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5">
-                                <span class="truncate"><?= htmlspecialchars($rel['nama_penjual']) ?></span>
-                                <span class="shrink-0">Stok <?= (int)$rel['stok'] ?></span>
-                            </div>
-                        </a>
+                    <?php foreach ($relatedProducts as $item): ?>
+                        <?php require 'components/product_card.php'; ?>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <p class="col-span-full text-xs text-gray-500 bg-white border border-gray-200/80 p-6 text-center">
@@ -843,13 +1095,13 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 <input
                     type="number"
                     id="input-tawaran"
-                    placeholder="Contoh: <?= max(1000, (int)(round(($hargaProduk * 0.9) / 1000) * 1000)) ?>"
+                    placeholder="Contoh: <?= $defaultTawaran ?>"
                     min="1000"
                     max="<?= $hargaProduk ?>"
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow" />
             </div>
             <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
-                <strong>Catatan Priority Queue:</strong> Pengajuan negosiasi tidak mengunci stok barang. Pembeli lain tetap dapat melakukan Beli Langsung selama transaksi belum masuk tahap pembayaran.
+                <strong>Catatan Penawaran:</strong> Pengajuan negosiasi tidak memotong stok barang. Pembeli lain tetap dapat membeli langsung atau mengajukan tawaran lain; tawaranmu otomatis gagal jika stok habis lebih dulu.
             </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
@@ -883,7 +1135,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                     class="w-full border border-gray-300 rounded-md p-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow"></textarea>
             </div>
             <p class="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-2.5 leading-relaxed">
-                <strong>Catatan Priority Queue:</strong> Pengajuan barter tidak mengunci stok barang hingga tawaran disetujui dan masuk tahap pesanan.
+                <strong>Catatan Penawaran:</strong> Pengajuan barter tidak memotong stok barang hingga kesepakatan disetujui dan pesanan dibuat. Tawaran otomatis gagal jika salah satu produk habis terjual lebih dulu.
             </p>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="close-dialog px-4 py-2 border border-gray-300 rounded-md text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer">
@@ -913,6 +1165,132 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             const produkTitleEl = document.getElementById('produk-title');
             const namaProduk = produkTitleEl ? produkTitleEl.textContent.trim() : 'Produk';
 
+            // Galeri Multi-Foto Produk
+            const galleryMainImg = document.getElementById('gallery-main-img');
+            const galleryLoading = document.getElementById('gallery-loading');
+            const galleryError = document.getElementById('gallery-error');
+            const galleryThumbs = Array.from(document.querySelectorAll('.gallery-thumb'));
+            const galleryCounter = document.getElementById('gallery-counter');
+            const btnGalleryPrev = document.getElementById('btn-gallery-prev');
+            const btnGalleryNext = document.getElementById('btn-gallery-next');
+            const galleryRoot = document.getElementById('product-gallery');
+
+            if (galleryMainImg) {
+                galleryMainImg.addEventListener('load', function() {
+                    if (galleryLoading) galleryLoading.classList.add('hidden');
+                    if (galleryError) galleryError.classList.add('hidden');
+                    galleryMainImg.classList.remove('opacity-0');
+                });
+                galleryMainImg.addEventListener('error', function() {
+                    if (galleryLoading) galleryLoading.classList.add('hidden');
+                    if (galleryError) galleryError.classList.remove('hidden');
+                    galleryMainImg.classList.add('opacity-0');
+                });
+                if (galleryMainImg.complete && galleryMainImg.naturalWidth === 0) {
+                    if (galleryError) galleryError.classList.remove('hidden');
+                    galleryMainImg.classList.add('opacity-0');
+                }
+            }
+
+            if (galleryMainImg && galleryThumbs.length > 1) {
+                let currentPhotoIndex = 0;
+                const totalPhotos = galleryThumbs.length;
+
+                function setActivePhoto(nextIndex) {
+                    const clamped = Math.max(0, Math.min(nextIndex, totalPhotos - 1));
+                    const targetBtn = galleryThumbs[clamped];
+                    if (!targetBtn) return;
+
+                    currentPhotoIndex = clamped;
+                    const nextSrc = targetBtn.getAttribute('data-src') || '';
+
+                    if (nextSrc && galleryMainImg.getAttribute('src') !== nextSrc) {
+                        if (galleryError) galleryError.classList.add('hidden');
+                        if (galleryLoading) galleryLoading.classList.remove('hidden');
+                        galleryMainImg.classList.add('opacity-0');
+                        galleryMainImg.setAttribute('src', nextSrc);
+                        galleryMainImg.setAttribute('alt', namaProduk + ' - foto ' + (clamped + 1) + ' dari ' + totalPhotos);
+                        if (galleryMainImg.complete && galleryMainImg.naturalWidth > 0) {
+                            if (galleryLoading) galleryLoading.classList.add('hidden');
+                            galleryMainImg.classList.remove('opacity-0');
+                        }
+                    }
+
+                    galleryThumbs.forEach(function(btn, idx) {
+                        const isActive = idx === clamped;
+                        btn.setAttribute('aria-pressed', String(isActive));
+                        btn.classList.toggle('border-2', isActive);
+                        btn.classList.toggle('border-brand-dark', isActive);
+                        btn.classList.toggle('ring-2', isActive);
+                        btn.classList.toggle('ring-brand-yellow/70', isActive);
+                        btn.classList.toggle('opacity-100', isActive);
+                        btn.classList.toggle('border', !isActive);
+                        btn.classList.toggle('border-gray-200', !isActive);
+                        btn.classList.toggle('opacity-75', !isActive);
+                        btn.classList.toggle('hover:opacity-100', !isActive);
+                        btn.classList.toggle('hover:border-gray-400', !isActive);
+                    });
+
+                    targetBtn.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'nearest'
+                    });
+
+                    if (galleryCounter) {
+                        galleryCounter.textContent = (clamped + 1) + '/' + totalPhotos;
+                    }
+                    if (btnGalleryPrev) btnGalleryPrev.disabled = clamped <= 0;
+                    if (btnGalleryNext) btnGalleryNext.disabled = clamped >= totalPhotos - 1;
+                }
+
+                galleryThumbs.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        const idx = parseInt(this.getAttribute('data-index') || '0', 10);
+                        setActivePhoto(idx);
+                    });
+                });
+
+                if (btnGalleryPrev) {
+                    btnGalleryPrev.addEventListener('click', function() {
+                        setActivePhoto(currentPhotoIndex - 1);
+                    });
+                }
+
+                if (btnGalleryNext) {
+                    btnGalleryNext.addEventListener('click', function() {
+                        setActivePhoto(currentPhotoIndex + 1);
+                    });
+                }
+
+                if (galleryRoot) {
+                    galleryRoot.addEventListener('keydown', function(e) {
+                        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                            if (currentPhotoIndex < totalPhotos - 1) {
+                                e.preventDefault();
+                                setActivePhoto(currentPhotoIndex + 1);
+                            }
+                        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                            if (currentPhotoIndex > 0) {
+                                e.preventDefault();
+                                setActivePhoto(currentPhotoIndex - 1);
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Toggle keterangan singkat pada banner referensi harga
+            const btnInfoHarga = document.getElementById('btn-info-harga');
+            const priceInfoNote = document.getElementById('price-info-note');
+            if (btnInfoHarga && priceInfoNote) {
+                btnInfoHarga.addEventListener('click', function() {
+                    const isOpen = !priceInfoNote.classList.contains('hidden');
+                    priceInfoNote.classList.toggle('hidden', isOpen);
+                    this.setAttribute('aria-expanded', String(!isOpen));
+                });
+            }
+
             // Logika Tab Navigasi
             const tabLinks = document.querySelectorAll('.tab-link');
             const tabPanels = document.querySelectorAll('.tab-panel');
@@ -938,6 +1316,22 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 });
             });
 
+            // Tombol "Lihat lengkap" di Ringkasan Unit mengarah langsung ke tab detail yang relevan
+            const btnLihatDetailUnit = document.getElementById('btn-lihat-detail-unit');
+            if (btnLihatDetailUnit) {
+                btnLihatDetailUnit.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-target') || 'panel-deskripsi';
+                    activateTab(targetTab);
+                    const tabSection = document.getElementById('section-tab-detail');
+                    if (tabSection) {
+                        tabSection.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            }
+
             const btnLihatUlasan = document.getElementById('btn-lihat-ulasan');
             if (btnLihatUlasan) {
                 btnLihatUlasan.addEventListener('click', function() {
@@ -952,10 +1346,11 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 });
             }
 
-            // Indikator Statis Rentang Harga Pasar
+            // Default nominal tawaran mengikuti 90% harga listing produk
             const inputTawaran = document.getElementById('input-tawaran');
+            const defaultTawaran = <?= (int)$defaultTawaran ?>;
             if (inputTawaran && !inputTawaran.dataset.userEdited) {
-                inputTawaran.value = 680000;
+                inputTawaran.value = defaultTawaran;
                 inputTawaran.addEventListener('input', function() {
                     this.dataset.userEdited = 'true';
                 });
@@ -1035,15 +1430,58 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                 });
             }
 
+            // Pemilih Jumlah Beli (Quantity Stepper) & Subtotal
+            const hargaSatuan = <?= (int)$hargaProduk ?>;
+            const maxStok = <?= max(1, (int)$stokProduk) ?>;
+            const inputQty = document.getElementById('input-qty');
+            const btnQtyMinus = document.getElementById('btn-qty-minus');
+            const btnQtyPlus = document.getElementById('btn-qty-plus');
+            const subtotalDisplay = document.getElementById('subtotal-display');
+
+            function getSelectedQty() {
+                if (!inputQty) return 1;
+                const parsed = parseInt(inputQty.value, 10);
+                if (isNaN(parsed) || parsed < 1) return 1;
+                return Math.min(parsed, maxStok);
+            }
+
+            function syncQtyUI(nextQty) {
+                const clamped = Math.max(1, Math.min(nextQty, maxStok));
+                if (inputQty) inputQty.value = String(clamped);
+                if (btnQtyMinus) btnQtyMinus.disabled = clamped <= 1;
+                if (btnQtyPlus) btnQtyPlus.disabled = clamped >= maxStok;
+                if (subtotalDisplay) {
+                    subtotalDisplay.textContent = 'Rp ' + (hargaSatuan * clamped).toLocaleString('id-ID');
+                }
+            }
+
+            if (inputQty) {
+                if (btnQtyMinus) {
+                    btnQtyMinus.addEventListener('click', function() {
+                        syncQtyUI(getSelectedQty() - 1);
+                    });
+                }
+                if (btnQtyPlus) {
+                    btnQtyPlus.addEventListener('click', function() {
+                        syncQtyUI(getSelectedQty() + 1);
+                    });
+                }
+                inputQty.addEventListener('change', function() {
+                    syncQtyUI(getSelectedQty());
+                });
+                syncQtyUI(1);
+            }
+
             // Keranjang & Beli Sekarang
             const btnCart = document.getElementById('btn-cart');
             if (btnCart) {
                 btnCart.addEventListener('click', function() {
                     const idProduk = this.getAttribute('data-id') || '<?= (int)$idProduk ?>';
+                    const qty = getSelectedQty();
                     const formData = new FormData();
                     formData.append('action', 'add_to_cart');
                     formData.append('produk_id', idProduk);
-                    formData.append('qty', '1');
+                    formData.append('qty', String(qty));
 
                     btnCart.disabled = true;
                     fetch('cart.php', {
@@ -1057,7 +1495,7 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
                         .then(data => {
                             btnCart.disabled = false;
                             if (data.success) {
-                                showToast(data.message || (namaProduk + ' berhasil ditambahkan ke keranjang!'));
+                                showToast(data.message || (namaProduk + ' (' + qty + ' pcs) berhasil ditambahkan ke keranjang!'));
                             } else {
                                 showToast(data.message || 'Gagal menambahkan ke keranjang.');
                             }
@@ -1073,10 +1511,11 @@ $inisialPenjual = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $namaPenj
             if (btnBuy) {
                 btnBuy.addEventListener('click', function() {
                     const idProduk = this.getAttribute('data-id') || '<?= (int)$idProduk ?>';
+                    const qty = getSelectedQty();
                     const formData = new FormData();
                     formData.append('action', 'add_to_cart');
                     formData.append('produk_id', idProduk);
-                    formData.append('qty', '1');
+                    formData.append('qty', String(qty));
 
                     btnBuy.disabled = true;
                     fetch('cart.php', {

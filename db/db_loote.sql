@@ -21,8 +21,9 @@ DROP TABLE IF EXISTS `riwayat_barter`;
 DROP TABLE IF EXISTS `barter`;
 DROP TABLE IF EXISTS `riwayat_negosiasi`;
 DROP TABLE IF EXISTS `negosiasi`;
-DROP TABLE IF EXISTS `antrean`;
+DROP TABLE IF EXISTS `antrean`; -- legacy table (dihapus pada ADR-0002)
 DROP TABLE IF EXISTS `keranjang`;
+DROP TABLE IF EXISTS `produk_foto`;
 DROP TABLE IF EXISTS `produk`;
 DROP TABLE IF EXISTS `kategori`;
 DROP TABLE IF EXISTS `pengguna`;
@@ -36,13 +37,15 @@ CREATE TABLE `pengguna` (
   `email` VARCHAR(100) NOT NULL,
   `password` VARCHAR(255) NOT NULL,
   `peran` ENUM('user', 'admin') NOT NULL DEFAULT 'user',
-  `no_hp` VARCHAR(20) DEFAULT NULL COMMENT 'Diisi saat verifikasi jual barang',
-  `alamat` TEXT DEFAULT NULL COMMENT 'Diisi saat verifikasi jual barang',
-  `info_rekening` VARCHAR(100) DEFAULT NULL COMMENT 'Contoh: BCA - 1234567890 (Syarat pencairan Escrow)',
+  `nik` CHAR(16) DEFAULT NULL COMMENT '16 digit NIK KTP (Diisi saat verifikasi seller)',
+  `no_hp` VARCHAR(20) DEFAULT NULL COMMENT 'Opsional, dapat diisi mandiri melalui halaman profil',
+  `alamat` TEXT DEFAULT NULL COMMENT 'Opsional, JSON terstruktur dari halaman alamat pengguna',
+  `info_rekening` TEXT DEFAULT NULL COMMENT 'JSON terstruktur rekening pencairan Escrow (Diisi saat verifikasi seller)',
   `is_verified` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Boleh upload produk',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_pengguna_email` (`email`)
+  UNIQUE KEY `uq_pengguna_email` (`email`),
+  UNIQUE KEY `uq_pengguna_nik` (`nik`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
@@ -69,13 +72,27 @@ CREATE TABLE `produk` (
   `deskripsi` TEXT DEFAULT NULL COMMENT 'Hasil gabungan form kondisi fisik, fungsi, pakai, servis, minus & kelengkapan',
   `bisa_nego` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Centang Bisa Nego, 0 = Tidak',
   `bisa_barter` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Centang Bisa Barter, 0 = Tidak',
-  `status_produk` ENUM('tersedia', 'terkunci', 'habis') NOT NULL DEFAULT 'tersedia',
+  `status_produk` ENUM('tersedia', 'draft', 'nonaktif', 'habis') NOT NULL DEFAULT 'tersedia' COMMENT 'tersedia=tayang, draft=konsep, nonaktif=disembunyikan seller, habis=stok 0',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_produk_penjual` (`id_penjual`),
   KEY `idx_produk_kategori` (`id_kategori`),
   CONSTRAINT `fk_produk_penjual` FOREIGN KEY (`id_penjual`) REFERENCES `pengguna` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_produk_kategori` FOREIGN KEY (`id_kategori`) REFERENCES `kategori` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------
+-- 3b. Table `produk_foto`
+-- ----------------------------------------------------------
+CREATE TABLE `produk_foto` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_produk` INT NOT NULL,
+  `path_foto` VARCHAR(255) NOT NULL,
+  `urutan` INT NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_produk_foto_produk` (`id_produk`, `urutan`),
+  CONSTRAINT `fk_produk_foto_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
@@ -95,23 +112,7 @@ CREATE TABLE `keranjang` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
--- 5. Table `antrean`
--- ----------------------------------------------------------
-CREATE TABLE `antrean` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `id_pembeli` INT NOT NULL,
-  `id_produk` INT NOT NULL,
-  `status` ENUM('menunggu', 'aktif', 'selesai', 'batal') NOT NULL DEFAULT 'menunggu',
-  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Penentu urutan antrean',
-  PRIMARY KEY (`id`),
-  KEY `idx_antrean_pembeli` (`id_pembeli`),
-  KEY `idx_antrean_produk` (`id_produk`),
-  CONSTRAINT `fk_antrean_pembeli` FOREIGN KEY (`id_pembeli`) REFERENCES `pengguna` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_antrean_produk` FOREIGN KEY (`id_produk`) REFERENCES `produk` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- ----------------------------------------------------------
--- 6. Table `negosiasi`
+-- 5. Table `negosiasi`
 -- ----------------------------------------------------------
 CREATE TABLE `negosiasi` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -119,9 +120,10 @@ CREATE TABLE `negosiasi` (
   `id_produk` INT NOT NULL,
   `kuantitas` INT NOT NULL DEFAULT 1,
   `harga_deal` INT DEFAULT NULL,
-  `status` ENUM('pending', 'counter_offer', 'diterima', 'ditolak', 'expired') NOT NULL DEFAULT 'pending',
+  `status` ENUM('pending', 'counter_offer', 'diterima', 'ditolak', 'expired', 'gagal') NOT NULL DEFAULT 'pending' COMMENT 'gagal=ditutup otomatis saat stok habis/tidak cukup/produk nonaktif',
   `batas_waktu` DATETIME NOT NULL COMMENT 'Timer 30 menit, reset saat counter_offer',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_negosiasi_pembeli` (`id_pembeli`),
   KEY `idx_negosiasi_produk` (`id_produk`),
@@ -130,7 +132,7 @@ CREATE TABLE `negosiasi` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
--- 7. Table `riwayat_negosiasi`
+-- 6. Table `riwayat_negosiasi`
 -- ----------------------------------------------------------
 CREATE TABLE `riwayat_negosiasi` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -144,7 +146,7 @@ CREATE TABLE `riwayat_negosiasi` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
--- 8. Table `barter`
+-- 7. Table `barter`
 -- ----------------------------------------------------------
 CREATE TABLE `barter` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -153,9 +155,10 @@ CREATE TABLE `barter` (
   `id_produk_ditawarkan` INT NOT NULL,
   `kuantitas_diincar` INT NOT NULL DEFAULT 1,
   `tambah_dana_deal` INT NOT NULL DEFAULT 0,
-  `status` ENUM('pending', 'counter_offer', 'diterima', 'ditolak', 'expired') NOT NULL DEFAULT 'pending',
+  `status` ENUM('pending', 'counter_offer', 'diterima', 'ditolak', 'expired', 'gagal') NOT NULL DEFAULT 'pending' COMMENT 'gagal=ditutup otomatis saat stok habis/tidak cukup/produk nonaktif',
   `batas_waktu` DATETIME NOT NULL COMMENT 'Timer 30 menit, reset saat counter_offer',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_barter_pembeli` (`id_pembeli`),
   KEY `idx_barter_produk_diincar` (`id_produk_diincar`),
@@ -166,7 +169,7 @@ CREATE TABLE `barter` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
--- 9. Table `riwayat_barter`
+-- 8. Table `riwayat_barter`
 -- ----------------------------------------------------------
 CREATE TABLE `riwayat_barter` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -180,7 +183,7 @@ CREATE TABLE `riwayat_barter` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
--- 10. Table `pesanan`
+-- 9. Table `pesanan`
 -- ----------------------------------------------------------
 CREATE TABLE `pesanan` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -199,7 +202,7 @@ CREATE TABLE `pesanan` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
--- 11. Table `detail_pesanan`
+-- 10. Table `detail_pesanan`
 -- ----------------------------------------------------------
 CREATE TABLE `detail_pesanan` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -215,7 +218,7 @@ CREATE TABLE `detail_pesanan` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------------------------------------
--- 12. Table `ulasan`
+-- 11. Table `ulasan`
 -- ----------------------------------------------------------
 CREATE TABLE `ulasan` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -251,10 +254,10 @@ INSERT INTO `kategori` (`id`, `nama_kategori`) VALUES
 -- 1. Admin          : admin@loote.com  | pass: password
 -- 2. Verified User  : seller@loote.com | pass: password (is_verified = 1, bisa jual barang)
 -- 3. Regular User   : rizky@gmail.com  | pass: password (is_verified = 0, wajib verifikasi dulu untuk jual)
-INSERT INTO `pengguna` (`id`, `nama`, `email`, `password`, `peran`, `no_hp`, `alamat`, `info_rekening`, `is_verified`) VALUES
-(1, 'Admin Loot-E', 'admin@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, NULL, NULL, 0),
-(2, 'Loot-E Official Store', 'seller@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', '081234567890', 'Jl. Teknologi No. 10, Jakarta Selatan', 'BCA - 1234567890', 1),
-(3, 'Rizky', 'rizky@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', NULL, NULL, NULL, 0);
+INSERT INTO `pengguna` (`id`, `nama`, `email`, `password`, `peran`, `nik`, `no_hp`, `alamat`, `info_rekening`, `is_verified`) VALUES
+(1, 'Admin Loot-E', 'admin@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, NULL, NULL, NULL, 0),
+(2, 'Loot-E Official Store', 'seller@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', '3174011505000001', '081234567890', 'Jl. Teknologi No. 10, Jakarta Selatan', '{"nama_bank":"BCA","nama_pemilik":"Loot-E Official Store","nomor_rekening":"1234567890"}', 1),
+(3, 'Rizky', 'rizky@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', NULL, NULL, NULL, NULL, 0);
 
 -- Produk contoh (milik user id = 2 / Loot-E Official Store)
 INSERT INTO `produk` (`id`, `id_penjual`, `id_kategori`, `nama_produk`, `foto`, `harga`, `stok`, `kondisi`, `deskripsi`, `bisa_nego`, `bisa_barter`, `status_produk`) VALUES
