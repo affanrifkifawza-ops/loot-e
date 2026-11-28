@@ -31,11 +31,11 @@ $_SESSION['peran']       = $userRow['peran'];
 $_SESSION['is_verified'] = (int)$userRow['is_verified'];
 
 if ((int)$userRow['is_verified'] !== 1) {
-    $_SESSION['profile_flash'] = [
+    $_SESSION['verifikasi_flash'] = [
         'type'    => 'error',
         'message' => 'Selesaikan verifikasi akun terlebih dahulu untuk mengakses Toko Saya.',
     ];
-    header("Location: profile.php");
+    header("Location: verifikasi_akun.php");
     exit;
 }
 

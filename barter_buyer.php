@@ -292,12 +292,11 @@ $filterTabs = [
                                 </p>
                             </div>
                         </div>
-                        <button type="button"
-                            data-demo-toast="Halaman Verifikasi Akun belum tersedia saat ini (mode demo)."
+                        <a href="verifikasi_akun.php"
                             class="inline-flex items-center justify-center gap-2 bg-brand-yellow hover:brightness-95 active:scale-[0.99] text-[#272727] font-bold text-xs sm:text-[13px] px-5 py-2.5 rounded-[2px] transition shrink-0 cursor-pointer self-start sm:self-center">
                             <span>Verifikasi Sekarang</span>
                             <i class="ph ph-arrow-right text-sm font-bold" aria-hidden="true"></i>
-                        </button>
+                        </a>
                     </div>
                 <?php endif; ?>
 

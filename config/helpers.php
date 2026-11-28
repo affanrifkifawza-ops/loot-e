@@ -91,7 +91,7 @@ function parseDeskripsiProduk(?string $rawDeskripsi): array
 }
 
 /**
- * Mem-parsing kolom `pengguna.alamat` (JSON terstruktur dari alamat_buyer.php atau teks biasa lama).
+ * Mem-parsing kolom `pengguna.alamat` (JSON terstruktur dari alamat_user.php atau teks biasa lama).
  * Mengembalikan null jika alamat kosong.
  */
 function parseAlamatPengguna(?string $rawAlamat, array $fallbackUser = []): ?array
@@ -175,4 +175,74 @@ function formatAlamatRingkas(?string $rawAlamat, bool $kotaOnly = false): string
     }
 
     return $raw;
+}
+
+/**
+ * Mem-parsing kolom `pengguna.info_rekening` (JSON terstruktur atau teks biasa lama seperti "BCA - 1234567890").
+ * Mengembalikan null jika data rekening kosong.
+ */
+function parseRekeningPengguna(?string $rawRekening): ?array
+{
+    $raw = trim((string)$rawRekening);
+    if ($raw === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded) && json_last_error() === JSON_ERROR_NONE) {
+        $parsed = [
+            'is_structured'  => true,
+            'nama_bank'      => trim((string)($decoded['nama_bank'] ?? '')),
+            'nama_pemilik'   => trim((string)($decoded['nama_pemilik'] ?? '')),
+            'nomor_rekening' => trim((string)($decoded['nomor_rekening'] ?? '')),
+        ];
+
+        if (
+            $parsed['nama_bank'] === '' &&
+            $parsed['nama_pemilik'] === '' &&
+            $parsed['nomor_rekening'] === ''
+        ) {
+            return null;
+        }
+
+        return $parsed;
+    }
+
+    $namaBank = '';
+    $nomorRekening = $raw;
+    if (str_contains($raw, ' - ')) {
+        [$bankPart, $rekPart] = explode(' - ', $raw, 2);
+        $namaBank = trim($bankPart);
+        $nomorRekening = trim($rekPart);
+    }
+
+    return [
+        'is_structured'  => false,
+        'nama_bank'      => $namaBank,
+        'nama_pemilik'   => '',
+        'nomor_rekening' => $nomorRekening,
+    ];
+}
+
+/**
+ * Mengubah kolom `pengguna.info_rekening` menjadi string satu baris yang rapi untuk tampilan UI.
+ */
+function formatRekeningRingkas(?string $rawRekening): string
+{
+    $parsed = parseRekeningPengguna($rawRekening);
+    if ($parsed === null) {
+        return '';
+    }
+
+    $mainParts = array_values(array_filter([
+        $parsed['nama_bank'],
+        $parsed['nomor_rekening'],
+    ], static fn($v) => $v !== ''));
+
+    $summary = implode(' - ', $mainParts);
+    if ($parsed['nama_pemilik'] !== '') {
+        $summary .= ($summary !== '' ? ' ' : '') . '(a.n. ' . $parsed['nama_pemilik'] . ')';
+    }
+
+    return $summary;
 }

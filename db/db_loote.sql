@@ -37,10 +37,10 @@ CREATE TABLE `pengguna` (
   `email` VARCHAR(100) NOT NULL,
   `password` VARCHAR(255) NOT NULL,
   `peran` ENUM('user', 'admin') NOT NULL DEFAULT 'user',
-  `nik` CHAR(16) DEFAULT NULL COMMENT '16 digit NIK KTP (Diisi saat verifikasi jual barang)',
-  `no_hp` VARCHAR(20) DEFAULT NULL COMMENT 'Diisi saat verifikasi jual barang',
-  `alamat` TEXT DEFAULT NULL COMMENT 'Diisi saat verifikasi jual barang',
-  `info_rekening` VARCHAR(100) DEFAULT NULL COMMENT 'Contoh: BCA - 1234567890 (Syarat pencairan Escrow)',
+  `nik` CHAR(16) DEFAULT NULL COMMENT '16 digit NIK KTP (Diisi saat verifikasi seller)',
+  `no_hp` VARCHAR(20) DEFAULT NULL COMMENT 'Opsional, dapat diisi mandiri melalui halaman profil',
+  `alamat` TEXT DEFAULT NULL COMMENT 'Opsional, JSON terstruktur dari halaman alamat pengguna',
+  `info_rekening` TEXT DEFAULT NULL COMMENT 'JSON terstruktur rekening pencairan Escrow (Diisi saat verifikasi seller)',
   `is_verified` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Boleh upload produk',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -256,7 +256,7 @@ INSERT INTO `kategori` (`id`, `nama_kategori`) VALUES
 -- 3. Regular User   : rizky@gmail.com  | pass: password (is_verified = 0, wajib verifikasi dulu untuk jual)
 INSERT INTO `pengguna` (`id`, `nama`, `email`, `password`, `peran`, `nik`, `no_hp`, `alamat`, `info_rekening`, `is_verified`) VALUES
 (1, 'Admin Loot-E', 'admin@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, NULL, NULL, NULL, 0),
-(2, 'Loot-E Official Store', 'seller@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', '3174011505000001', '081234567890', 'Jl. Teknologi No. 10, Jakarta Selatan', 'BCA - 1234567890', 1),
+(2, 'Loot-E Official Store', 'seller@loote.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', '3174011505000001', '081234567890', 'Jl. Teknologi No. 10, Jakarta Selatan', '{"nama_bank":"BCA","nama_pemilik":"Loot-E Official Store","nomor_rekening":"1234567890"}', 1),
 (3, 'Rizky', 'rizky@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', NULL, NULL, NULL, NULL, 0);
 
 -- Produk contoh (milik user id = 2 / Loot-E Official Store)

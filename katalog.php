@@ -32,11 +32,11 @@ $_SESSION['is_verified'] = (int)$userRow['is_verified'];
 
 // Guard BR-04: hanya seller terverifikasi yang boleh mengakses & mengelola katalog toko
 if ((int)$userRow['is_verified'] !== 1) {
-    $_SESSION['profile_flash'] = [
+    $_SESSION['verifikasi_flash'] = [
         'type'    => 'error',
         'message' => 'Selesaikan verifikasi akun terlebih dahulu untuk mengakses Katalog Toko.',
     ];
-    header("Location: profile.php");
+    header("Location: verifikasi_akun.php");
     exit;
 }
 

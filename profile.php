@@ -44,15 +44,18 @@ if (!empty($_SESSION['profile_flash']) && is_array($_SESSION['profile_flash'])) 
 // Nilai form default dari database
 $formNama   = (string)$userRow['nama'];
 $formEmail  = (string)$userRow['email'];
+$formNoHp   = trim((string)($userRow['no_hp'] ?? ''));
 
 // Proses update profil (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedToken = (string)($_POST['csrf_token'] ?? '');
     $namaBaru    = trim((string)($_POST['nama_lengkap'] ?? ''));
     $emailRaw    = trim((string)($_POST['email'] ?? ''));
+    $noHpRaw     = trim((string)($_POST['no_hp'] ?? ''));
 
     $formNama   = $namaBaru;
     $formEmail  = $emailRaw;
+    $formNoHp   = $noHpRaw;
 
     if (!hash_equals($csrfToken, $postedToken)) {
         $flash = ['type' => 'error', 'message' => 'Sesi formulir tidak valid. Silakan muat ulang halaman dan coba lagi.'];
@@ -64,6 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = ['type' => 'error', 'message' => 'Format alamat email tidak valid.'];
     } elseif (mb_strlen($emailRaw) > 100) {
         $flash = ['type' => 'error', 'message' => 'Email maksimal 100 karakter.'];
+    } elseif ($noHpRaw !== '' && (mb_strlen($noHpRaw) > 20 || !preg_match('/^[0-9+\-\s()]{8,20}$/', $noHpRaw))) {
+        $flash = ['type' => 'error', 'message' => 'Format nomor HP tidak valid (8-20 karakter angka/tanda +, -, spasi).'];
     } else {
         try {
             $stmtCekEmail = $db->prepare("SELECT id FROM pengguna WHERE email = ? AND id != ? LIMIT 1");
@@ -74,10 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $stmtUpdate = $db->prepare("
                     UPDATE pengguna
-                    SET nama = ?, email = ?
+                    SET nama = ?, email = ?, no_hp = ?
                     WHERE id = ?
                 ");
-                $stmtUpdate->execute([$namaBaru, $emailRaw, $userId]);
+                $stmtUpdate->execute([$namaBaru, $emailRaw, $noHpRaw !== '' ? $noHpRaw : null, $userId]);
 
                 $_SESSION['nama']  = $namaBaru;
                 $_SESSION['email'] = $emailRaw;
@@ -99,7 +104,6 @@ $currentUser = getCurrentUser();
 $navActivePage = 'profile';
 
 $isVerified = (int)$userRow['is_verified'] === 1;
-$userNoHp   = trim((string)($userRow['no_hp'] ?? ''));
 
 // Tabel `pengguna` belum memiliki kolom `username`; turunkan handle tampilan dari email pengguna asli
 $emailLocalPart = strstr((string)$userRow['email'], '@', true);
@@ -215,12 +219,11 @@ $accountSidebarUser = [
                                 </p>
                             </div>
                         </div>
-                        <button type="button"
-                            data-demo-toast="Halaman Verifikasi Akun belum tersedia saat ini (mode demo)."
+                        <a href="verifikasi_akun.php"
                             class="inline-flex items-center justify-center gap-2 bg-brand-yellow hover:brightness-95 active:scale-[0.99] text-[#272727] font-bold text-xs sm:text-[13px] px-5 py-2.5 rounded-[2px] transition shrink-0 cursor-pointer self-start sm:self-center">
                             <span>Verifikasi Sekarang</span>
                             <i class="ph ph-arrow-right text-sm font-bold" aria-hidden="true"></i>
-                        </button>
+                        </a>
                     </div>
                 <?php endif; ?>
 
@@ -274,16 +277,13 @@ $accountSidebarUser = [
                                     Nomor HP
                                 </label>
                                 <div>
-                                    <input type="tel" id="no_hp" name="no_hp"
-                                        value="<?= htmlspecialchars($userNoHp, ENT_QUOTES, 'UTF-8') ?>"
-                                        placeholder="Belum diisi / belum diverifikasi"
-                                        readonly
-                                        class="w-full h-10 px-3.5 bg-gray-50 border border-gray-300 rounded-[2px] text-sm <?= $userNoHp !== '' ? 'text-[#272727]' : 'text-gray-500' ?> placeholder-gray-400 cursor-not-allowed focus:outline-none" />
-                                    <?php if (!$isVerified || $userNoHp === ''): ?>
-                                        <p class="mt-1.5 text-[11px] text-gray-500 leading-snug">
-                                            Nomor HP belum diisi atau belum diverifikasi. Lengkapi melalui <a href="#banner-verifikasi" data-demo-toast="Halaman Verifikasi Akun belum tersedia saat ini (mode demo)." class="font-semibold text-[#854D0E] hover:underline">Verifikasi Akun</a>.
-                                        </p>
-                                    <?php endif; ?>
+                                    <input type="tel" id="no_hp" name="no_hp" maxlength="20"
+                                        value="<?= htmlspecialchars($formNoHp, ENT_QUOTES, 'UTF-8') ?>"
+                                        placeholder="Contoh: 081234567890 (Opsional)"
+                                        class="w-full h-10 px-3.5 bg-white border border-gray-300 rounded-[2px] text-sm text-[#272727] placeholder-gray-400 focus:outline-none focus:border-brand-yellow focus:ring-2 focus:ring-brand-yellow/30 transition" />
+                                    <p class="mt-1.5 text-[11px] text-gray-500 leading-snug">
+                                        Opsional. Nomor HP dapat kamu isi atau perbarui kapan saja untuk kebutuhan kontak transaksi.
+                                    </p>
                                 </div>
                             </div>
 

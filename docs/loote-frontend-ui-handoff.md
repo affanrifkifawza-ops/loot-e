@@ -18,7 +18,7 @@
 - **Target User:** Perakitan PC (*PC builders*), *gamers*, pekerja kreatif/kantoran, dan penjual/pembeli perangkat elektronik bekas maupun baru di Indonesia.
 - **User Roles (Model C2C Single User Role — Lihat `PRD.md` Bagian 3):**
   1. **`user` (Unverified Seller — `is_verified = 0`):** Role default saat registrasi. Bisa browsing, mencari produk, memakai Bottleneck Checker, menambah keranjang, Buy Now, mengajukan Nego/Barter, melacak pesanan, dan memberi ulasan. **Belum bisa upload/jual produk.**
-  2. **`user` (Verified Seller, `is_verified = 1`):** Pengguna yang sudah melengkapi `nik` (16 digit), `no_hp`, `alamat`, dan `info_rekening`. Memiliki semua hak pembeli ditambah hak mengunggah/mengelola produk, merespons tawaran nego/barter, dan menginput nomor resi.
+  2. **`user` (Verified Seller, `is_verified = 1`):** Pengguna yang sudah melengkapi `nik` (16 digit) dan `info_rekening` (JSON `nama_bank`, `nama_pemilik`, `nomor_rekening`). Memiliki semua hak pembeli ditambah hak mengunggah/mengelola produk, merespons tawaran nego/barter, dan menginput nomor resi. Sementara `no_hp` dan `alamat` bersifat opsional (default `NULL`) dan diisi mandiri melalui `profile.php` serta `alamat_user.php`.
   3. **`admin` (`peran = 'admin'`):** Mengelola master data pengguna, kategori, moderasi produk, memonitor pesanan, verifikasi pembayaran/pencairan Escrow, dan laporan pendapatan dari `biaya_layanan`.
 - **Dokumen Referensi Terkait (Jangan Diduplikasi, Baca Langsung Saat Dibutuhkan):**
   - Spesifikasi Produk & Business Rules (`BR-01` s.d. `BR-05`): [`PRD.md`](../PRD.md)
@@ -288,7 +288,7 @@ Gunakan file berikut sebagai referensi langsung ketika mengimplementasikan halam
    - Seluruh output variabel dinamis ke HTML **wajib** di-escape dengan `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')` (atau `htmlspecialchars((string)$val)`).
    - Format mata uang Rupiah selalu menggunakan helper `formatRupiah((int)$angka)`.
 2. **Penamaan File & Bahasa:**
-   - Nama file halaman menggunakan **snake_case** berbahasa Indonesia atau Inggris sesuai fungsi yang sudah berjalan (`detail_produk.php`, `landingpage.php`, `categories.php`, `search.php`). Untuk halaman fitur seller/transaksi baru, ikuti konvensi snake_case Bahasa Indonesia seperti yang tercatat di `docs/loote-upload-produk-handoff.md` (`verifikasi_seller.php`, `tambah_produk.php`, `produk_saya.php`), kecuali diinstruksikan lain oleh user.
+   - Nama file halaman menggunakan **snake_case** berbahasa Indonesia atau Inggris sesuai fungsi yang sudah berjalan (`detail_produk.php`, `landingpage.php`, `categories.php`, `search.php`). Untuk halaman akun/seller/transaksi baru, ikuti konvensi snake_case Bahasa Indonesia seperti yang sudah diterapkan (`verifikasi_akun.php`, `alamat_user.php`, `dashboard_seller.php`, `katalog.php`, `upload_produk.php`), kecuali diinstruksikan lain oleh user.
    - Seluruh teks antarmuka pengguna (UI copy), label, pesan error/validasi, dan komentar kode menggunakan **Bahasa Indonesia** (dengan beberapa istilah domain tetap dalam Bahasa Inggris sesuai desain seperti *Upgrade Your Setup*, *Explore Categories*, *New Arrivals*, *Hot Spotlight*, *Verified Seller*).
 3. **Styling & CSS:**
    - Gunakan utility classes Tailwind CSS langsung pada elemen HTML.

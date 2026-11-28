@@ -3,7 +3,7 @@ require_once "auth.php";
 
 // Pastikan pengguna sudah login
 if (!isLoggedIn()) {
-    header("Location: login.php?redirect=alamat_buyer.php");
+    header("Location: login.php?redirect=alamat_user.php");
     exit;
 }
 
@@ -152,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ? 'Perubahan alamat berhasil disimpan.'
                     : 'Alamat baru berhasil ditambahkan.',
             ];
-            header("Location: alamat_buyer.php");
+            header("Location: alamat_user.php");
             exit;
         } catch (Throwable $e) {
             $flash = ['type' => 'error', 'message' => 'Gagal menyimpan data alamat. Silakan coba lagi.'];
@@ -434,7 +434,7 @@ if ($forcedState !== null) {
                         </div>
 
                         <!-- Form Isian Alamat -->
-                        <form id="form-alamat" method="POST" action="alamat_buyer.php" class="mt-6 space-y-4">
+                        <form id="form-alamat" method="POST" action="alamat_user.php" class="mt-6 space-y-4">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfAddress, ENT_QUOTES, 'UTF-8') ?>" />
                             <input type="hidden" id="form-mode" name="mode" value="<?= htmlspecialchars($formMode, ENT_QUOTES, 'UTF-8') ?>" />
                             <input type="hidden" id="form-address-id" name="address_id" value="<?= (int)($address['id'] ?? 0) ?>" />
