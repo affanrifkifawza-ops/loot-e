@@ -18,8 +18,8 @@ $_navOverlayHero = !empty($navOverlayHero);
 
     @media (min-width: 768px) {
         .loote-floating-pill {
-            width: min(calc(100vw - 2rem), 1080px);
-            padding: 7px 16px;
+            width: min(calc(100vw - 2rem), 820px);
+            padding: 6px 14px;
             transition: width 360ms cubic-bezier(0.22, 1, 0.36, 1),
                 padding 320ms cubic-bezier(0.22, 1, 0.36, 1),
                 border-color 260ms ease,
@@ -27,9 +27,9 @@ $_navOverlayHero = !empty($navOverlayHero);
         }
 
         .loote-nav-collapsible {
-            max-width: 940px;
+            max-width: 700px;
             opacity: 1;
-            margin-left: 12px;
+            margin-left: 18px;
             overflow: hidden;
             transition: max-width 340ms cubic-bezier(0.22, 1, 0.36, 1),
                 opacity 220ms ease 90ms,
@@ -37,8 +37,8 @@ $_navOverlayHero = !empty($navOverlayHero);
         }
 
         .loote-floating-pill.is-compact {
-            width: 148px;
-            padding: 7px 15px;
+            width: 146px;
+            padding: 6px 14px;
             border-color: rgba(255, 201, 20, 0.38);
             box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.5);
         }
@@ -56,17 +56,17 @@ $_navOverlayHero = !empty($navOverlayHero);
         .loote-floating-pill.is-compact:hover,
         .loote-floating-pill.is-compact:focus-within,
         .loote-floating-pill.is-compact.is-menu-open {
-            width: min(calc(100vw - 2rem), 1080px);
-            padding: 7px 16px;
+            width: min(calc(100vw - 2rem), 820px);
+            padding: 6px 14px;
             border-color: rgba(255, 255, 255, 0.22);
         }
 
         .loote-floating-pill.is-compact:hover .loote-nav-collapsible,
         .loote-floating-pill.is-compact:focus-within .loote-nav-collapsible,
         .loote-floating-pill.is-compact.is-menu-open .loote-nav-collapsible {
-            max-width: 940px;
+            max-width: 700px;
             opacity: 1;
-            margin-left: 12px;
+            margin-left: 18px;
             pointer-events: auto;
             transition: max-width 360ms cubic-bezier(0.22, 1, 0.36, 1),
                 opacity 220ms ease 100ms,
@@ -94,11 +94,11 @@ $_navOverlayHero = !empty($navOverlayHero);
             </a>
 
             <!-- Konten Tengah & Kanan (menyusut saat scroll di desktop, melebar saat hover/fokus) -->
-            <div class="loote-nav-collapsible flex items-center justify-end md:justify-between flex-1 min-w-0">
+            <div class="loote-nav-collapsible flex items-center justify-end md:gap-3 flex-1 min-w-0">
                 <!-- Search Bar (Desktop) -->
                 <form action="search.php" method="GET"
                     onsubmit="if(!this.q.value.trim()){ this.q.focus(); return false; }"
-                    class="hidden md:block relative flex-1 max-w-md mx-4">
+                    class="hidden md:block relative flex-1 max-w-[390px] md:mx-auto">
                     <label for="navbar-search-desktop" class="sr-only">Cari barang atau kategori</label>
                     <input type="text" id="navbar-search-desktop" name="q" required value="<?= $_navSearchValue ?>"
                         placeholder="Cari barang atau kategori..."
@@ -111,28 +111,28 @@ $_navOverlayHero = !empty($navOverlayHero);
                 </form>
 
                 <!-- Aksi Kanan: Ikon + Trigger Profil -->
-                <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-auto">
+                <div class="flex items-center gap-1 sm:gap-1.5 md:gap-1 shrink-0">
                     <?php if ($_navUser): ?>
                         <button type="button"
-                            class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/10 text-gray-300 hover:text-brand-yellow transition cursor-pointer shrink-0"
+                            class="flex items-center justify-center w-10 h-10 md:w-9 md:h-9 rounded-full hover:bg-white/10 text-gray-300 hover:text-brand-yellow transition cursor-pointer shrink-0"
                             title="Notifikasi" aria-label="Notifikasi">
-                            <i class="ph ph-bell text-xl" aria-hidden="true"></i>
+                            <i class="ph ph-bell text-xl md:text-[19px]" aria-hidden="true"></i>
                         </button>
                         <a href="cart.php"
-                            class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/10 <?= ($navActivePage ?? '') === 'cart' ? 'text-brand-yellow' : 'text-gray-300 hover:text-brand-yellow' ?> transition shrink-0"
+                            class="flex items-center justify-center w-10 h-10 md:w-9 md:h-9 rounded-full hover:bg-white/10 <?= ($navActivePage ?? '') === 'cart' ? 'text-brand-yellow' : 'text-gray-300 hover:text-brand-yellow' ?> transition shrink-0"
                             title="Keranjang" aria-label="Keranjang belanja">
-                            <i class="ph ph-shopping-cart text-xl" aria-hidden="true"></i>
+                            <i class="ph ph-shopping-cart text-xl md:text-[19px]" aria-hidden="true"></i>
                         </a>
 
                         <!-- Trigger Dropdown Profil User -->
-                        <div class="md:border-l md:border-gray-600/80 md:pl-3 shrink-0" id="navbar-profile-wrapper">
+                        <div class="md:border-l md:border-gray-600/80 md:pl-2 md:ml-1 shrink-0" id="navbar-profile-wrapper">
                             <button type="button" id="navbar-profile-toggle"
                                 class="flex items-center gap-2 rounded-full p-0.5 md:px-1.5 md:py-1 hover:bg-white/10 transition focus:outline-none cursor-pointer"
                                 aria-expanded="false" aria-haspopup="true" aria-controls="navbar-profile-menu">
                                 <div class="w-8 h-8 rounded-full bg-brand-yellow text-brand-dark flex items-center justify-center font-semibold text-xs uppercase shadow-sm shrink-0">
                                     <?= $_navInitials ?>
                                 </div>
-                                <span class="hidden lg:inline text-xs font-medium text-white leading-tight whitespace-nowrap">
+                                <span class="hidden lg:inline text-xs font-medium text-white leading-tight whitespace-nowrap max-w-[125px] truncate">
                                     Halo, <?= $_navName ?>!
                                 </span>
                                 <i id="navbar-profile-caret" class="ph ph-caret-down hidden lg:inline text-xs text-gray-400 transition-transform duration-150" aria-hidden="true"></i>
